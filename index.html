@@ -1819,7 +1819,7 @@ function pnlMiniBar(usado,limite,fmt){
          '<div class="pnl-lev-bar"><div style="width:'+pct+'%;background:'+cor+'"></div></div>';
 }
 
-function pnlCardEscritorio(e){
+function pnlCardEscritorio(e, idx){
   return '<div class="pnl-esc'+(e.ativo?'':' off')+'">'+
     '<div class="pnl-esc-h">'+
       '<div><div class="pnl-esc-nome">'+esc(e.nome||'—')+'<span class="pnl-pacote">'+esc(e.pacote||'')+'</span></div>'+
@@ -1833,9 +1833,18 @@ function pnlCardEscritorio(e){
       '<div><div class="pnl-lev-lbl">IA (mês)</div>'+pnlMiniBar(e.ia_usado,e.ia_limite,pnlFmtUSD)+'</div>'+
     '</div>'+
     '<div class="pnl-esc-actions">'+
-      '<button class="pnl-btn-acao" type="button" onclick="abrirAcaoEscritorio('+JSON.stringify(e)+')">⚙️ Ações</button>'+
+      '<button class="pnl-btn-acao" type="button" onclick="abrirAcaoEscritorioIdx('+idx+')">⚙️ Ações</button>'+
     '</div>'+
   '</div>';
+}
+
+function abrirAcaoEscritorioIdx(idx){
+  if(!PAINEL_DATA||!PAINEL_DATA.escs) return;
+  // idx é relativo à lista filtrada atual — precisamos buscar pelo índice da lista renderizada
+  const want=(PAINEL_TAB==='ativos');
+  const rows=PAINEL_DATA.escs.filter(e=>!!e.ativo===want);
+  const e=rows[idx]; if(!e) return;
+  abrirAcaoEscritorio(e);
 }
 
 function renderPainelLista(escs){
@@ -1845,7 +1854,7 @@ function renderPainelLista(escs){
   document.getElementById('pnl-tab-inativos').textContent='Desativados ('+nI+')';
   const want=(PAINEL_TAB==='ativos');
   const rows=escs.filter(e=>!!e.ativo===want);
-  box.innerHTML = rows.length ? rows.map(pnlCardEscritorio).join('')
+  box.innerHTML = rows.length ? rows.map((e,i)=>pnlCardEscritorio(e,i)).join('')
     : '<div class="rel-card">Nenhum escritório nesta aba.</div>';
 }
 
