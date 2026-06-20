@@ -4280,13 +4280,14 @@ function relRowProvFeita(x){
 
 /* ---------- modais ---------- */
 /* ============ FINANCEIRO ============ */
-let HONORARIOS=[], finMes=null, finOpenId=null, finTab='ativos', finPrioAtraso=false, finPainel=null;
+let HONORARIOS=[], finMes=null, finOpenId=null, finTab='ativos', finPrioAtraso=false, finPainel=null, finListAberta=false;
 let finFatModo='mes', finFatMes=null, finFatAno=null, finFatIni=null, finFatFim=null, finFatData=null;
 let DESPESAS=[], finView='honorarios', despLoaded=false;
 function fmtBRL(v){ const n=Number(v); return isNaN(n)?'R$ 0,00':n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function mesAtual(){ return new Date().toISOString().slice(0,7); }
 
 function carregarFinanceiro(){
+  finListAberta=false;
   if(!finMes){ finMes=mesAtual(); const i=document.getElementById('fin-mes'); if(i) i.value=finMes; }
   if(!finFatMes) finFatMes=mesAtual();
   if(!finFatAno) finFatAno=new Date().getFullYear();
@@ -4490,18 +4491,25 @@ async function carregarHonorarios(){
     document.getElementById('fin-area').innerHTML='<div class="empty"><div class="em-ic">⚠️</div><h3>Não foi possível carregar</h3><p>'+esc(traduzErro(e))+'</p></div>'; }
 }
 function isQuitado(h){ return (Number(h.valor_total)||0) > 0 && (Number(h.valor_aberto)||0) <= 0.005; }
-function setFinTab(t){ finTab=t; finOpenId=null; renderHonorarios(); }
+function setFinTab(t){
+  if(finTab===t){ finListAberta=!finListAberta; }
+  else { finTab=t; finListAberta=true; }
+  finOpenId=null; renderHonorarios();
+}
 function renderHonorarios(){
   const area=document.getElementById('fin-area');
-  if(!HONORARIOS.length){ area.innerHTML='<div class="empty"><div class="em-ic">💰</div><h3>Nenhum honorário cadastrado</h3><p>Clique em “Novo honorário” para registrar o primeiro.</p></div>'; return; }
+  if(!HONORARIOS.length){ area.innerHTML='<div class="empty"><div class="em-ic">💰</div><h3>Nenhum honorário cadastrado</h3><p>Clique em &quot;Novo honorário&quot; para registrar o primeiro.</p></div>'; return; }
   const ativos=HONORARIOS.filter(h=>!isQuitado(h));
   const quitados=HONORARIOS.filter(isQuitado);
   let lista=(finTab==='quitados')?quitados:ativos.slice();
   if(finTab!=='quitados' && finPrioAtraso){ lista.sort((a,b)=>(b.tem_atraso?1:0)-(a.tem_atraso?1:0)); }
+  const dica=finListAberta?' <span style="font-size:.75rem;color:var(--muted-2)">(clique para fechar)</span>':' <span style="font-size:.75rem;color:var(--muted-2)">(clique para ver)</span>';
   const seg='<div class="seg" style="margin-bottom:14px">'
     +`<button class="${finTab==='ativos'?'active':''}" onclick="setFinTab('ativos')">Ativos (${ativos.length})</button>`
     +`<button class="${finTab==='quitados'?'active':''}" onclick="setFinTab('quitados')">Quitados (${quitados.length})</button>`
+    +dica
     +'</div>';
+  if(!finListAberta){ area.innerHTML=seg; return; }
   if(!lista.length){
     const vazio=(finTab==='quitados')
       ? '<div class="empty"><div class="em-ic">✅</div><h3>Nenhum honorário quitado ainda</h3><p>Honorários 100% pagos são arquivados aqui para consulta.</p></div>'
@@ -4991,7 +4999,7 @@ async function salvarHonorario(){
       p_valor_entrada:ent, p_num_parcelas:np, p_data_inicio:inicio,
       p_data_primeira_parcela:(temResto?prim:null), p_observacoes:obs}); if(error) throw error;
     fecharModal('modal-honorario'); toast('Honorário cadastrado.','ok');
-    finTab='ativos'; carregarPainel(); fatRecalc(); carregarHonorarios();
+    finTab='ativos'; finListAberta=true; carregarPainel(); fatRecalc(); carregarHonorarios();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); erro(traduzErro(e)); }
   finally{ setLoading(btn,false,'Salvar'); }
 }
@@ -5031,7 +5039,7 @@ async function confirmarPagamento(){
   try{ const {error}=await db.rpc('sp_registrar_pagamento',{p_token:TOKEN,p_parc_id:parc,p_valor:valor,p_data_pag:data}); if(error) throw error;
     fecharModal('modal-pagamento');
     const idAberto=finOpenId;
-    carregarPainel(); fatRecalc(); await carregarHonorarios();
+    finListAberta=true; carregarPainel(); fatRecalc(); await carregarHonorarios();
     const h=idAberto?HONORARIOS.find(x=>x.honorario_id===idAberto):null;
     const parcial=(saldo-valor)>0.005;
     toast(h&&isQuitado(h) ? 'Pagamento registrado. Honorário quitado e arquivado em “Quitados”.'
