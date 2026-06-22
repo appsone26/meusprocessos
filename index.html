@@ -645,7 +645,6 @@
     .side .navitem{width:100%;white-space:normal}
     .side .sidefoot,.side .navitem .soontag{display:none}
     #app.menu-open .menu-backdrop{display:block}
-    body.menu-open-lock{overflow:hidden;position:fixed;width:100%;touch-action:none}
   }
   @media (max-width:560px){
     .row2,.pkg-pick{grid-template-columns:1fr}
@@ -2063,12 +2062,7 @@ function toggleMenu(force){
   const app=document.getElementById('app'); if(!app) return;
   const open=(force===undefined)?!app.classList.contains('menu-open'):!!force;
   app.classList.toggle('menu-open',open);
-  // Bloqueia scroll da página de fundo quando menu abre no mobile
-  if(open){
-    document.body.classList.add('menu-open-lock');
-  } else {
-    document.body.classList.remove('menu-open-lock');
-  }
+  document.body.style.overflow = open ? 'hidden' : '';
 }
 function irPara(view, _fromPop){
   { const vp=document.getElementById('view-perfil'); if(vp) vp.classList.add('hidden'); }
