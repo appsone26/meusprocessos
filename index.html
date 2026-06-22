@@ -65,8 +65,20 @@
   html.tema-claro .topbar .tb-search{background:#ffffff;border-color:var(--line)}
   html.tema-claro .tbs-input{color:var(--text)}
   html.tema-claro .pkg-pick label{border-color:var(--line)}
-  html.tema-claro .modal-box{background:#ffffff;border-color:var(--line)}
-  html.tema-claro .modal-box h3{color:var(--text)}
+  /* tema-claro: modais (inserir/editar/IA) — seletor correto e .modal .box */
+  html.tema-claro .modal{background:rgba(15,23,42,.35)}
+  html.tema-claro .modal .box{background:#ffffff;border-color:var(--line);box-shadow:0 40px 90px -30px rgba(0,0,0,.25)}
+  html.tema-claro .modal .box h3{color:var(--text)}
+  html.tema-claro .modal .box .msub{color:var(--muted)}
+  html.tema-claro .modal .box p,html.tema-claro .modal .box li,html.tema-claro .modal .box span,html.tema-claro .modal .box div{color:var(--text)}
+  html.tema-claro .modal .field label{color:#334155}
+  html.tema-claro .modal .field input,html.tema-claro .modal .field select,html.tema-claro .modal .field textarea{background:#ffffff;color:var(--text);border-color:var(--line)}
+  html.tema-claro .modal .field input::placeholder,html.tema-claro .modal .field textarea::placeholder{color:var(--muted-2)}
+  html.tema-claro .modal .field select option{background:#ffffff;color:var(--text)}
+  html.tema-claro .modal #mia-body{color:var(--text)}
+  html.tema-claro .modal #mia-body h1,html.tema-claro .modal #mia-body h2,html.tema-claro .modal #mia-body h3,html.tema-claro .modal #mia-body h4,html.tema-claro .modal #mia-body strong{color:var(--text)}
+  html.tema-claro .modal .empty h3{color:var(--text)}
+  html.tema-claro .modal .empty p{color:var(--muted)}
   html.tema-claro .modal-backdrop{background:rgba(0,0,0,.45)}
   html.tema-claro .rel-tile{background:#ffffff;border-color:var(--line)}
   html.tema-claro .fin-fat .ff-card,.tema-claro .fin-ctlbox{background:#ffffff;border-color:var(--line)}
@@ -1681,7 +1693,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.101';
+const APP_VERSAO = 'v1.8.102';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
