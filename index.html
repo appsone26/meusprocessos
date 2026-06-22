@@ -311,7 +311,7 @@
   .topbar .out:hover{border-color:var(--danger);color:var(--danger)}
   .topbar .hamb{display:none;background:none;border:1px solid var(--line);color:var(--text);width:36px;height:36px;border-radius:8px;font-size:1.15rem;line-height:1;cursor:pointer;padding:0;place-items:center;flex:0 0 auto;transition:all .15s}
   .topbar .hamb:hover{border-color:var(--cyan);color:var(--cyan)}
-  .menu-backdrop{display:none;position:fixed;inset:0;z-index:39;background:rgba(0,0,0,.35);touch-action:none}
+  .menu-backdrop{display:none;position:fixed;inset:0;z-index:44;background:rgba(0,0,0,.4)}
   .applayout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 80px)}
   .side{border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:4px;background:rgba(255,255,255,.015);position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden}
   .side .navitem{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:10px;color:var(--muted);font-size:.92rem;font-weight:500;cursor:pointer;border:0;background:none;font-family:inherit;width:100%;text-align:left;transition:all .15s}
@@ -660,7 +660,7 @@
     #buscau-drop-mob.open{display:block}
     .vh-actions{flex-wrap:nowrap}
     .vh-actions .btn-sm{padding:10px 11px;font-size:.85rem;white-space:nowrap}
-    .side{position:fixed;top:calc(136px + env(safe-area-inset-top));left:0;bottom:0;width:250px;max-width:82vw;flex-direction:column;overflow-y:scroll;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border-right:1px solid var(--line);border-bottom:0;padding:16px 14px;background:var(--bg);transform:translateX(-100%);transition:transform .22s ease;z-index:41}
+    .side{position:fixed;top:calc(136px + env(safe-area-inset-top));left:0;height:calc(100vh - 136px - env(safe-area-inset-top));width:250px;max-width:82vw;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border-right:1px solid var(--line);border-bottom:0;padding:16px 14px;background:var(--bg);transform:translateX(-100%);transition:transform .22s ease;z-index:45}
     #app.menu-open .side{transform:translateX(0)}
     .side .navitem{width:100%;white-space:normal}
     .side .sidefoot,.side .navitem .soontag{display:none}
