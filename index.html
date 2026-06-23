@@ -1693,7 +1693,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.105';
+const APP_VERSAO = 'v1.8.106';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2695,7 +2695,47 @@ function abrirSeletorResumo(){
 function confirmarResumoIA(){
   const sel=document.querySelector('input[name="ia-doc"]:checked');
   if(!sel||!sel.value){ toast('Selecione um documento.','err'); return; }
-  gerarResumoIA(sel.value);
+  const docId=sel.value;
+  const doc=(DOCS_PROC||[]).find(d=>d.id===docId);
+  if(doc){
+    const mime=String(doc.mime_type||'').toLowerCase();
+    const nome=String(doc.nome_arquivo||'').toLowerCase();
+    const ehPdf=mime.includes('pdf')||nome.endsWith('.pdf');
+    const tam=doc.tamanho_bytes||0;
+    const LIMITE_ILOVEPDF=15*1024*1024; // 15 MB
+    if(ehPdf && tam>0 && tam<=LIMITE_ILOVEPDF){
+      // PDF pequeno (até 15 MB) — sugerir conversão gratuita
+      document.getElementById('mia-title').textContent='Dica antes de resumir';
+      document.getElementById('mia-sub').textContent='Você pode economizar IA convertendo este PDF';
+      document.getElementById('mia-body').innerHTML=
+        '<div style="display:flex;flex-direction:column;gap:12px;font-size:.9rem;color:var(--text)">'
+        +'<p>📄 Este arquivo é um <strong>PDF</strong>. PDFs consomem significativamente mais IA do que documentos Word.</p>'
+        +'<p>Como ele tem menos de 15 MB, você pode convertê-lo <strong>gratuitamente</strong> no iLovePDF e reenviar como Word — a IA vai gastar muito menos do seu limite mensal.</p>'
+        +'<p style="font-size:.8rem;color:var(--muted)">Se preferir, pode resumir assim mesmo — só vai consumir mais IA.</p>'
+        +'</div>';
+      document.getElementById('mia-acts').innerHTML=
+        '<button class="btn btn-ghost btn-sm" onclick="abrirSeletorResumo()">← Voltar</button>'
+        +'<a href="https://www.ilovepdf.com/pt/pdf_para_word" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Converter no iLovePDF</a>'
+        +'<button class="btn btn-ghost btn-sm" onclick="gerarResumoIA(\''+docId.replace(/'/g,"\\'")+'\')" style="border-color:var(--warn);color:var(--warn)">Resumir assim mesmo</button>';
+      return;
+    }
+    if(ehPdf && tam>LIMITE_ILOVEPDF){
+      // PDF grande (acima de 15 MB) — só avisar o consumo
+      document.getElementById('mia-title').textContent='Atenção: PDF grande';
+      document.getElementById('mia-sub').textContent='Este arquivo vai consumir bastante IA';
+      document.getElementById('mia-body').innerHTML=
+        '<div style="display:flex;flex-direction:column;gap:12px;font-size:.9rem;color:var(--text)">'
+        +'<p>⚠️ Este PDF tem mais de 15 MB. PDFs grandes consomem <strong>muito mais IA</strong> do seu limite mensal.</p>'
+        +'<p>O tamanho impede a conversão gratuita no iLovePDF (limite de 15 MB). Se possível, peça uma versão Word do documento.</p>'
+        +'<p style="font-size:.8rem;color:var(--muted)">Se continuar, a IA lerá o arquivo inteiro e o consumo será alto.</p>'
+        +'</div>';
+      document.getElementById('mia-acts').innerHTML=
+        '<button class="btn btn-ghost btn-sm" onclick="abrirSeletorResumo()">← Voltar</button>'
+        +'<button class="btn btn-ghost btn-sm" onclick="gerarResumoIA(\''+docId.replace(/'/g,"\\'")+'\')" style="border-color:var(--warn);color:var(--warn)">Entendi, resumir mesmo assim</button>';
+      return;
+    }
+  }
+  gerarResumoIA(docId);
 }
 async function gerarResumoIA(documentoId){
   if(procAtual&&procAtual.status==='finalizado'){ toast('Processo finalizado — somente leitura.','err'); return; }
