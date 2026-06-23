@@ -291,7 +291,7 @@
   /* ===================== PAINEL (APP) ===================== */
   #app{display:none;position:relative;z-index:60;min-height:100vh}
   .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;height:80px;padding:0 22px 0 0;background:rgba(11,17,32,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-  .topbar .tb-left{display:flex;align-items:center;gap:13px;min-width:0;flex:0 0 230px;padding-left:14px;position:relative}
+  .topbar .tb-left{display:flex;align-items:center;gap:10px;min-width:0;flex:0 0 260px;padding-left:14px;position:relative}
   .topbar .seal-svg{width:30px;height:30px;flex:0 0 auto}
   .topbar .esc{font-family:'Space Grotesk';font-weight:600;color:#fff;font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .topbar .esc .pill{margin-left:9px;font-family:'Inter';font-size:.68rem;font-weight:600;color:var(--cyan);background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);padding:2px 8px;border-radius:20px;vertical-align:middle}
@@ -345,13 +345,13 @@
   /* barra de alertas */
   #alert-bar{margin:0 0 22px;display:none}
   /* v1.8.104: logo na topbar do app + sino limpo (sem retângulo) */
-  .topbar .tb-applogo{height:46px;width:auto;object-fit:contain;flex:0 0 auto;display:block}
+  .topbar .tb-applogo{height:68px;width:auto;object-fit:contain;flex:0 0 auto;display:block}
   #alert-bar-top{display:none;flex:0 0 auto}
   #alert-bar-top.show{display:block}
-  #alert-bar-top .sino-btn{position:relative;background:none;border:0;padding:6px;margin:0;cursor:pointer;display:grid;place-items:center;line-height:1;border-radius:10px;transition:background .15s}
+  #alert-bar-top .sino-btn{position:relative;background:none;border:0;padding:8px 6px;margin:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;border-radius:10px;transition:background .15s}
   #alert-bar-top .sino-btn:hover{background:rgba(255,255,255,.06)}
-  #alert-bar-top .sino-ic{font-size:1.5rem;display:inline-block;transform-origin:50% 12%}
-  #alert-bar-top .sino-dot{position:absolute;top:3px;right:4px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg)}
+  #alert-bar-top .sino-ic{font-size:1.9rem;display:inline-block;transform-origin:50% 12%;line-height:1;vertical-align:middle}
+  #alert-bar-top .sino-dot{position:absolute;top:5px;right:3px;width:11px;height:11px;border-radius:50%;border:2px solid var(--bg)}
   #alert-bar-top .sino-dot.amarelo{background:#FBBF24}
   #alert-bar-top .sino-dot.vermelho{background:#F87171}
   /* sino balança devagar (2-3 dias) ou rápido (hoje/amanhã) */
@@ -645,7 +645,7 @@
     /* v1.8.81: no app + celular, desliga o brilho (radial ciano no topo-direito) — fundo navy uniforme do topo até o fim; landing e desktop intocados */
     body.in-app .glow{display:none}
     .topbar .tb-left{flex:1 1 auto;min-width:0;gap:8px;padding-left:0;position:static}
-    .topbar .tb-applogo{height:38px}
+    .topbar .tb-applogo{height:54px}
     .topbar .tb-search{display:none}
     .applayout{grid-template-columns:1fr;min-height:100vh;padding-top:calc(152px + env(safe-area-inset-top))}
     .topbar .esc-logo{width:40px;height:40px}
@@ -1693,7 +1693,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.104';
+const APP_VERSAO = 'v1.8.105';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
