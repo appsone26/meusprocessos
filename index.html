@@ -359,6 +359,16 @@
   #alert-bar-top .sino-ic.ring{animation:mp-ring 4.6s ease-in-out infinite}
   #alert-bar-top .sino-ic.ring-now{animation:mp-ring 2.4s ease-in-out infinite}
   @media (prefers-reduced-motion:reduce){#alert-bar-top .sino-ic.ring,#alert-bar-top .sino-ic.ring-now{animation:none}}
+  /* ---- Bolha de aviso in-app (Gestor → todos escritórios) ---- */
+  #aviso-gestor-bubble{position:fixed;bottom:24px;right:24px;z-index:9999;max-width:340px;min-width:240px;background:var(--panel);border:1px solid var(--cyan);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.35);padding:16px 18px 14px;display:none;animation:bubble-in .3s ease}
+  #aviso-gestor-bubble.show{display:block}
+  @keyframes bubble-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  #aviso-gestor-bubble .bub-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  #aviso-gestor-bubble .bub-icon{font-size:1.1rem;flex:0 0 auto}
+  #aviso-gestor-bubble .bub-title{font-family:'Space Grotesk';font-weight:600;font-size:.88rem;color:var(--cyan);flex:1}
+  #aviso-gestor-bubble .bub-close{background:none;border:0;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:0 2px;line-height:1;transition:color .15s}
+  #aviso-gestor-bubble .bub-close:hover{color:var(--text)}
+  #aviso-gestor-bubble .bub-msg{font-size:.88rem;color:var(--text);line-height:1.5;white-space:pre-wrap;word-break:break-word}
   .alert-main{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:12px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45);animation:alertpulse 1.6s ease-in-out infinite}
   .alert-main.venchoje{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.55)}
   @keyframes alertpulse{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.0)}50%{box-shadow:0 0 0 4px rgba(251,191,36,.18)}}
@@ -1246,6 +1256,16 @@
           <div><h2>Painel do Gestor</h2><p>Capacidade da operação e escritórios.</p></div>
           <button class="btn btn-ghost btn-sm" type="button" onclick="carregarPainelGestor(true)">↻ Atualizar</button>
         </div>
+        <!-- Card: Aviso em destaque -->
+        <div class="card" style="margin-bottom:18px;border-color:var(--cyan)">
+          <div class="view-head" style="margin-bottom:10px"><div><h2 style="font-size:1.05rem">📢 Aviso em destaque</h2><p style="margin:0;font-size:.8rem">Mensagem exibida como popup para todos os escritórios logados. Só uma ativa por vez.</p></div></div>
+          <textarea id="pnl-aviso-texto" rows="3" style="width:100%;resize:vertical;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:10px 12px;box-sizing:border-box" placeholder="Ex.: Atualizamos o sistema! Agora você pode comprimir PDFs antes de resumir. 🚀"></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" type="button" onclick="publicarAvisoGestor()">📢 Publicar aviso</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="limparAvisoGestor()" style="border-color:var(--danger);color:var(--danger)">✕ Limpar aviso ativo</button>
+          </div>
+          <div id="pnl-aviso-status" style="margin-top:8px;font-size:.8rem;color:var(--muted)"></div>
+        </div>
         <div id="pnl-cap"><div class="loading">Carregando…</div></div>
         <div class="view-head" style="margin:26px 0 10px"><div><h2 style="font-size:1.05rem">Escritórios</h2><p style="margin:0">Limite e consumo de cada conta.</p></div></div>
         <div class="pnl-tabs">
@@ -1264,6 +1284,16 @@
       </div>
     </main>
   </div>
+</div>
+
+<!-- BOLHA DE AVISO IN-APP (Gestor → todos escritórios) -->
+<div id="aviso-gestor-bubble" role="alert" aria-live="polite">
+  <div class="bub-header">
+    <span class="bub-icon">📢</span>
+    <span class="bub-title">Aviso do sistema</span>
+    <button class="bub-close" type="button" onclick="fecharAvisoGestor()" aria-label="Fechar aviso">✕</button>
+  </div>
+  <div class="bub-msg" id="aviso-gestor-msg"></div>
 </div>
 
 <!-- MODAL CLIENTE -->
@@ -1693,7 +1723,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.106';
+const APP_VERSAO = 'v1.8.107';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2065,6 +2095,7 @@ function abrirApp(s){
   window.history.replaceState({view:'processos'}, '', window.location.pathname+'#processos');
   aplicarPermissoes();
   verificarDono();
+  iniciarPollingAviso();
   carregarClientes(); carregarProcessos(); carregarAlertas();
 }
 /* esconde as abas que o usuário não pode ver e abre na 1ª permitida */
@@ -2119,6 +2150,86 @@ function irPara(view, _fromPop){
     const url=window.location.pathname+'#'+view;
     if(window.history && window.location.hash !== '#'+view)
       window.history.pushState(estado, '', url);
+  }
+}
+
+/* ============ AVISO IN-APP (Gestor → todos escritórios) ============ */
+let AVISO_POLL_TIMER=null;
+const AVISO_SESS_KEY='mp_aviso_visto_id'; // sessionStorage — guarda o id do aviso já fechado
+
+function iniciarPollingAviso(){
+  verificarAvisoGestor(); // checa imediatamente ao logar
+  AVISO_POLL_TIMER=setInterval(verificarAvisoGestor, 60000); // depois a cada 60s
+}
+
+async function verificarAvisoGestor(){
+  if(!TOKEN) return;
+  try{
+    const {data,error}=await db.rpc('sp_aviso_gestor_buscar',{p_token:TOKEN});
+    if(error) return;
+    const row=(Array.isArray(data)?data[0]:data)||{};
+    if(!row.id){ fecharAvisoGestorSilencioso(); return; }
+    // Se o usuário já fechou esse aviso nesta sessão, não mostra de novo
+    const visto=sessionStorage.getItem(AVISO_SESS_KEY);
+    if(visto===String(row.id)) return;
+    // Exibe a bolha
+    const msgEl=document.getElementById('aviso-gestor-msg');
+    const bubble=document.getElementById('aviso-gestor-bubble');
+    if(!msgEl||!bubble) return;
+    msgEl.textContent=row.mensagem;
+    bubble.dataset.avisoId=row.id;
+    bubble.classList.add('show');
+  }catch(e){ /* silencioso */ }
+}
+
+function fecharAvisoGestor(){
+  const bubble=document.getElementById('aviso-gestor-bubble');
+  if(!bubble) return;
+  const id=bubble.dataset.avisoId;
+  if(id) sessionStorage.setItem(AVISO_SESS_KEY, id);
+  bubble.classList.remove('show');
+}
+
+function fecharAvisoGestorSilencioso(){
+  const bubble=document.getElementById('aviso-gestor-bubble');
+  if(bubble) bubble.classList.remove('show');
+}
+
+/* Funções do Painel do Gestor para publicar/limpar aviso */
+async function publicarAvisoGestor(){
+  const txt=(document.getElementById('pnl-aviso-texto')?.value||'').trim();
+  if(!txt){ toast('Digite a mensagem do aviso.','err'); return; }
+  const st=document.getElementById('pnl-aviso-status');
+  if(st) st.textContent='Publicando…';
+  try{
+    const {data,error}=await db.rpc('sp_aviso_gestor_salvar',{p_token:TOKEN,p_mensagem:txt});
+    if(error) throw error;
+    if(st) st.textContent='✅ Aviso publicado! Aparecerá para todos os escritórios logados.';
+    // Limpa o sessionStorage local para o próprio dono ver o aviso
+    sessionStorage.removeItem(AVISO_SESS_KEY);
+    verificarAvisoGestor();
+    toast('Aviso publicado com sucesso.','ok');
+  }catch(e){
+    if(st) st.textContent='Erro ao publicar.';
+    toast('Erro ao publicar aviso: '+(e.message||e),'err');
+  }
+}
+
+async function limparAvisoGestor(){
+  if(!confirm('Limpar o aviso ativo? A bolha sumirá para todos os escritórios.')) return;
+  const st=document.getElementById('pnl-aviso-status');
+  if(st) st.textContent='Limpando…';
+  try{
+    const {data,error}=await db.rpc('sp_aviso_gestor_salvar',{p_token:TOKEN,p_mensagem:''});
+    if(error) throw error;
+    if(st) st.textContent='✅ Aviso limpo.';
+    const txt=document.getElementById('pnl-aviso-texto');
+    if(txt) txt.value='';
+    fecharAvisoGestorSilencioso();
+    toast('Aviso removido.','ok');
+  }catch(e){
+    if(st) st.textContent='Erro ao limpar.';
+    toast('Erro ao limpar aviso: '+(e.message||e),'err');
   }
 }
 
