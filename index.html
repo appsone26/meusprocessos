@@ -1272,7 +1272,10 @@
           <button class="pnl-tab active" id="pnl-tab-ativos" type="button" onclick="setPainelTab('ativos')">Ativos</button>
           <button class="pnl-tab" id="pnl-tab-inativos" type="button" onclick="setPainelTab('inativos')">Desativados</button>
         </div>
-        <div id="pnl-escritorios"></div>
+        <div class="toolbar" style="margin-bottom:10px">
+          <div class="search"><span class="si">🔎</span><input id="pnl-busca-esc" placeholder="Buscar escritório por nome ou e-mail…" oninput="renderPainelLista(PAINEL_DATA?.escs||[])"></div>
+        </div>
+        <div id="pnl-escritorios" style="max-height:calc(100vh - 420px);overflow-y:auto;padding-right:4px"></div>
       </div>
 
       <!-- VIEW: AJUDA -->
@@ -2343,9 +2346,11 @@ function renderPainelLista(escs){
   document.getElementById('pnl-tab-ativos').textContent='Ativos ('+nA+')';
   document.getElementById('pnl-tab-inativos').textContent='Desativados ('+nI+')';
   const want=(PAINEL_TAB==='ativos');
-  const rows=escs.filter(e=>!!e.ativo===want);
+  const q=(document.getElementById('pnl-busca-esc')?.value||'').toLowerCase().trim();
+  let rows=escs.filter(e=>!!e.ativo===want);
+  if(q) rows=rows.filter(e=>(e.nome||'').toLowerCase().includes(q)||(e.email||'').toLowerCase().includes(q));
   box.innerHTML = rows.length ? rows.map((e,i)=>pnlCardEscritorio(e,i)).join('')
-    : '<div class="rel-card">Nenhum escritório nesta aba.</div>';
+    : '<div class="rel-card">'+(q?'Nenhum escritório encontrado para "'+esc(q)+'"':'Nenhum escritório nesta aba.')+'</div>';
 }
 
 /* ---- Painel: modal de ações por escritório ---- */
