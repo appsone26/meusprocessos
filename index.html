@@ -1673,6 +1673,32 @@
       <p class="pac-info">Soma ao limite de IA deste escritório. Trava se exceder o pool do dono.</p>
     </div>
 
+    <!-- Escavador -->
+    <div class="pac-secao">
+      <h4>🔍 Escavador</h4>
+      <div class="pac-grid3" style="margin-top:2px">
+        <div class="field">
+          <label>Atualização manual (dias)</label>
+          <input type="number" id="pac-esc-intervalo" min="0" max="30" step="1" placeholder="0 = desabilitado">
+          <span style="font-size:.72rem;color:var(--muted)">Intervalo mínimo entre atualizações</span>
+        </div>
+        <div class="field">
+          <label>Slots de monitoramento</label>
+          <input type="number" id="pac-esc-slots" min="0" max="999" step="1" placeholder="0 = nenhum">
+          <span style="font-size:.72rem;color:var(--muted)">Processos monitorados simultaneamente</span>
+        </div>
+        <div class="field" style="justify-content:flex-end">
+          <label>Atualização em massa</label>
+          <select id="pac-esc-massa" data-no-upper>
+            <option value="0">Desabilitada</option>
+            <option value="1">Habilitada</option>
+          </select>
+          <span style="font-size:.72rem;color:var(--muted)">Botão "Atualizar todos" na lista</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" type="button" style="margin-top:10px;border-color:var(--cyan);color:var(--cyan)" onclick="pacSalvarEscavador()">Salvar Escavador</button>
+    </div>
+
     <!-- Ativar / desativar -->
     <div class="pac-secao" id="pac-sec-status">
       <h4 id="pac-status-title">🔴 Desativar escritório</h4>
@@ -1726,7 +1752,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.107';
+const APP_VERSAO = 'v1.8.108';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2369,6 +2395,10 @@ function abrirAcaoEscritorio(e){
   document.getElementById('pac-ia').value=e.ia_limite||0;
   document.getElementById('pac-upload-max').value=e.upload_max_mb||10;
   document.getElementById('pac-credito').value='';
+  // levers Escavador
+  document.getElementById('pac-esc-intervalo').value=e.esc_atualizacao_intervalo_dias||0;
+  document.getElementById('pac-esc-slots').value=e.esc_monitoramento_slots||0;
+  document.getElementById('pac-esc-massa').value=e.esc_atualizacao_massa_habilitada?'1':'0';
   pacMsg('');
   // status
   const ativo=!!e.ativo;
@@ -2425,6 +2455,31 @@ async function pacCreditoIA(){
     PAINEL_DATA=null; carregarPainelGestor(true);
   }catch(e){ pacMsg(traduzErro(e),'err'); }
   finally{ setLoading(btn,false,'+ Adicionar'); }
+}
+
+async function pacSalvarEscavador(){
+  const id=document.getElementById('pac-id').value;
+  if(!id){ pacMsg('Escritório não identificado.','err'); return; }
+  const intervalo=parseInt(document.getElementById('pac-esc-intervalo').value)||0;
+  const slots=parseInt(document.getElementById('pac-esc-slots').value)||0;
+  const massa=document.getElementById('pac-esc-massa').value==='1';
+  pacMsg('');
+  try{
+    const {data,error}=await db.rpc('sp_escavador_config_salvar',{
+      p_token:TOKEN,
+      p_escritorio_id:id,
+      p_capa_habilitada:true,
+      p_movimentacoes_habilitadas:true,
+      p_atualizacao_intervalo_dias:intervalo,
+      p_monitoramento_slots:slots,
+      p_atualizacao_massa_habilitada:massa
+    });
+    if(error) throw error;
+    const r=Array.isArray(data)?data[0]:data;
+    if(r==='ACESSO_NEGADO'){ pacMsg('Acesso negado.','err'); return; }
+    pacMsg('Configuração Escavador salva!','ok');
+    PAINEL_DATA=null; carregarPainelGestor(true);
+  }catch(e){ pacMsg(traduzErro(e),'err'); }
 }
 
 async function pacToggleStatus(){
