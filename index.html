@@ -1401,7 +1401,7 @@
     <div id="mp-judicial">
       <div class="field-cnj-row">
         <div class="field"><label>Número do processo <span class="req">*</span></label><input type="text" id="mp-numero" placeholder="0000000-00.0000.0.00.0000" oninput="maskCNJ(this); escBotaoBuscar()"></div>
-        <button class="btn-buscar-trib" id="mp-buscar-cnj" type="button" onclick="escBuscarCadastro()" style="display:none" title="Buscar dados do processo no Escavador">🔍 Buscar no Escavador</button>
+        <button class="btn-buscar-trib" id="mp-buscar-cnj" type="button" onclick="escBuscarCadastro()" style="display:none" title="Buscar dados do processo no tribunal">🔍 Buscar dados do processo</button>
       </div>
       <div id="mp-dtj-preview" style="display:none"></div>
     </div>
@@ -4287,7 +4287,7 @@ async function escBuscarCadastro(){
     msg.textContent='Erro ao consultar o Escavador: '+(e.message||'tente novamente.');
     msg.className='modal-msg err';
   }finally{
-    if(btn){ btn.disabled=false; btn.textContent='🔍 Buscar no Escavador'; }
+    if(btn){ btn.disabled=false; btn.textContent='🔍 Buscar dados do processo'; }
   }
 }
 /* ======== FIM DATAJUD ======== */
