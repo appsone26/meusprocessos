@@ -1759,7 +1759,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.110';
+const APP_VERSAO = 'v1.8.111';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3571,21 +3571,24 @@ async function salvarProcesso(){
       p_data_alerta:null,
       p_observacoes:document.getElementById('mp-obs').value.trim()||null,
       p_responsavel_id:document.getElementById('mp-responsavel').value||null}); if(error) throw error;
+    // Captura número ANTES de fechar o modal
+    const numParaImportar = document.getElementById('mp-numero')?.value||'';
+    const andsParaImportar = (!id && ESC_ANDAMENTOS_PENDENTES && ESC_ANDAMENTOS_PENDENTES.length) ? [...ESC_ANDAMENTOS_PENDENTES] : [];
+    ESC_ANDAMENTOS_PENDENTES=[];
     fecharModal('modal-processo'); toast(id?'Processo atualizado.':'Processo cadastrado.','ok');
     statusProc='ativo'; setStatusProc('ativo');
     // Se veio andamentos do Escavador pendentes e é processo novo, importa agora
-    if(!id && ESC_ANDAMENTOS_PENDENTES && ESC_ANDAMENTOS_PENDENTES.length){
-      const numDigitado=document.getElementById('mp-numero')?.value||'';
-      const andsParaImportar=[...ESC_ANDAMENTOS_PENDENTES];
-      ESC_ANDAMENTOS_PENDENTES=[];
+    if(andsParaImportar.length){
       await carregarProcessos();
-      const numLimpo=numDigitado.replace(/\D/g,'');
+      const numLimpo=numParaImportar.replace(/\D/g,'');
       const procNovo=PROCESSOS.find(p=>p.numero&&p.numero.replace(/\D/g,'')===numLimpo);
       if(procNovo){
         try{
           const imp=await efEscavador({action:'importar',processo_id:procNovo.id,andamentos:andsParaImportar});
           if(imp&&imp.importados>0) toast(`⚖️ ${imp.importados} andamento${imp.importados>1?'s':''} importado${imp.importados>1?'s':''}.`,'ok');
-        }catch(e){ /* silencioso */ }
+        }catch(e){ toast('Aviso: andamentos não importados — '+( e.message||'tente manualmente.'),'err'); }
+      }else{
+        toast('Aviso: processo não localizado para importar andamentos.','err');
       }
     }else{
       carregarProcessos();
