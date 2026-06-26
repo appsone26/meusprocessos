@@ -4330,7 +4330,7 @@ function escBotaoBuscar(){
 
 /* ======== ESCAVADOR ======== */
 function efEscavador(payload){
-  return fetch(SUPABASE_URL+'/functions/v1/escavador',{
+  return fetch(SUPABASE_URL+'/functions/v1/escavador-',{
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
     body:JSON.stringify(Object.assign({token:TOKEN},payload))
