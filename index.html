@@ -1759,7 +1759,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.111';
+const APP_VERSAO = 'v1.8.112';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3419,8 +3419,8 @@ async function carregarProcessos(){
     try{
       const {data:cfgData}=await db.rpc('sp_escavador_config_buscar',{p_token:TOKEN});
       if(cfgData){
-        ESC_CFG.massa_habilitada = !!cfgData.esc_atualizacao_massa_habilitada;
-        ESC_CFG.intervalo_dias   = cfgData.esc_atualizacao_intervalo_dias||0;
+        ESC_CFG.massa_habilitada = !!cfgData.atualizacao_massa_habilitada;
+        ESC_CFG.intervalo_dias   = cfgData.atualizacao_intervalo_dias||0;
       }
     }catch(_){/* config opcional — não bloqueia */}
     renderProcessos();
@@ -3627,9 +3627,9 @@ function renderDetalheHead(){
         ${(fin||!(PERM&&PERM.pode_processos))?'':`<button class="btn btn-ghost btn-sm" onclick="abrirGerarDocumento()">📄 Gerar documento</button>`}
         ${(!fin && p.numero && p.tipo!=='extrajudicial')
           ? (p.escavador_mon_id
-              ? `<button class="btn btn-ghost btn-sm" style="color:#059669;cursor:default" title="Monitoramento ativo — recebe andamentos automaticamente">📡 Monitorando</button>
-                 <button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos agora">⟳ Atualizar</button>`
-              : `<button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" onclick="escMonitorar()">📡 Monitorar</button>`)
+              ? `<button class="btn btn-ghost btn-sm" style="color:#059669;cursor:default" title="Monitoramento ativo — recebe andamentos automaticamente">📡 Monitorando</button>`
+              : `<button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" onclick="escMonitorar()">📡 Monitorar</button>
+                 <button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos agora">⟳ Atualizar</button>`)
           : ''}
         ${(fin||p.tipo!=='extrajudicial')?'':`<button class="btn btn-ghost btn-sm" onclick='transformarEmProcesso(${JSON.stringify(p.id)})'>⤴ Transformar em processo</button>`}
         ${fin?'':`<button class="btn btn-ghost btn-sm" onclick='abrirModalProcesso(${JSON.stringify(p.id)})'>Editar dados</button>`}
