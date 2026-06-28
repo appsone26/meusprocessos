@@ -1759,7 +1759,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.112';
+const APP_VERSAO = 'v1.8.113';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3626,10 +3626,12 @@ function renderDetalheHead(){
         ${(PERM&&PERM.pode_ia)?`<button class="btn btn-ghost btn-sm" onclick="resumirProcessoIA()">${fin?'📄 Ver resumos':'✨ Resumir com IA'}</button>`:''}
         ${(fin||!(PERM&&PERM.pode_processos))?'':`<button class="btn btn-ghost btn-sm" onclick="abrirGerarDocumento()">📄 Gerar documento</button>`}
         ${(!fin && p.numero && p.tipo!=='extrajudicial')
-          ? (p.escavador_mon_id
-              ? `<button class="btn btn-ghost btn-sm" style="color:#059669;cursor:default" title="Monitoramento ativo — recebe andamentos automaticamente">📡 Monitorando</button>`
-              : `<button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" onclick="escMonitorar()">📡 Monitorar</button>
-                 <button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos agora">⟳ Atualizar</button>`)
+          ? (p.esc_pedido_id
+              ? `<button class="btn btn-ghost btn-sm" disabled style="opacity:.7;cursor:default" title="Pedido enviado ao tribunal — aguardando a resposta">⏳ Buscando…</button>`
+              : (p.escavador_mon_id
+                  ? `<button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" style="color:#059669;border-color:#059669" onclick="escPararMonitorar()" title="Monitorando — clique para parar">📡 Monitorando</button>`
+                  : `<button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos no tribunal">⟳ Atualizar</button>
+                     <button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" onclick="escMonitorar()" title="Acompanhar este processo automaticamente">📡 Monitorar</button>`))
           : ''}
         ${(fin||p.tipo!=='extrajudicial')?'':`<button class="btn btn-ghost btn-sm" onclick='transformarEmProcesso(${JSON.stringify(p.id)})'>⤴ Transformar em processo</button>`}
         ${fin?'':`<button class="btn btn-ghost btn-sm" onclick='abrirModalProcesso(${JSON.stringify(p.id)})'>Editar dados</button>`}
@@ -4294,12 +4296,12 @@ async function escBuscarCadastro(){
   const prev=document.getElementById('mp-dtj-preview');
   const msg=document.getElementById('mp-msg');
   if(btn){ btn.disabled=true; btn.textContent='Buscando…'; }
-  msg.textContent='Consultando Escavador…'; msg.className='modal-msg';
+  msg.textContent='Consultando o tribunal…'; msg.className='modal-msg';
   prev.style.display='none'; prev.innerHTML='';
   ESC_ANDAMENTOS_PENDENTES=[];
   try{
     const r=await efEscavador({action:'buscar',numero_cnj:num});
-    if(!r.ok){ msg.textContent=r.erro||'Processo não encontrado no Escavador.'; msg.className='modal-msg err'; return; }
+    if(!r.ok){ msg.textContent=r.erro||'Processo não encontrado no tribunal.'; msg.className='modal-msg err'; return; }
     // Pré-preenche campos do formulário
     dtjPreencherFormulario(r.prefill);
     // Mostra preview dos andamentos encontrados
@@ -4317,7 +4319,7 @@ async function escBuscarCadastro(){
     msg.textContent='Dados carregados. Revise e complete os campos abaixo.';
     msg.className='modal-msg ok';
   }catch(e){
-    msg.textContent='Erro ao consultar o Escavador: '+(e.message||'tente novamente.');
+    msg.textContent='Erro ao consultar o tribunal: '+(e.message||'tente novamente.');
     msg.className='modal-msg err';
   }finally{
     if(btn){ btn.disabled=false; btn.textContent='🔍 Buscar dados do processo'; }
@@ -4342,54 +4344,73 @@ function efEscavador(payload){
 }
 
 async function escMonitorar(){
-  if(!procAtual||!procAtual.numero){ toast('Processo sem número CNJ.','err'); return; }
-  if(!isCNJValido(procAtual.numero)){ toast('Número do processo não está no formato CNJ válido.','err'); return; }
+  if(!procAtual||!procAtual.numero){ toast('Processo sem número.','err'); return; }
+  if(!isCNJValido(procAtual.numero)){ toast('Número do processo não está no formato válido.','err'); return; }
   const btn=document.getElementById('btn-monitorar-escavador');
-  if(btn){ btn.disabled=true; btn.textContent='Cadastrando…'; }
+  if(btn){ btn.disabled=true; btn.textContent='Ativando…'; }
   try{
     const r=await efEscavador({action:'monitorar',processo_id:procAtual.id,numero_cnj:procAtual.numero});
-    if(r.ok){
-      toast('✅ Processo cadastrado no Escavador! Você será notificado automaticamente a cada novo andamento.','ok');
-      // Atualiza procAtual e rebuildca o cabeçalho para mostrar badge "Monitorando"
+    if(r&&r.ok){
+      toast('📡 Monitoramento ativado! Você é avisado automaticamente a cada novo andamento.','ok');
       procAtual.escavador_mon_id=r.escavador_mon_id||'ativo';
-      // Força rerender do cabeçalho
       const idx=PROCESSOS.findIndex(x=>x.id===procAtual.id);
       if(idx>=0) PROCESSOS[idx].escavador_mon_id=procAtual.escavador_mon_id;
       renderDetalheHead();
     }else{
-      toast(r.erro||'Não foi possível cadastrar no Escavador.','err');
-      if(btn){ btn.disabled=false; btn.textContent='📡 Monitorar no Escavador'; }
+      toast((r&&r.erro)||'Não foi possível ativar o monitoramento.','err');
+      if(btn){ btn.disabled=false; btn.textContent='📡 Monitorar'; }
     }
   }catch(e){
-    toast('Erro ao cadastrar no Escavador: '+(e.message||'tente novamente.'),'err');
-    if(btn){ btn.disabled=false; btn.textContent='📡 Monitorar no Escavador'; }
+    toast('Erro ao ativar o monitoramento: '+(e.message||'tente novamente.'),'err');
+    if(btn){ btn.disabled=false; btn.textContent='📡 Monitorar'; }
+  }
+}
+
+async function escPararMonitorar(){
+  if(!procAtual) return;
+  if(!confirm('Parar de monitorar este processo?\n\nVocê deixa de receber os andamentos automaticamente.')) return;
+  const btn=document.getElementById('btn-monitorar-escavador');
+  if(btn){ btn.disabled=true; btn.textContent='Parando…'; }
+  try{
+    const r=await efEscavador({action:'parar_monitorar',processo_id:procAtual.id});
+    if(r&&r.ok){
+      toast('Monitoramento desligado.','ok');
+      procAtual.escavador_mon_id=null;
+      const idx=PROCESSOS.findIndex(x=>x.id===procAtual.id);
+      if(idx>=0) PROCESSOS[idx].escavador_mon_id=null;
+      renderDetalheHead();
+    }else{
+      toast((r&&r.erro)||'Não foi possível parar o monitoramento.','err');
+      if(btn){ btn.disabled=false; btn.textContent='📡 Monitorando'; }
+    }
+  }catch(e){
+    toast('Erro ao parar o monitoramento: '+(e.message||'tente novamente.'),'err');
+    if(btn){ btn.disabled=false; btn.textContent='📡 Monitorando'; }
   }
 }
 /* ======== FIM ESCAVADOR ======== */
 
 async function escAtualizarProcesso(){
-  if(!procAtual||!procAtual.numero){ toast('Processo sem número CNJ.','err'); return; }
+  if(!procAtual||!procAtual.numero){ toast('Processo sem número.','err'); return; }
   const btn=document.getElementById('btn-atualizar-escavador');
-  if(btn){ btn.disabled=true; btn.textContent='Buscando…'; }
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Buscando…'; }
   try{
-    // Valida intervalo via SP (retorna erro se muito cedo)
-    const {data:authData, error:authErr}=await db.rpc('sp_atualizar_processo_escavador',{
-      p_token:TOKEN, p_processo_id:procAtual.id
-    });
-    if(authErr) throw authErr;
-    if(!authData||!authData.ok){ toast(authData?.erro||'Não foi possível atualizar.','err'); return; }
-    // Busca movimentações na Edge Function
-    const r=await efEscavador({action:'atualizar',processo_id:procAtual.id,numero_cnj:procAtual.numero});
-    if(r.importados>0){
-      toast(`⚖️ ${r.importados} andamento${r.importados>1?'s':''} importado${r.importados>1?'s':''}.`,'ok');
-      carregarMovs();
+    // Manda o robô no tribunal (assíncrono). A resposta chega sozinha pelo webhook.
+    const r=await efEscavador({action:'atualizar_tribunal',processo_id:procAtual.id,numero_cnj:procAtual.numero});
+    if(r&&r.ok){
+      toast('🔎 Buscando no tribunal… os andamentos novos chegam sozinhos quando o tribunal responder.','ok');
+      // Deixa o botão em "Buscando…" até a resposta chegar (estado da sessão)
+      procAtual.esc_pedido_id=r.pedido_id||'pendente';
+      const idx=PROCESSOS.findIndex(x=>x.id===procAtual.id);
+      if(idx>=0) PROCESSOS[idx].esc_pedido_id=procAtual.esc_pedido_id;
+      renderDetalheHead();
     }else{
-      toast(r.msg||'Processo já está atualizado.','ok');
+      toast((r&&r.erro)||'Não foi possível buscar no tribunal agora.','err');
+      if(btn){ btn.disabled=false; btn.textContent='⟳ Atualizar'; }
     }
   }catch(e){
     if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
-    toast('Erro ao atualizar: '+(e.message||'tente novamente.'),'err');
-  }finally{
+    toast('Erro ao buscar no tribunal: '+(e.message||'tente novamente.'),'err');
     if(btn){ btn.disabled=false; btn.textContent='⟳ Atualizar'; }
   }
 }
