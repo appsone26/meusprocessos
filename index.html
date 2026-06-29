@@ -1706,6 +1706,20 @@
       <button class="btn btn-ghost btn-sm" type="button" style="margin-top:10px;border-color:var(--cyan);color:var(--cyan)" onclick="pacSalvarEscavador()">Salvar Escavador</button>
     </div>
 
+    <!-- Custo no tribunal (consumo) -->
+    <div class="pac-secao">
+      <h4>💰 Custo no tribunal</h4>
+      <div style="margin-top:2px;font-size:.82rem;line-height:1.9">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Capa</span><strong id="pac-consumo-capa">—</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Movimentações</span><strong id="pac-consumo-mov">—</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Atualização no tribunal</span><strong id="pac-consumo-trib">—</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Monitoramento</span><strong id="pac-consumo-mon">—</strong></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:4px;padding-top:5px"><span>Total</span><strong id="pac-consumo-total" style="color:var(--cyan)">—</strong></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" type="button" id="pac-consumo-hist-btn" style="margin-top:10px" onclick="pacVerHistoricoConsumo()">Ver histórico</button>
+      <div id="pac-consumo-hist" style="display:none;margin-top:10px;max-height:240px;overflow:auto;font-size:.78rem"></div>
+    </div>
+
     <!-- Ativar / desativar -->
     <div class="pac-secao" id="pac-sec-status">
       <h4 id="pac-status-title">🔴 Desativar escritório</h4>
@@ -1759,7 +1773,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.114';
+const APP_VERSAO = 'v1.8.115';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2418,7 +2432,62 @@ function abrirAcaoEscritorio(e){
   // purgar só se inativo
   document.getElementById('pac-sec-purgar').classList.toggle('hidden',ativo);
   document.getElementById('pac-purgar-nome').value='';
+  pacCarregarConsumo(e.id);
   document.getElementById('modal-painel-acao').classList.add('open');
+}
+
+/* ---- Painel: consumo (custo) Escavador por escritório ---- */
+function escFmtCent(c){ c=Number(c)||0; return 'R$ '+(c/100).toFixed(2).replace('.',','); }
+const ESC_CUSTO_LABEL={capa:'Capa',movimentacoes:'Movimentações',atualizacao_tribunal:'Atualização no tribunal',monitoramento:'Monitoramento'};
+
+async function pacCarregarConsumo(id){
+  const setV=(k,v)=>{ const el=document.getElementById('pac-consumo-'+k); if(el) el.textContent=v; };
+  ['capa','mov','trib','mon','total'].forEach(k=>setV(k,'…'));
+  const hist=document.getElementById('pac-consumo-hist'); if(hist){ hist.style.display='none'; hist.innerHTML=''; }
+  const hb=document.getElementById('pac-consumo-hist-btn'); if(hb) hb.textContent='Ver histórico';
+  try{
+    const {data,error}=await db.rpc('sp_admin_escavador_consumo',{p_token:TOKEN,p_escritorio_id:id,p_ano_mes:null});
+    if(error) throw error;
+    const r=(Array.isArray(data)?data[0]:data)||{};
+    setV('capa', escFmtCent(r.capa_centavos));
+    setV('mov',  escFmtCent(r.mov_centavos));
+    setV('trib', escFmtCent(r.trib_centavos));
+    setV('mon',  escFmtCent(r.mon_centavos));
+    setV('total',escFmtCent(r.total_centavos));
+  }catch(e){
+    if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
+    ['capa','mov','trib','mon','total'].forEach(k=>setV(k,'—'));
+  }
+}
+
+async function pacVerHistoricoConsumo(){
+  const box=document.getElementById('pac-consumo-hist');
+  const btn=document.getElementById('pac-consumo-hist-btn');
+  if(!box) return;
+  if(box.style.display!=='none'){ box.style.display='none'; if(btn) btn.textContent='Ver histórico'; return; }
+  const id=document.getElementById('pac-id').value;
+  if(!id) return;
+  box.style.display=''; box.innerHTML='<div style="color:var(--muted)">Carregando…</div>';
+  if(btn) btn.textContent='Ocultar histórico';
+  try{
+    const {data,error}=await db.rpc('sp_admin_escavador_consumo_historico',{p_token:TOKEN,p_escritorio_id:id,p_limite:200});
+    if(error) throw error;
+    const linhas=Array.isArray(data)?data:[];
+    if(!linhas.length){ box.innerHTML='<div style="color:var(--muted)">Nenhum custo registrado ainda.</div>'; return; }
+    box.innerHTML=linhas.map(l=>{
+      const d=l.criado_em?new Date(l.criado_em).toLocaleDateString('pt-BR'):'';
+      const t=ESC_CUSTO_LABEL[l.tipo]||l.tipo||'';
+      const cnj=l.numero_cnj?(' · '+esc(l.numero_cnj)):'';
+      return `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)">
+        <span style="color:var(--muted);white-space:nowrap">${d}</span>
+        <span style="flex:1">${t}${cnj}</span>
+        <strong style="white-space:nowrap">${escFmtCent(l.centavos)}</strong>
+      </div>`;
+    }).join('');
+  }catch(e){
+    if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
+    box.innerHTML='<div style="color:var(--muted)">Não foi possível carregar o histórico.</div>';
+  }
 }
 
 async function pacSalvarLimites(){
