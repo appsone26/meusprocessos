@@ -1773,7 +1773,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.115';
+const APP_VERSAO = 'v1.8.116';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3697,8 +3697,10 @@ function renderDetalheHead(){
         ${(!fin && p.numero && p.tipo!=='extrajudicial')
           ? (p.esc_pedido_id
               ? `<button class="btn btn-ghost btn-sm" disabled style="opacity:.7;cursor:default" title="Pedido enviado ao tribunal — aguardando a resposta">⏳ Buscando…</button>`
-              : `<button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos no tribunal">⟳ Atualizar</button>
-                 <button class="btn btn-ghost btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="Monitoramento automático diário — em breve">📡 Monitorar (em breve)</button>`)
+              : (p.escavador_mon_id
+                  ? `<button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" style="color:#059669;border-color:#059669" onclick="escPararMonitorar()" title="Monitoramento diário ativo — clique para desligar">📡 Monitorando</button>`
+                  : `<button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos no tribunal">⟳ Atualizar</button>
+                     <button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" onclick="escMonitorar()" title="Acompanhar este processo automaticamente, todo dia">📡 Monitorar</button>`))
           : ''}
         ${(fin||p.tipo!=='extrajudicial')?'':`<button class="btn btn-ghost btn-sm" onclick='transformarEmProcesso(${JSON.stringify(p.id)})'>⤴ Transformar em processo</button>`}
         ${fin?'':`<button class="btn btn-ghost btn-sm" onclick='abrirModalProcesso(${JSON.stringify(p.id)})'>Editar dados</button>`}
@@ -4439,7 +4441,7 @@ async function escPararMonitorar(){
   const btn=document.getElementById('btn-monitorar-escavador');
   if(btn){ btn.disabled=true; btn.textContent='Parando…'; }
   try{
-    const r=await efEscavador({action:'parar_monitorar',processo_id:procAtual.id});
+    const r=await efEscavador({action:'parar_monitorar',processo_id:procAtual.id,escavador_mon_id:procAtual.escavador_mon_id});
     if(r&&r.ok){
       toast('Monitoramento desligado.','ok');
       procAtual.escavador_mon_id=null;
