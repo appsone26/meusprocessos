@@ -1759,7 +1759,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.113';
+const APP_VERSAO = 'v1.8.114';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3628,10 +3628,8 @@ function renderDetalheHead(){
         ${(!fin && p.numero && p.tipo!=='extrajudicial')
           ? (p.esc_pedido_id
               ? `<button class="btn btn-ghost btn-sm" disabled style="opacity:.7;cursor:default" title="Pedido enviado ao tribunal — aguardando a resposta">⏳ Buscando…</button>`
-              : (p.escavador_mon_id
-                  ? `<button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" style="color:#059669;border-color:#059669" onclick="escPararMonitorar()" title="Monitorando — clique para parar">📡 Monitorando</button>`
-                  : `<button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos no tribunal">⟳ Atualizar</button>
-                     <button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" onclick="escMonitorar()" title="Acompanhar este processo automaticamente">📡 Monitorar</button>`))
+              : `<button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos no tribunal">⟳ Atualizar</button>
+                 <button class="btn btn-ghost btn-sm" disabled style="opacity:.5;cursor:not-allowed" title="Monitoramento automático diário — em breve">📡 Monitorar (em breve)</button>`)
           : ''}
         ${(fin||p.tipo!=='extrajudicial')?'':`<button class="btn btn-ghost btn-sm" onclick='transformarEmProcesso(${JSON.stringify(p.id)})'>⤴ Transformar em processo</button>`}
         ${fin?'':`<button class="btn btn-ghost btn-sm" onclick='abrirModalProcesso(${JSON.stringify(p.id)})'>Editar dados</button>`}
@@ -4397,13 +4395,17 @@ async function escAtualizarProcesso(){
   try{
     // Manda o robô no tribunal (assíncrono). A resposta chega sozinha pelo webhook.
     const r=await efEscavador({action:'atualizar_tribunal',processo_id:procAtual.id,numero_cnj:procAtual.numero});
-    if(r&&r.ok){
+    if(r&&r.ok&&r.pedido_id){
       toast('🔎 Buscando no tribunal… os andamentos novos chegam sozinhos quando o tribunal responder.','ok');
       // Deixa o botão em "Buscando…" até a resposta chegar (estado da sessão)
-      procAtual.esc_pedido_id=r.pedido_id||'pendente';
+      procAtual.esc_pedido_id=r.pedido_id;
       const idx=PROCESSOS.findIndex(x=>x.id===procAtual.id);
       if(idx>=0) PROCESSOS[idx].esc_pedido_id=procAtual.esc_pedido_id;
       renderDetalheHead();
+    }else if(r&&r.ok){
+      // Tribunal já consultado hoje (já atualizado) — não fica "buscando"
+      toast(r.msg||'Esse processo já foi atualizado hoje.','ok');
+      if(btn){ btn.disabled=false; btn.textContent='⟳ Atualizar'; }
     }else{
       toast((r&&r.erro)||'Não foi possível buscar no tribunal agora.','err');
       if(btn){ btn.disabled=false; btn.textContent='⟳ Atualizar'; }
