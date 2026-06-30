@@ -1773,7 +1773,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.116';
+const APP_VERSAO = 'v1.8.117';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3517,6 +3517,7 @@ function renderProcessos(){
     return `<div class="list-item" onclick='abrirDetalhe(${JSON.stringify(p.id)})'>
       <div class="li-main"><div class="li-title">${novidade?'<span class="esc-novidade" title="Novo andamento recebido"></span>':''}${esc(p.nome_parte||'(sem título)')}</div><div class="li-sub">${sub||'—'}</div></div>
       <div class="li-tags">
+        ${p.escavador_mon_id?`<span class="tagx" title="Monitoramento diário ativo" style="border-color:#059669;color:#059669">📡</span>`:''}
         ${p.sistema&&p.tipo!=='extrajudicial'?`<span class="tagx">${esc(p.sistema)}</span>`:''}
         ${alerta?`<span class="tagx ${venc?'al':'cy'}">📅 ${fmtData(p.data_alerta)}</span>`:''}
         ${statusProc==='finalizado'&&p.motivo_finalizacao?`<span class="tagx">${esc(p.motivo_finalizacao)}</span>`:''}
