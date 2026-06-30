@@ -518,7 +518,7 @@
   .dtj-preview-item{font-size:.85rem;color:var(--text);padding:5px 0;border-bottom:1px solid rgba(245,158,11,.15);display:flex;gap:8px}
   .esc-novidade{display:inline-block;width:9px;height:9px;background:#34D399;border-radius:50%;margin-right:5px;flex-shrink:0;box-shadow:0 0 0 2px rgba(52,211,153,.3);animation:pulse-green 2s infinite}
   @keyframes pulse-green{0%,100%{box-shadow:0 0 0 2px rgba(52,211,153,.3)}50%{box-shadow:0 0 0 5px rgba(52,211,153,.1)}}
-  .mon-ic{display:inline-flex;align-items:center;color:var(--muted-2);margin-right:5px;flex-shrink:0;vertical-align:middle}
+  .mon-ic{display:inline-flex;align-items:center;color:var(--text);margin-right:4px;flex-shrink:0;vertical-align:middle}
   .mon-ic.mon-novo{color:#10B981;animation:pulse-mon 1.8s infinite}
   @keyframes pulse-mon{0%,100%{opacity:1}50%{opacity:.5}}
   .dtj-preview-item:last-child{border-bottom:none}
@@ -1776,7 +1776,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.119';
+const APP_VERSAO = 'v1.8.120';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3518,8 +3518,9 @@ function renderProcessos(){
       ? `<button class="lnk" onclick='event.stopPropagation();abrirFinalizar(${JSON.stringify(p.id)})'>Finalizar</button>`
       : `<button class="lnk" onclick='event.stopPropagation();restaurarProcesso(${JSON.stringify(p.id)})'>Restaurar</button>`;
     return `<div class="list-item" onclick='abrirDetalhe(${JSON.stringify(p.id)})'>
-      <div class="li-main"><div class="li-title">${p.escavador_mon_id?`<span class="mon-ic${novidade?' mon-novo':''}" title="${novidade?'Monitorado — novo andamento!':'Monitoramento diário ativo'}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4.5 8.5a8 8 0 0 0 0 7M19.5 8.5a8 8 0 0 1 0 7M8 11a3.5 3.5 0 0 0 0 2M16 11a3.5 3.5 0 0 1 0 2"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span>`:(novidade?'<span class="esc-novidade" title="Novo andamento recebido"></span>':'')}${esc(p.nome_parte||'(sem título)')}</div><div class="li-sub">${sub||'—'}</div></div>
+      <div class="li-main"><div class="li-title">${(novidade&&!p.escavador_mon_id)?'<span class="esc-novidade" title="Novo andamento recebido"></span>':''}${esc(p.nome_parte||'(sem título)')}</div><div class="li-sub">${sub||'—'}</div></div>
       <div class="li-tags">
+        ${p.escavador_mon_id?`<span class="mon-ic${novidade?' mon-novo':''}" title="${novidade?'Monitorado — novo andamento!':'Monitoramento diário ativo'}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4.5 8.5a8 8 0 0 0 0 7M19.5 8.5a8 8 0 0 1 0 7M8 11a3.5 3.5 0 0 0 0 2M16 11a3.5 3.5 0 0 1 0 2"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span>`:''}
         ${p.sistema&&p.tipo!=='extrajudicial'?`<span class="tagx">${esc(p.sistema)}</span>`:''}
         ${alerta?`<span class="tagx ${venc?'al':'cy'}">📅 ${fmtData(p.data_alerta)}</span>`:''}
         ${statusProc==='finalizado'&&p.motivo_finalizacao?`<span class="tagx">${esc(p.motivo_finalizacao)}</span>`:''}
