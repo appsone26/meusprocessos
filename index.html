@@ -516,10 +516,14 @@
   .btn-buscar-trib:disabled{opacity:.5;cursor:not-allowed}
   .dtj-preview{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:12px 14px;margin-top:10px;max-height:260px;overflow-y:auto}
   .dtj-preview-item{font-size:.85rem;color:var(--text);padding:5px 0;border-bottom:1px solid rgba(245,158,11,.15);display:flex;gap:8px}
-  .esc-novidade{display:inline-block;width:9px;height:9px;background:#34D399;border-radius:50%;margin-right:5px;flex-shrink:0;box-shadow:0 0 0 2px rgba(52,211,153,.3);animation:pulse-green 2s infinite}
-  @keyframes pulse-green{0%,100%{box-shadow:0 0 0 2px rgba(52,211,153,.3)}50%{box-shadow:0 0 0 5px rgba(52,211,153,.1)}}
-  .mon-ic{display:inline-flex;align-items:center;color:var(--text);margin-right:4px;flex-shrink:0;vertical-align:middle}
-  .mon-ic.mon-novo{color:#10B981;animation:pulse-mon 1.8s infinite}
+  .mon-ic{display:inline-flex;align-items:center;color:var(--muted);flex-shrink:0;vertical-align:middle}
+  .mon-ic.mon-novo{color:#059669}
+  .mon-ic.mon-novo .a4{animation:sinal 1.5s infinite 0s}
+  .mon-ic.mon-novo .a3{animation:sinal 1.5s infinite .18s}
+  .mon-ic.mon-novo .a2{animation:sinal 1.5s infinite .36s}
+  .mon-ic.mon-novo .a1{animation:sinal 1.5s infinite .54s}
+  @keyframes sinal{0%,100%{opacity:.3}45%{opacity:1}}
+  .nov-sino{display:inline-flex;align-items:center;color:#059669;flex-shrink:0;vertical-align:middle;animation:pulse-mon 1.8s infinite}
   @keyframes pulse-mon{0%,100%{opacity:1}50%{opacity:.5}}
   .dtj-preview-item:last-child{border-bottom:none}
   .dtj-preview-date{color:var(--muted-2);min-width:80px;flex-shrink:0;font-size:.8rem}
@@ -1776,7 +1780,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.120';
+const APP_VERSAO = 'v1.8.121';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3518,9 +3522,13 @@ function renderProcessos(){
       ? `<button class="lnk" onclick='event.stopPropagation();abrirFinalizar(${JSON.stringify(p.id)})'>Finalizar</button>`
       : `<button class="lnk" onclick='event.stopPropagation();restaurarProcesso(${JSON.stringify(p.id)})'>Restaurar</button>`;
     return `<div class="list-item" onclick='abrirDetalhe(${JSON.stringify(p.id)})'>
-      <div class="li-main"><div class="li-title">${(novidade&&!p.escavador_mon_id)?'<span class="esc-novidade" title="Novo andamento recebido"></span>':''}${esc(p.nome_parte||'(sem título)')}</div><div class="li-sub">${sub||'—'}</div></div>
+      <div class="li-main"><div class="li-title">${esc(p.nome_parte||'(sem título)')}</div><div class="li-sub">${sub||'—'}</div></div>
       <div class="li-tags">
-        ${p.escavador_mon_id?`<span class="mon-ic${novidade?' mon-novo':''}" title="${novidade?'Monitorado — novo andamento!':'Monitoramento diário ativo'}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4.5 8.5a8 8 0 0 0 0 7M19.5 8.5a8 8 0 0 1 0 7M8 11a3.5 3.5 0 0 0 0 2M16 11a3.5 3.5 0 0 1 0 2"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span>`:''}
+        ${p.escavador_mon_id
+          ? `<span class="mon-ic${novidade?' mon-novo':''}" title="${novidade?'Monitorado — novo andamento!':'Monitoramento diário ativo'}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path class="a4" d="M3.5 9.5c4.7 -4.7 12.3 -4.7 17 0"/><path class="a3" d="M6.3 12.3a8 8 0 0 1 11.4 0"/><path class="a2" d="M9.2 15.2a4 4 0 0 1 5.6 0"/><circle class="a1" cx="12" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg></span>`
+          : (novidade
+              ? `<span class="nov-sino" title="Novo andamento recebido"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3H4a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg></span>`
+              : '')}
         ${p.sistema&&p.tipo!=='extrajudicial'?`<span class="tagx">${esc(p.sistema)}</span>`:''}
         ${alerta?`<span class="tagx ${venc?'al':'cy'}">📅 ${fmtData(p.data_alerta)}</span>`:''}
         ${statusProc==='finalizado'&&p.motivo_finalizacao?`<span class="tagx">${esc(p.motivo_finalizacao)}</span>`:''}
