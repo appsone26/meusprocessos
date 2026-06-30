@@ -1776,7 +1776,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.118';
+const APP_VERSAO = 'v1.8.119';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3672,7 +3672,16 @@ function abrirFinalizar(id){ document.getElementById('mf-id').value=id; document
 async function confirmarFinalizar(){
   const id=document.getElementById('mf-id').value, motivo=document.getElementById('mf-motivo').value;
   const btn=document.getElementById('mf-save'); setLoading(btn,true);
-  try{ const r=await efDocumentos({acao:'finalizar',processo_id:id,motivo:motivo});
+  try{
+    // Se o processo está monitorado, desliga o monitoramento ANTES de finalizar.
+    // O parar_monitorar faz o DELETE no tribunal (devolve o proporcional) e limpa
+    // a marca. Best-effort: se o tribunal estiver fora, não impede a finalização.
+    const proc=PROCESSOS.find(x=>x.id===id)||((procAtual&&procAtual.id===id)?procAtual:null);
+    if(proc&&proc.escavador_mon_id){
+      try{ await efEscavador({action:'parar_monitorar',processo_id:id,escavador_mon_id:proc.escavador_mon_id}); }
+      catch(e){ /* não trava a finalização */ }
+    }
+    const r=await efDocumentos({acao:'finalizar',processo_id:id,motivo:motivo});
     if(r&&r.uso) atualizarBarraStorage(r.uso);
     fecharModal('modal-final'); toast('Processo finalizado. Documentos excluídos; resumos mantidos.','ok'); carregarProcessos();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); toast(traduzErro(e),'err'); }
