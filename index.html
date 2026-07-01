@@ -1494,7 +1494,7 @@
     <div id="mp-campos-resto">
       <div class="field"><label>Parte / título <span class="req">*</span></label><input type="text" id="mp-parte" placeholder="Ex.: João da Silva x Banco XYZ"></div>
       <div class="field"><label>Cliente <span class="req">*</span></label><select id="mp-cliente"></select></div>
-      <div class="field"><label>Responsável</label><select id="mp-responsavel"><option value="">— Sem responsável —</option></select></div>
+      <div class="field"><label>Responsável <span class="req">*</span></label><select id="mp-responsavel"><option value="">— Selecione —</option></select></div>
       <div class="field"><label id="mp-assunto-lbl">Descrição</label><textarea id="mp-assunto" rows="2" placeholder="Descrição do processo"></textarea></div>
       <div id="mp-judicial-extra">
         <div class="row2">
@@ -1862,7 +1862,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.136';
+const APP_VERSAO = 'v1.8.137';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3536,7 +3536,7 @@ async function garantirUsuarios(){
 function preencherSelectResponsaveis(curId,curNome){
   const sel=document.getElementById('mp-responsavel'); if(!sel) return;
   const ativos=(USUARIOS||[]).filter(u=>u.ativo);
-  let opts='<option value="">— Sem responsável —</option>'+ativos.map(u=>`<option value="${u.id}">${esc(u.nome)}${u.perfil==='master'?' (master)':''}</option>`).join('');
+  let opts='<option value="">— Selecione —</option>'+ativos.map(u=>`<option value="${u.id}">${esc(u.nome)}${u.perfil==='master'?' (master)':''}</option>`).join('');
   // mantém o responsável atual mesmo se estiver desativado, pra não perder o vínculo
   if(curId && !ativos.some(u=>u.id===curId)) opts+=`<option value="${curId}">${esc(curNome||'(responsável atual)')}</option>`;
   sel.innerHTML=opts;
@@ -3786,10 +3786,12 @@ async function salvarProcesso(){
   function erro(t){ msg.textContent=t; msg.className='modal-msg err'; }
   const tipo=document.getElementById('mp-tipo').value;
   const cliente=document.getElementById('mp-cliente').value||null;
+  const responsavel=document.getElementById('mp-responsavel').value||null;
   const ehJudicial = tipo!=='extrajudicial';
   const sistema=document.getElementById('mp-sistema').value;
   if(!parte) return erro('Informe a parte / título do processo.');
   if(!cliente) return erro('Selecione o cliente do processo.');
+  if(!responsavel) return erro('Selecione o responsável pelo processo.');
   if(ehJudicial && !sistema) return erro('Selecione o sistema (EPROC, PJE ou DCP).');
   if(ehJudicial && !document.getElementById('mp-numero').value.trim()) return erro('Informe o número do processo (obrigatório para Processo).');
   const id=document.getElementById('mp-id').value||null;
