@@ -344,6 +344,13 @@
   .side .sidefoot .pv{font-family:'Space Grotesk';font-weight:600;color:#fff;margin:3px 0 9px}
   .side .sidefoot .up{font-size:.8rem;color:var(--cyan);cursor:pointer}
   .content{padding:28px 30px;overflow:auto}
+  /* Desktop: barra e conteúdo rolam sozinhos (o mouse sobre o menu não rola a tela).
+     Escopo min-width:901px para não tocar no menu mobile (gaveta, ≤900px). */
+  @media (min-width:901px){
+    .applayout{height:calc(100vh - 80px);min-height:0;overflow:hidden}
+    .side{position:static;top:auto;height:100%;overscroll-behavior:contain}
+    .content{height:100%;overflow-y:auto;overscroll-behavior:contain}
+  }
   /* barra de alertas */
   #alert-bar{margin:0 0 22px;display:none}
   /* v1.8.104: logo na topbar do app + sino limpo (sem retângulo) */
@@ -1836,7 +1843,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.130';
+const APP_VERSAO = 'v1.8.131';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
