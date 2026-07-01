@@ -1862,7 +1862,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.135';
+const APP_VERSAO = 'v1.8.136';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3756,7 +3756,7 @@ function abrirModalProcesso(id){
   if(id){ const p=PROCESSOS.find(x=>x.id===id)||{}; document.getElementById('mp-title').textContent='Editar processo';
     document.getElementById('mp-id').value=p.id||''; document.getElementById('mp-parte').value=p.nome_parte||'';
     document.getElementById('mp-cliente').value=p.cliente_id||''; document.getElementById('mp-numero').value=p.numero||'';
-    document.getElementById('mp-tipo').value=p.tipo||'judicial'; document.getElementById('mp-sistema').value=p.sistema||'';
+    document.getElementById('mp-tipo').value=p.tipo||'judicial'; document.getElementById('mp-sistema').value=(['EPROC','PJE','DCP'].includes(p.sistema)?p.sistema:'');
     document.getElementById('mp-assunto').value=p.assunto||''; document.getElementById('mp-vara').value=p.vara||'';
     document.getElementById('mp-comarca').value=p.comarca||''; document.getElementById('mp-fase').value=p.fase||'';
     document.getElementById('mp-obs').value=p.observacoes||'';
@@ -4559,14 +4559,11 @@ function dtjPreencherFormulario(prefill){
   set('mp-comarca', prefill.comarca);
   set('mp-assunto', prefill.assunto);
   set('mp-fase',    '');
-  // Sistema: adiciona opção TJRJ/TRT se não existir no select
+  // Sistema: só preenche se o tribunal devolver um sistema VÁLIDO (EPROC/PJE/DCP).
+  // Se vier o nome do tribunal (ex.: TJRJ), NÃO preenche — o usuário escolhe manualmente.
   if(prefill.sistema){
     const sel=document.getElementById('mp-sistema');
-    if(sel){
-      let opt=[...sel.options].find(o=>o.value===prefill.sistema);
-      if(!opt){ opt=new Option(prefill.sistema,prefill.sistema); sel.add(opt); }
-      sel.value=prefill.sistema;
-    }
+    if(sel && ['EPROC','PJE','DCP'].includes(prefill.sistema)) sel.value=prefill.sistema;
   }
 }
 
