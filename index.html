@@ -482,7 +482,7 @@
   .det-back{background:none;border:0;color:var(--muted);font-family:inherit;font-size:.88rem;cursor:pointer;padding:0;margin-bottom:14px}
   .det-back:hover{color:var(--cyan)}
   .det-head{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:20px}
-  .det-head .dh-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .det-head .dh-top{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
   .det-head h2{font-size:1.4rem;color:#fff}
   .det-head .dh-sub{color:var(--muted);font-size:.88rem;margin-top:3px}
   .det-head .c-meta{margin-top:12px;display:flex;flex-wrap:wrap;gap:7px}
@@ -1578,6 +1578,17 @@
 </div>
 
 <!-- MODAL MODELO -->
+<div class="modal" id="modal-cli-procs">
+  <div class="box">
+    <h3 id="mcp-title">Processos do cliente</h3>
+    <p class="msub">Processos ativos vinculados a este cliente. Clique num processo para abrir.</p>
+    <div id="mcp-list" style="margin-top:6px"></div>
+    <div class="mfoot">
+      <button class="btn btn-ghost btn-sm" type="button" onclick="fecharModal('modal-cli-procs')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modal-modelo">
   <div class="box" style="max-width:620px">
     <h3 id="mmo-title">Novo modelo</h3>
@@ -1825,7 +1836,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.129';
+const APP_VERSAO = 'v1.8.130';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3485,7 +3496,7 @@ function renderClientes(){
   area.innerHTML='<div class="list">'+lista.map(c=>`
     <div class="list-item" onclick='abrirModalCliente(${JSON.stringify(c.id)})'>
       <div class="li-main"><div class="li-title">${esc(c.nome)}</div><div class="li-sub">${[c.email,c.telefone].filter(Boolean).map(esc).join(' · ')||'Sem contato'}</div></div>
-      <div class="li-tags"><span class="tagx cy">${c.total_processos||0} proc.</span></div>
+      <div class="li-tags"><span class="tagx cy" ${c.total_processos ? `onclick='event.stopPropagation();abrirProcessosDoCliente(${JSON.stringify(c.id)})' style="cursor:pointer" title="Ver os processos deste cliente"` : ''}>${c.total_processos||0} proc.</span></div>
     </div>`).join('')+'</div>';
 }
 function preencherSelectClientes(){
@@ -3529,6 +3540,38 @@ function abrirModalCliente(id){
     carregarEdicoes('clientes', c.id, 'mc-edicoes', 'mc-edicoes-sec');
   }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); }
   m.classList.add('open');
+}
+// Modal "Processos de <cliente>" — abre a lista de processos ativos do cliente
+// sem sair da tela de Clientes; clicar num processo abre o detalhe.
+async function abrirProcessosDoCliente(id){
+  const c=(CLIENTES||[]).find(x=>x.id===id)||{};
+  document.getElementById('mcp-title').textContent='Processos de '+(c.nome||'cliente');
+  document.getElementById('mcp-list').innerHTML='<div class="loading">Carregando…</div>';
+  document.getElementById('modal-cli-procs').classList.add('open');
+  try{
+    const {data,error}=await db.rpc('sp_listar_processos',{p_token:TOKEN,p_status:'ativo'});
+    if(error) throw error;
+    PROCESSOS=data||[];                       // deixa carregado p/ abrirDetalhe achar o processo
+    renderProcessosDoCliente(PROCESSOS.filter(p=>p.cliente_id===id));
+  }catch(e){
+    if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
+    document.getElementById('mcp-list').innerHTML='<div class="empty" style="padding:14px 6px"><div class="em-ic">⚠️</div><h3>Não consegui carregar</h3></div>';
+  }
+}
+function renderProcessosDoCliente(lista){
+  const box=document.getElementById('mcp-list'); if(!box) return;
+  if(!lista.length){ box.innerHTML='<div class="empty" style="padding:14px 6px"><div class="em-ic">⚖️</div><h3>Nenhum processo ativo</h3><p>Este cliente não tem processos ativos no momento.</p></div>'; return; }
+  box.innerHTML='<div class="list">'+lista.map(p=>{
+    const novidade=p.esc_novidade_em;
+    const ind = p.escavador_mon_id
+      ? `<span class="mon-ic${novidade?' mon-novo':''}" title="${novidade?'Monitorado — novo andamento!':'Monitoramento diário ativo'}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path class="a4" d="M3.5 9.5c4.7 -4.7 12.3 -4.7 17 0"/><path class="a3" d="M6.3 12.3a8 8 0 0 1 11.4 0"/><path class="a2" d="M9.2 15.2a4 4 0 0 1 5.6 0"/><circle class="a1" cx="12" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg></span>`
+      : (novidade ? `<span class="nov-sino" title="Novo andamento recebido"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3H4a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg></span>` : '');
+    const sub=[p.numero, p.assunto, p.tipo==='extrajudicial'?'Caso':'Processo'].filter(Boolean).map(esc).join(' · ');
+    return `<div class="list-item" style="cursor:pointer" onclick='fecharModal("modal-cli-procs");abrirDetalhe(${JSON.stringify(p.id)})'>
+      <div class="li-main"><div class="li-title">${esc(p.nome_parte||'(sem título)')}</div><div class="li-sub">${sub||'—'}</div></div>
+      <div class="li-tags">${ind}</div>
+    </div>`;
+  }).join('')+'</div>';
 }
 async function salvarCliente(){
   const nome=document.getElementById('mc-nome').value.trim();
