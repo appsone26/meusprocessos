@@ -1780,7 +1780,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.123';
+const APP_VERSAO = 'v1.8.124';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3760,7 +3760,7 @@ function abrirDetalhe(id){
   // Limpa pontinho verde se havia novidade
   if(p.esc_novidade_em){
     p.esc_novidade_em=null;
-    db.rpc('sp_limpar_novidade_escavador',{p_token:TOKEN,p_processo_id:p.id}).catch(()=>{});
+    db.rpc('sp_limpar_novidade_escavador',{p_token:TOKEN,p_processo_id:p.id}).then(()=>{},()=>{});
   }
   carregarMovs(); carregarHistorico(); carregarDocumentos(); carregarEdicoes('processos', procAtual.id, 'det-edicoes', 'det-edicoes-sec');
 }
