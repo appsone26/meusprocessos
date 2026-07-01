@@ -1020,7 +1020,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" id="btn-novo-alerta" onclick="abrirModalAlerta()">+ Novo alerta</button>
             <button class="btn btn-ghost btn-sm" onclick="exportarAlertasExcel()">📊 Excel</button>
-            <button class="btn btn-ghost btn-sm" onclick="exportarAlertasPDF()">📄 Baixar PDF</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportarAlertasPDF()">📄 PDF</button>
           </div>
         </div>
         <div class="toolbar">
@@ -1035,7 +1035,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="abrirModalCliente()">+ Novo cliente</button>
             <button class="btn btn-ghost btn-sm" onclick="exportarClientesExcel()">📊 Excel</button>
-            <button class="btn btn-ghost btn-sm" onclick="exportarClientesPDF()">📄 Baixar PDF</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportarClientesPDF()">📄 PDF</button>
           </div>
         </div>
         <div class="toolbar">
@@ -1780,7 +1780,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.121';
+const APP_VERSAO = 'v1.8.123';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2189,6 +2189,7 @@ function irPara(view, _fromPop){
     document.getElementById('view-'+v).classList.toggle('hidden',v!==view);
     document.getElementById('nav-'+v).classList.toggle('active',v===view);
   });
+  if(view==='processos') renderProcessos();
   if(view==='alertas') setAlertaTab('agenda');
   if(view==='documentos') carregarDocsGlobal();
   if(view==='financeiro') carregarFinanceiro();
@@ -3764,7 +3765,9 @@ function abrirDetalhe(id){
   carregarMovs(); carregarHistorico(); carregarDocumentos(); carregarEdicoes('processos', procAtual.id, 'det-edicoes', 'det-edicoes-sec');
 }
 async function carregarHistorico(){
-  try{ const {data,error}=await db.rpc('sp_historico_processo',{p_token:TOKEN,p_processo_id:procAtual.id}); if(error) throw error;
+  const _pid = procAtual && procAtual.id;
+  try{ const {data,error}=await db.rpc('sp_historico_processo',{p_token:TOKEN,p_processo_id:_pid}); if(error) throw error;
+    if(!procAtual || procAtual.id!==_pid) return; // navegou pra outro processo: descarta
     const hist=data||[];
     const criar=hist.find(h=>h.acao==='CRIAR_PROCESSO');
     const fim=[...hist].reverse().find(h=>h.acao==='FINALIZAR_PROCESSO');
@@ -3796,12 +3799,14 @@ async function carregarEdicoes(tabela, registroId, elId, secId){
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); el.innerHTML='<div class="det-empty">'+esc(traduzErro(e))+'</div>'; }
 }
 async function carregarMovs(){
+  const _pid = procAtual && procAtual.id;
   document.getElementById('det-andamentos').innerHTML='<div class="det-empty">Carregando…</div>';
   document.getElementById('det-providencias').innerHTML='<div class="det-empty">Carregando…</div>';
-  try{ const {data,error}=await db.rpc('sp_listar_movimentacoes',{p_token:TOKEN,p_processo_id:procAtual.id,p_tipo:null}); if(error) throw error;
+  try{ const {data,error}=await db.rpc('sp_listar_movimentacoes',{p_token:TOKEN,p_processo_id:_pid,p_tipo:null}); if(error) throw error;
+    if(!procAtual || procAtual.id!==_pid) return; // clicou rápido em outro processo: descarta a resposta antiga
     MOVS=data||[]; renderMovs();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
-    document.getElementById('det-andamentos').innerHTML='<div class="det-empty">'+esc(traduzErro(e))+'</div>'; }
+    if(procAtual && procAtual.id===_pid) document.getElementById('det-andamentos').innerHTML='<div class="det-empty">'+esc(traduzErro(e))+'</div>'; }
 }
 function renderMovs(){
   const ro = procAtual && procAtual.status==='finalizado';
