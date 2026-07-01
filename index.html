@@ -1581,13 +1581,14 @@
 <div class="modal" id="modal-modelo">
   <div class="box" style="max-width:620px">
     <h3 id="mmo-title">Novo modelo</h3>
-    <p class="msub">Texto-base do escritório. Em <b>procuração</b> e <b>honorário</b>, use campos entre chaves duplas — ex.: <code>{{cliente}}</code>, <code>{{valor}}</code> — que serão preenchidos na hora de gerar (em breve).</p>
+    <p class="msub">Texto-base do escritório. Use campos entre <b>chaves duplas</b> — ex.: <code>{{cliente_nome}}</code>, <code>{{cliente_cpf}}</code> — que são preenchidos com os dados do cadastro na hora de gerar. Veja a lista abaixo do texto.</p>
     <div class="modal-msg" id="mmo-msg" style="display:none"></div>
     <div class="row2">
       <div class="field"><label>Tipo</label><select id="mmo-tipo"><option value="peticao">Petição (estilo p/ IA)</option><option value="procuracao">Procuração</option><option value="honorario">Honorário</option><option value="declaracao">Declaração</option></select></div>
       <div class="field"><label>Nome</label><input type="text" id="mmo-nome" maxlength="120" placeholder="Ex.: Petição de cobrança"></div>
     </div>
     <div class="field"><label>Texto do modelo</label><textarea id="mmo-texto" rows="10" placeholder="Cole ou escreva o texto-base do modelo…"></textarea></div>
+    <div class="field" style="margin-top:2px"><label>Campos disponíveis (clique para copiar)</label><div id="mmo-tokens"></div></div>
     <div class="mfoot">
       <button class="btn btn-ghost btn-sm" type="button" onclick="fecharModal('modal-modelo')">Cancelar</button>
       <button class="btn btn-primary btn-sm" type="button" id="mmo-save" onclick="salvarModelo()">Salvar</button>
@@ -1824,7 +1825,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.126';
+const APP_VERSAO = 'v1.8.127';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4125,8 +4126,29 @@ function abrirNovoModelo(){
   document.getElementById('mmo-tipo').value='peticao';
   document.getElementById('mmo-nome').value='';
   document.getElementById('mmo-texto').value='';
-  mmoMsg('');
+  mmoMsg(''); renderTokensModelo();
   document.getElementById('modal-modelo').classList.add('open');
+}
+// Campos que o modelo entende ({{token}}). Cliente/escritório/processo preenchem sozinhos ao gerar.
+const TOKENS_MODELO=[
+  {g:'Cliente', t:['cliente_nome','cliente_cpf','cliente_nacionalidade','cliente_estado_civil','cliente_profissao','cliente_endereco','cliente_cep','cliente_logradouro','cliente_numero','cliente_complemento','cliente_bairro','cliente_cidade','cliente_uf','cliente_email','cliente_telefone','cliente_nascimento']},
+  {g:'Escritório', t:['escritorio_nome','escritorio_razao_social','escritorio_cnpj','advogado_nome','oab','escritorio_telefone','escritorio_endereco','escritorio_cidade','escritorio_uf','escritorio_cep']},
+  {g:'Processo', t:['processo_numero','processo_vara','processo_comarca','processo_assunto','processo_titulo']},
+  {g:'Data', t:['data_hoje','data_extenso','cidade_data']}
+];
+function renderTokensModelo(){
+  const box=document.getElementById('mmo-tokens'); if(!box) return;
+  const chip=t=>`<span onclick="copiarToken('${t}')" title="Clique para copiar {{${t}}}" style="display:inline-block;cursor:pointer;font-size:.72rem;font-family:ui-monospace,monospace;background:var(--card,#0e1a24);border:1px solid var(--line);color:var(--cyan);border-radius:6px;padding:3px 7px;margin:3px 3px 0 0;user-select:none">{{${t}}}</span>`;
+  box.innerHTML='<p style="font-size:.78rem;color:var(--muted);margin:2px 0 6px">Clique num campo para <b>copiar</b> e cole no texto onde o dado deve aparecer. Cliente, escritório e processo são preenchidos sozinhos ao gerar; o que faltar vira <b>[PREENCHER]</b>.</p>'
+    + TOKENS_MODELO.map(gr=>`<div style="margin-bottom:6px"><div style="font-size:.7rem;color:var(--muted-2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${gr.g}</div>${gr.t.map(chip).join('')}</div>`).join('');
+}
+async function copiarToken(t){
+  const txt='{{'+t+'}}';
+  try{ await navigator.clipboard.writeText(txt); }
+  catch(_){
+    try{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }catch(__){}
+  }
+  toast('Copiado: '+txt+' — cole no modelo onde o dado entra.','ok');
 }
 function editarModelo(id){
   const m=(MODELOS||[]).find(x=>x.id===id); if(!m) return;
@@ -4135,7 +4157,7 @@ function editarModelo(id){
   document.getElementById('mmo-tipo').value=m.tipo||'peticao';
   document.getElementById('mmo-nome').value=m.nome||'';
   document.getElementById('mmo-texto').value=m.texto||'';
-  mmoMsg('');
+  mmoMsg(''); renderTokensModelo();
   document.getElementById('modal-modelo').classList.add('open');
 }
 async function salvarModelo(){
@@ -4199,6 +4221,14 @@ function modelosPreenchiveis(){ return (MODELOS||[]).filter(m=>m.tipo==='procura
 function iconeTipoModelo(t){ return t==='procuracao'?'📜':(t==='honorario'?'💰':(t==='declaracao'?'📃':'📄')); }
 
 // tokens que AUTO-preenchem (do Perfil + cliente + processo + data)
+// Monta o endereço completo do cliente a partir dos campos estruturados.
+function montarEnderecoCliente(c){
+  if(!c) return undefined;
+  const p1=[c.logradouro, c.numero?('nº '+c.numero):null, c.complemento].filter(Boolean).join(', ');
+  const seg=[p1, c.bairro, [c.cidade,c.uf].filter(Boolean).join('/'), c.cep?('CEP '+c.cep):null].filter(Boolean);
+  const s=seg.join(' - ');
+  return s||undefined;
+}
 function tokensAutoGerDoc(){
   const p=procAtual||{}; const pf=PERFIL_CACHE||{};
   const cli=(CLIENTES||[]).find(c=>c.id===p.cliente_id)||{};
@@ -4212,6 +4242,11 @@ function tokensAutoGerDoc(){
     escritorio_endereco: pf.endereco, escritorio_cidade: pf.cidade, escritorio_uf: pf.uf, escritorio_cep: pf.cep,
     // cliente (cadastro)
     cliente_nome: (cli.nome||p.cliente_nome), cliente_email: cli.email, cliente_telefone: cli.telefone, cliente_cpf: cli.cpf,
+    cliente_nacionalidade: cli.nacionalidade, cliente_estado_civil: cli.estado_civil, cliente_profissao: cli.profissao,
+    cliente_cep: cli.cep, cliente_logradouro: cli.logradouro, cliente_numero: cli.numero, cliente_complemento: cli.complemento,
+    cliente_bairro: cli.bairro, cliente_cidade: cli.cidade, cliente_uf: cli.uf,
+    cliente_endereco: montarEnderecoCliente(cli),
+    cliente_nascimento: (cli.data_nascimento? String(cli.data_nascimento).split('-').reverse().join('/') : undefined),
     // processo / caso
     processo_numero: p.numero, processo_vara: p.vara, processo_comarca: p.comarca,
     processo_assunto: p.assunto, processo_titulo: p.nome_parte,
