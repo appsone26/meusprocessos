@@ -331,7 +331,7 @@
   .side .navitem .ico{width:18px;text-align:center;font-size:1rem}
   .side .navitem:hover{background:rgba(255,255,255,.04);color:#fff}
   .side .navitem.active{background:rgba(34,211,238,.1);color:var(--cyan)}
-  .side .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:4px}
+  .side .side-foot{margin-top:14px;display:flex;flex-direction:column;gap:4px}
   .side .navout:hover{background:rgba(248,113,113,.08);color:var(--danger)}
   .side .side-brand{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:8px;padding-top:12px;border-top:1px solid var(--line)}
   .side .side-brand .seal-lg{width:46px;height:46px}
@@ -555,7 +555,7 @@
   .view-head p{color:var(--muted);font-size:.92rem;margin-top:3px}
   .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
   .search{flex:1;min-width:200px;position:relative}
-  .search input{width:100%;padding:10px 13px 10px 38px;border:1.5px solid var(--line);border-radius:10px;background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:.92rem}
+  .search input{width:100%;padding:10px 13px 10px 38px;border:1.5px solid var(--line);border-radius:10px;background:rgba(255,255,255,.05);color:var(--text);font-family:inherit;font-size:.92rem}
   .search input:focus{outline:none;border-color:var(--cyan)}
   .search .si{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted-2)}
   .sug-box{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:40;background:var(--bg-2);border:1.5px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 14px 34px -10px rgba(0,0,0,.7);max-height:248px;overflow-y:auto}
@@ -1825,7 +1825,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.128';
+const APP_VERSAO = 'v1.8.129';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2061,7 +2061,7 @@ function maskCNJ(i){
   else if(!document.getElementById('mp-id').value){ mpBloquearCampos(); }
 }
 let toastT;
-function toast(msg,type){ const t=document.getElementById('toast'); t.textContent=msg; t.className=(type||'')+' show'; clearTimeout(toastT); toastT=setTimeout(()=>t.className=t.className.replace('show','').trim(),2800); }
+function toast(msg,type,ms){ const t=document.getElementById('toast'); t.textContent=msg; t.className=(type||'')+' show'; clearTimeout(toastT); toastT=setTimeout(()=>t.className=t.className.replace('show','').trim(),ms||2800); }
 
 /* ---------- landing render ---------- */
 function renderPlanos(){ document.getElementById('plans').innerHTML = PACOTES.map(p=>`
@@ -4566,7 +4566,7 @@ async function escMonitorar(){
   try{
     const r=await efEscavador({action:'monitorar',processo_id:procAtual.id,numero_cnj:procAtual.numero});
     if(r&&r.ok){
-      toast('📡 Monitoramento ativado! Você é avisado automaticamente a cada novo andamento.','ok');
+      toast('📡 Monitoramento ativado! Você é avisado automaticamente a cada novo andamento.','ok',5600);
       procAtual.escavador_mon_id=r.escavador_mon_id||'ativo';
       const idx=PROCESSOS.findIndex(x=>x.id===procAtual.id);
       if(idx>=0) PROCESSOS[idx].escavador_mon_id=procAtual.escavador_mon_id;
@@ -4589,7 +4589,7 @@ async function escPararMonitorar(){
   try{
     const r=await efEscavador({action:'parar_monitorar',processo_id:procAtual.id,escavador_mon_id:procAtual.escavador_mon_id});
     if(r&&r.ok){
-      toast('Monitoramento desligado.','ok');
+      toast('Monitoramento desligado.','ok',5600);
       procAtual.escavador_mon_id=null;
       const idx=PROCESSOS.findIndex(x=>x.id===procAtual.id);
       if(idx>=0) PROCESSOS[idx].escavador_mon_id=null;
@@ -4613,7 +4613,7 @@ async function escAtualizarProcesso(){
     // Manda o robô no tribunal (assíncrono). A resposta chega sozinha pelo webhook.
     const r=await efEscavador({action:'atualizar_tribunal',processo_id:procAtual.id,numero_cnj:procAtual.numero});
     if(r&&r.ok&&r.pedido_id){
-      toast('🔎 Buscando no tribunal… os andamentos novos chegam sozinhos quando o tribunal responder.','ok');
+      toast('🔎 Buscando no tribunal… os andamentos novos chegam sozinhos quando o tribunal responder.','ok',5600);
       // Deixa o botão em "Buscando…" até a resposta chegar (estado da sessão)
       procAtual.esc_pedido_id=r.pedido_id;
       const idx=PROCESSOS.findIndex(x=>x.id===procAtual.id);
@@ -4621,7 +4621,7 @@ async function escAtualizarProcesso(){
       renderDetalheHead();
     }else if(r&&r.ok){
       // Tribunal já consultado hoje (já atualizado) — não fica "buscando"
-      toast(r.msg||'Esse processo já foi atualizado hoje.','ok');
+      toast(r.msg||'Esse processo já foi atualizado hoje.','ok',5600);
       if(btn){ btn.disabled=false; btn.textContent='⟳ Atualizar'; }
     }else{
       toast((r&&r.erro)||'Não foi possível buscar no tribunal agora.','err');
