@@ -212,7 +212,7 @@
   @media (max-width:640px){
     .cli-nameline{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
     .cli-nameline .li-title{flex:1;min-width:0}
-    .cli-proc-mob{display:inline-block;flex:0 0 auto;color:var(--cyan);cursor:pointer;font-weight:500;white-space:nowrap}
+    .cli-proc-mob{display:inline-flex;flex:0 0 auto}
   }
   .li-acts{display:flex;gap:6px;flex-shrink:0}
   @media (max-width:640px){.li-tags{display:none}.li-main{display:block}.li-sub{margin-top:1px}.alert-row:not(.trash){display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:start}.alert-row:not(.trash) .ar-main{grid-column:1;grid-row:1;min-width:0}.alert-row:not(.trash) .ar-when{grid-column:1;grid-row:2;justify-self:start}.alert-row:not(.trash) .li-acts{display:contents}.alert-row:not(.trash) .li-acts .lnk{grid-column:2;justify-self:end}.alert-row:not(.trash) .li-acts .lnk:first-child{grid-row:1;align-self:start}.alert-row:not(.trash) .li-acts .lnk:last-child{grid-row:2;align-self:end}.alert-row.trash{flex-wrap:wrap;align-items:flex-start}}
@@ -596,6 +596,15 @@
   .tagx{font-size:.72rem;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted)}
   .tagx.cy{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3);color:var(--cyan)}
   .tagx.al{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);color:var(--warn)}
+  .proc-chip{align-items:center;gap:4px;font-size:.72rem;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.3);color:var(--cyan);cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,box-shadow .15s}
+  .proc-chip .chev{font-weight:700;line-height:1;transition:transform .15s}
+  .li-tags .proc-chip{display:inline-flex}
+  html.tema-claro .proc-chip{background:rgba(79,70,229,.08);border-color:rgba(79,70,229,.35)}
+  @media (hover:hover){
+    .proc-chip:hover{background:rgba(34,211,238,.22);border-color:rgba(34,211,238,.7);color:#67e8f9;box-shadow:0 0 0 3px rgba(34,211,238,.14)}
+    .proc-chip:hover .chev{transform:translateX(2px)}
+    html.tema-claro .proc-chip:hover{background:rgba(79,70,229,.16);border-color:rgba(79,70,229,.6);color:var(--cyan);box-shadow:0 0 0 3px rgba(79,70,229,.14)}
+  }
   .card .c-acts{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
   .lnk{font-size:.82rem;color:var(--muted);cursor:pointer;padding:5px 10px;border-radius:7px;border:1px solid var(--line);background:none;font-family:inherit;transition:all .15s}
   .lnk:hover{border-color:var(--cyan);color:var(--cyan)}
@@ -1850,7 +1859,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.133';
+const APP_VERSAO = 'v1.8.134';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3509,8 +3518,8 @@ function renderClientes(){
   if(!lista.length){ area.innerHTML='<div class="empty"><div class="em-ic">🔎</div><h3>Nada encontrado</h3><p>Tente outro termo de busca.</p></div>'; return; }
   area.innerHTML='<div class="list">'+lista.map(c=>`
     <div class="list-item" onclick='abrirModalCliente(${JSON.stringify(c.id)})'>
-      <div class="li-main"><div class="cli-nameline"><div class="li-title">${esc(c.nome)}</div>${c.total_processos ? `<span class="cli-proc-mob" onclick='event.stopPropagation();abrirProcessosDoCliente(${JSON.stringify(c.id)})'>${c.total_processos} proc.</span>` : ''}</div><div class="li-sub">${[c.email,c.telefone].filter(Boolean).map(esc).join(' · ')||'Sem contato'}</div></div>
-      <div class="li-tags"><span class="tagx cy" ${c.total_processos ? `onclick='event.stopPropagation();abrirProcessosDoCliente(${JSON.stringify(c.id)})' style="cursor:pointer" title="Ver os processos deste cliente"` : ''}>${c.total_processos||0} proc.</span></div>
+      <div class="li-main"><div class="cli-nameline"><div class="li-title">${esc(c.nome)}</div>${c.total_processos ? `<span class="proc-chip cli-proc-mob" onclick='event.stopPropagation();abrirProcessosDoCliente(${JSON.stringify(c.id)})' title="Ver processos deste cliente">${c.total_processos} proc. <span class="chev">›</span></span>` : ''}</div><div class="li-sub">${[c.email,c.telefone].filter(Boolean).map(esc).join(' · ')||'Sem contato'}</div></div>
+      <div class="li-tags">${c.total_processos ? `<span class="proc-chip" onclick='event.stopPropagation();abrirProcessosDoCliente(${JSON.stringify(c.id)})' title="Ver os processos deste cliente">${c.total_processos} proc. <span class="chev">›</span></span>` : `<span class="tagx">0 proc.</span>`}</div>
     </div>`).join('')+'</div>';
 }
 function preencherSelectClientes(){
