@@ -290,6 +290,8 @@
 
   /* ===================== PAINEL (APP) ===================== */
   #app{display:none;position:relative;z-index:60;min-height:100vh}
+  /* Anti-piscada no F5: se já existe sessão salva, o login não chega a pintar */
+  html.has-sess #public{display:none!important}
   .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;height:80px;padding:0 22px 0 0;background:rgba(11,17,32,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
   .topbar .tb-left{display:flex;align-items:center;gap:10px;min-width:0;flex:0 0 260px;padding-left:14px;position:relative}
   .topbar .seal-svg{width:30px;height:30px;flex:0 0 auto}
@@ -790,6 +792,18 @@
   .mpl-badge{font-size:.72rem;color:var(--cyan);border:1px solid rgba(34,211,238,.4);background:rgba(34,211,238,.12);padding:2px 8px;border-radius:20px;white-space:nowrap}
   .mpl-desc{font-size:.82rem;color:var(--muted);margin:7px 0 9px}
 </style>
+<script>
+  /* Anti-piscada no F5: roda ANTES de a página pintar. Se já existe sessão
+     salva (e não é link de reset/descadastro), marca <html> com "has-sess"
+     e o CSS acima esconde o login na hora — sem piscar. */
+  (function(){
+    try{
+      if(/[?&](reset|descadastrar)=/.test(location.search||'')) return;
+      var s = JSON.parse(localStorage.getItem('mp_sessao'));
+      if(s && s.token) document.documentElement.classList.add('has-sess');
+    }catch(e){}
+  })();
+</script>
 </head>
 <body>
 <div class="glow"></div>
@@ -1780,7 +1794,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.124';
+const APP_VERSAO = 'v1.8.125';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
