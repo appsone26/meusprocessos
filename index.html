@@ -360,6 +360,7 @@
     /* v1.8.134: detalhe em grade 2×2 — topo fixo (~5 linhas), base estica até o fim da tela */
     #view-detalhe{min-height:100%;display:flex;flex-direction:column}
     #view-detalhe .det-back,#view-detalhe .det-head,#view-detalhe .det-grid-top{flex:0 0 auto}
+    #view-detalhe .det-back{align-self:flex-start}
     #view-detalhe .det-grid-bottom{flex:1 1 auto;min-height:200px}
     .det-grid-top #det-andamentos,.det-grid-top #det-providencias{height:300px;max-height:none}
     .det-grid-bottom .det-sec{display:flex;flex-direction:column;min-height:0}
@@ -1861,7 +1862,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.134';
+const APP_VERSAO = 'v1.8.135';
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
