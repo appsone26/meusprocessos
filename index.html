@@ -1498,7 +1498,7 @@
       <div class="field"><label id="mp-assunto-lbl">Descrição</label><textarea id="mp-assunto" rows="2" placeholder="Descrição do processo"></textarea></div>
       <div id="mp-judicial-extra">
         <div class="row2">
-          <div class="field"><label>Sistema <span class="req">*</span></label><select id="mp-sistema"><option value="">— Selecione —</option><option value="EPROC">EPROC</option><option value="PJE">PJE</option><option value="DCP">DCP</option></select></div>
+          <div class="field"><label>Sistema <span class="req">*</span></label><select id="mp-sistema"><option value="">— Selecione —</option></select></div>
           <div class="field"><label>Fase</label><input type="text" id="mp-fase" placeholder="Fase atual"></div>
         </div>
         <div class="row2">
@@ -1862,7 +1862,26 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.137';
+const APP_VERSAO = 'v1.8.138';
+// ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
+const SISTEMAS=[
+  {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
+  {c:'EPRJ2',n:'EPROC 2º',    u:'https://eproc2g.tjrj.jus.br/eproc/'},
+  {c:'PJTJ1',n:'PJe TJ 1º',   u:'https://tjrj.pje.jus.br/1g/login.seam'},
+  {c:'DCP',  n:'DCP',         u:'https://www3.tjrj.jus.br/idserverjus-front/#/login?indGet=true&sgSist=PORTALSERVICOS'},
+  {c:'PTRT1',n:'PJe TRT 1º',  u:'https://pje.trt1.jus.br/primeirograu/login.seam'},
+  {c:'PTRT2',n:'PJe TRT 2º',  u:'https://pje.trt1.jus.br/segundograu/login.seam'},
+  {c:'EJF1', n:'EPROC JF 1ª', u:'https://eproc.jfrj.jus.br/eproc/'},
+  {c:'EJF2', n:'EPROC JF 2ª', u:'https://eproc.trf2.jus.br/eproc/'}
+];
+function sistemaInfo(c){ return SISTEMAS.find(s=>s.c===c)||null; }
+function sisNome(c){ const s=sistemaInfo(c); return s?s.n:(c||''); }
+function renderSelectSistema(cur){
+  const sel=document.getElementById('mp-sistema'); if(!sel) return;
+  const ok=SISTEMAS.some(s=>s.c===cur);
+  sel.innerHTML='<option value="">— Selecione —</option>'+SISTEMAS.map(s=>`<option value="${s.c}">${esc(s.n)}</option>`).join('');
+  sel.value = ok ? cur : '';
+}
 const SUPABASE_URL = 'https://viavqcxhomjycaqojtep.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ucqCEUyoeAbh85BQ0VzKdA_XnBkbY-V';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2883,7 +2902,7 @@ function montarContextoProcesso(){
   if(p.cliente_nome) L.push('Cliente: '+p.cliente_nome);
   if(p.responsavel_nome) L.push('Responsável: '+p.responsavel_nome);
   L.push('Tipo: '+(p.tipo==='extrajudicial'?'Caso':'Processo'));
-  if(p.sistema) L.push('Sistema: '+p.sistema);
+  if(p.sistema) L.push('Sistema: '+sisNome(p.sistema));
   if(p.vara) L.push('Vara: '+p.vara);
   if(p.comarca) L.push('Comarca: '+p.comarca);
   if(p.fase) L.push('Fase: '+p.fase);
@@ -2993,7 +3012,7 @@ function montarSnapshotDados(){
   h+=linha('Fase', p.fase);
   h+=linha('Comarca', p.comarca);
   h+=linha('Vara', p.vara);
-  h+=linha('Sistema', p.sistema);
+  h+=linha('Sistema', sisNome(p.sistema));
   if(p.status==='finalizado') h+=linha('Situação', 'Finalizado');
   if(p.observacoes){ h+='<div style="margin-top:8px"><div style="color:var(--muted-2)">Observações</div><div style="color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere">'+esc(p.observacoes)+'</div></div>'; }
   const prov=(MOVS||[]).filter(m=>m.tipo==='providencia' && !m.concluida);
@@ -3685,7 +3704,7 @@ function renderProcessos(){
           : (novidade
               ? `<span class="nov-sino" title="Novo andamento recebido"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3H4a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg></span>`
               : '')}
-        ${p.sistema&&p.tipo!=='extrajudicial'?`<span class="tagx">${esc(p.sistema)}</span>`:''}
+        ${p.sistema&&p.tipo!=='extrajudicial'?`<span class="tagx">${esc(sisNome(p.sistema))}</span>`:''}
         ${alerta?`<span class="tagx ${venc?'al':'cy'}">📅 ${fmtData(p.data_alerta)}</span>`:''}
         ${statusProc==='finalizado'&&p.motivo_finalizacao?`<span class="tagx">${esc(p.motivo_finalizacao)}</span>`:''}
       </div>
@@ -3756,13 +3775,13 @@ function abrirModalProcesso(id){
   if(id){ const p=PROCESSOS.find(x=>x.id===id)||{}; document.getElementById('mp-title').textContent='Editar processo';
     document.getElementById('mp-id').value=p.id||''; document.getElementById('mp-parte').value=p.nome_parte||'';
     document.getElementById('mp-cliente').value=p.cliente_id||''; document.getElementById('mp-numero').value=p.numero||'';
-    document.getElementById('mp-tipo').value=p.tipo||'judicial'; document.getElementById('mp-sistema').value=(['EPROC','PJE','DCP'].includes(p.sistema)?p.sistema:'');
+    document.getElementById('mp-tipo').value=p.tipo||'judicial'; renderSelectSistema(p.sistema);
     document.getElementById('mp-assunto').value=p.assunto||''; document.getElementById('mp-vara').value=p.vara||'';
     document.getElementById('mp-comarca').value=p.comarca||''; document.getElementById('mp-fase').value=p.fase||'';
     document.getElementById('mp-obs').value=p.observacoes||'';
   }else{ document.getElementById('mp-title').textContent='Novo processo';
     ['mp-id','mp-parte','mp-numero','mp-assunto','mp-vara','mp-comarca','mp-fase','mp-obs'].forEach(i=>document.getElementById(i).value='');
-    document.getElementById('mp-cliente').value=''; document.getElementById('mp-tipo').value='judicial'; document.getElementById('mp-sistema').value='';
+    document.getElementById('mp-cliente').value=''; document.getElementById('mp-tipo').value='judicial'; renderSelectSistema('');
     // Limpa Escavador
     ESC_ANDAMENTOS_PENDENTES=[];
     const prev=document.getElementById('mp-dtj-preview'); if(prev){prev.style.display='none';prev.innerHTML='';}
@@ -3792,7 +3811,7 @@ async function salvarProcesso(){
   if(!parte) return erro('Informe a parte / título do processo.');
   if(!cliente) return erro('Selecione o cliente do processo.');
   if(!responsavel) return erro('Selecione o responsável pelo processo.');
-  if(ehJudicial && !sistema) return erro('Selecione o sistema (EPROC, PJE ou DCP).');
+  if(ehJudicial && !sistema) return erro('Selecione o sistema do processo.');
   if(ehJudicial && !document.getElementById('mp-numero').value.trim()) return erro('Informe o número do processo (obrigatório para Processo).');
   const id=document.getElementById('mp-id').value||null;
   const btn=document.getElementById('mp-save'); setLoading(btn,true);
@@ -3863,16 +3882,37 @@ async function restaurarProcesso(id){
 /* ============ DETALHE DO PROCESSO (andamentos + providências) ============ */
 let MOVS = [];
 function voltarDaLista(){ irPara('processos'); }
+function abrirNoSistema(){
+  const p=procAtual; if(!p) return;
+  const si=sistemaInfo(p.sistema);
+  if(!si||!si.u){ toast('Este processo não tem um sistema com endereço definido.','err'); return; }
+  // Abre a aba já no gesto do clique (evita bloqueio de pop-up)
+  const win=window.open(si.u,'_blank','noopener');
+  if(!win){ toast('Permita pop-ups para abrir o sistema em nova aba.','err'); return; }
+  const num=(p.numero||'').trim();
+  if(num && navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(num).then(
+      ()=>toast('📋 Número copiado — é só colar (Ctrl+V) na busca do '+si.n+'.','ok',5600),
+      ()=>toast('Abri o '+si.n+'. Copie o número: '+num,'ok',5600)
+    );
+  }else if(num){
+    toast('Abri o '+si.n+'. Copie o número: '+num,'ok',5600);
+  }else{
+    toast('Abri o '+si.n+'.','ok');
+  }
+}
 function renderDetalheHead(){
   const p=procAtual; if(!p) return;
   const sub=[p.numero, p.cliente_nome?('Cliente: '+p.cliente_nome):''].filter(Boolean).map(esc).join(' · ');
   const fin = p.status==='finalizado';
+  const si = sistemaInfo(p.sistema);
   document.getElementById('det-head').innerHTML=`
     <div class="dh-top">
       <div><h2>${esc(p.nome_parte||'(sem título)')}</h2><div class="dh-sub">${sub||'—'}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${(PERM&&PERM.pode_ia)?`<button class="btn btn-ghost btn-sm" onclick="resumirProcessoIA()">${fin?'📄 Ver resumos':'✨ Resumir com IA'}</button>`:''}
         ${(fin||!(PERM&&PERM.pode_processos))?'':`<button class="btn btn-ghost btn-sm" onclick="abrirGerarDocumento()">📄 Gerar documento</button>`}
+        ${(si&&si.u&&p.tipo!=='extrajudicial')?`<button class="btn btn-ghost btn-sm" onclick="abrirNoSistema()" title="Abrir ${esc(si.n)} e copiar o número">⚖️ Abrir no sistema</button>`:''}
         ${(!fin && p.numero && p.tipo!=='extrajudicial')
           ? (p.esc_pedido_id
               ? `<button class="btn btn-ghost btn-sm" disabled style="opacity:.7;cursor:default" title="Pedido enviado ao tribunal — aguardando a resposta">⏳ Buscando…</button>`
@@ -3889,7 +3929,7 @@ function renderDetalheHead(){
     <div class="c-meta">
       <span class="tagx">${p.tipo==='extrajudicial'?'Caso':'Processo'}</span>
       ${p.responsavel_nome?`<span class="tagx">👤 ${esc(p.responsavel_nome)}</span>`:''}
-      ${p.sistema&&p.tipo!=='extrajudicial'?`<span class="tagx">${esc(p.sistema)}</span>`:''}
+      ${p.sistema&&p.tipo!=='extrajudicial'?`<span class="tagx">${esc(sisNome(p.sistema))}</span>`:''}
       ${p.vara?`<span class="tagx">${esc(p.vara)}</span>`:''}
       ${p.comarca?`<span class="tagx">${esc(p.comarca)}</span>`:''}
       ${p.fase?`<span class="tagx">${esc(p.fase)}</span>`:''}
@@ -4561,12 +4601,8 @@ function dtjPreencherFormulario(prefill){
   set('mp-comarca', prefill.comarca);
   set('mp-assunto', prefill.assunto);
   set('mp-fase',    '');
-  // Sistema: só preenche se o tribunal devolver um sistema VÁLIDO (EPROC/PJE/DCP).
-  // Se vier o nome do tribunal (ex.: TJRJ), NÃO preenche — o usuário escolhe manualmente.
-  if(prefill.sistema){
-    const sel=document.getElementById('mp-sistema');
-    if(sel && ['EPROC','PJE','DCP'].includes(prefill.sistema)) sel.value=prefill.sistema;
-  }
+  // Sistema: sempre escolhido manualmente na lista específica (cada um tem endereço próprio).
+  // O tribunal não devolve esses códigos, então não preenchemos automaticamente.
 }
 
 // Busca no Escavador a partir do campo número no modal de cadastro
@@ -5850,7 +5886,7 @@ function _procStatusSub(){ return statusProc==='finalizado'?'Finalizados':'Ativo
 function exportarProcessosExcel(){
   const linhas=(PROCESSOS||[]).map(p=>[
     p.nome_parte||'', _procTipoLabel(p), p.numero||'', p.cliente_nome||'',
-    p.sistema||'', p.vara||'', p.comarca||'', p.fase||'',
+    sisNome(p.sistema), p.vara||'', p.comarca||'', p.fase||'',
     p.data_alerta?fmtData(p.data_alerta):'',
     statusProc==='finalizado'?'Finalizado':'Ativo',
     p.motivo_finalizacao||'', p.assunto||''
@@ -5861,7 +5897,7 @@ function exportarProcessosExcel(){
 function exportarProcessosPDF(){
   const linhas=(PROCESSOS||[]).map(p=>[
     p.nome_parte||'', _procTipoLabel(p), p.numero||'—', p.cliente_nome||'—',
-    [p.sistema,p.fase].filter(Boolean).join(' · ')||'—',
+    [sisNome(p.sistema),p.fase].filter(Boolean).join(' · ')||'—',
     p.data_alerta?fmtData(p.data_alerta):'—',
     statusProc==='finalizado'?(p.motivo_finalizacao||'Finalizado'):'Ativo'
   ]);
@@ -5914,7 +5950,7 @@ function _snapDadosLinhas(){
   add('Fase', p.fase);
   add('Comarca', p.comarca);
   add('Vara', p.vara);
-  add('Sistema', p.sistema);
+  add('Sistema', sisNome(p.sistema));
   L.push(['Situação', p.status==='finalizado'?'Finalizado':'Em andamento']);
   add('Observações', p.observacoes);
   return L;
