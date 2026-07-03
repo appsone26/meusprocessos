@@ -1513,7 +1513,7 @@
     </div>
 
     <div class="mfoot">
-      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-processo')">Cancelar</button>
+      <button class="btn btn-ghost btn-sm" onclick="cancelarModalProcesso()">Cancelar</button>
       <button class="btn btn-primary btn-sm" id="mp-save" onclick="salvarProcesso()">Salvar</button>
     </div>
   </div>
@@ -1864,7 +1864,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.140';
+const APP_VERSAO = 'v1.8.141';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3772,6 +3772,7 @@ function mpDesbloquearCampos(){
   resto.style.pointerEvents = '';
 }
 function abrirModalProcesso(id){
+  ESC_BUSCOU=false; // começa limpo: sem busca paga nesta abertura
   // processo finalizado é somente leitura — só editável após restaurar
   if(id){ const alvo=PROCESSOS.find(x=>x.id===id); if(alvo && alvo.status==='finalizado'){ toast('Processo finalizado. Restaure para editar.','err'); return; } }
   // criar processo exige ao menos um cliente cadastrado
@@ -3842,6 +3843,7 @@ async function salvarProcesso(){
     const numParaImportar = document.getElementById('mp-numero')?.value||'';
     const andsParaImportar = (!id && ESC_ANDAMENTOS_PENDENTES && ESC_ANDAMENTOS_PENDENTES.length) ? [...ESC_ANDAMENTOS_PENDENTES] : [];
     ESC_ANDAMENTOS_PENDENTES=[];
+    ESC_BUSCOU=false;
     fecharModal('modal-processo'); toast(id?'Processo atualizado.':'Processo cadastrado.','ok');
     statusProc='ativo'; setStatusProc('ativo');
     // Se veio andamentos do Escavador pendentes e é processo novo, importa agora
@@ -4616,6 +4618,12 @@ function dtjPreencherFormulario(prefill){
 
 // Busca no Escavador a partir do campo número no modal de cadastro
 let ESC_ANDAMENTOS_PENDENTES = [];
+let ESC_BUSCOU = false; // true quando já houve busca paga no tribunal nesta abertura do modal
+function cancelarModalProcesso(){
+  if(ESC_BUSCOU && !confirm('Você já buscou os dados deste processo no tribunal (isso teve custo).\n\nDescartar tudo e fechar sem cadastrar?')) return;
+  ESC_BUSCOU=false; ESC_ANDAMENTOS_PENDENTES=[];
+  fecharModal('modal-processo');
+}
 let ESC_CFG = { massa_habilitada: false, intervalo_dias: 0 };
 async function escBuscarCadastro(){
   const num=(document.getElementById('mp-numero')||{}).value||'';
@@ -4630,6 +4638,7 @@ async function escBuscarCadastro(){
   try{
     const r=await efEscavador({action:'buscar',numero_cnj:num});
     if(!r.ok){ msg.textContent=r.erro||'Processo não encontrado no tribunal.'; msg.className='modal-msg err'; return; }
+    ESC_BUSCOU=true; // busca paga concluída — cancelar agora pede confirmação
     // Pré-preenche campos do formulário
     dtjPreencherFormulario(r.prefill);
     // Mostra preview dos andamentos encontrados
