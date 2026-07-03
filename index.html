@@ -480,13 +480,44 @@
   .fin-fat .ff-inputs{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .fin-fat .ff-inputs label{font-size:.82rem;color:var(--muted);display:inline-flex;align-items:center;gap:7px}
   .fin-fat .ff-inputs input{width:auto}
-  .fin-fat .ff-result{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .fin-fat .ff-result{display:block}
   .fin-fat .ff-lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);display:block;margin-bottom:3px}
   .fin-fat .ff-big{font-size:1.9rem;font-weight:700;color:var(--ok);font-family:'Space Grotesk',inherit;line-height:1}
   .fin-fat .ff-sub{font-size:.84rem;color:var(--muted);margin-bottom:8px}
   .fin-fat .ff-stats{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:0}
   .fin-fat .ff-stat{display:flex;flex-direction:column;gap:3px}
   .fin-fat .ff-num{font-size:1.1rem;font-weight:700;font-family:'Space Grotesk',inherit;line-height:1}
+  /* Faturamento — demonstrativo (Modelo B) */
+  .fin-fat .ff-demo{margin-top:6px;border-top:1px solid var(--line)}
+  .fin-fat .ff-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line)}
+  .fin-fat .ff-line-l{display:inline-flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted)}
+  .fin-fat .ff-line-ic{display:inline-flex;align-items:center}
+  .fin-fat .ff-line-v{font-size:1.05rem;font-weight:700;font-family:'Space Grotesk',inherit;white-space:nowrap}
+  .fin-fat .ff-saldo{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;margin-top:12px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--muted) 9%,transparent)}
+  .fin-fat .ff-saldo-l{display:inline-flex;align-items:center;gap:8px;font-size:.92rem;font-weight:600;color:var(--text)}
+  .fin-fat .ff-saldo-v{font-size:1.35rem;font-weight:700;font-family:'Space Grotesk',inherit;white-space:nowrap;line-height:1}
+  /* Seletor de data/mês próprio */
+  .dpw{display:inline-flex}
+  .datepick{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;min-width:158px;height:34px;padding:0 11px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;color:var(--text);font-family:inherit;font-size:.85rem;cursor:pointer;transition:border-color .15s}
+  .datepick:hover{border-color:var(--cyan)}
+  .datepick .dp-val{white-space:nowrap}
+  .datepick .dp-val.ph{color:var(--muted-2)}
+  .datepick .dp-cal{flex:0 0 auto;color:var(--muted)}
+  .dp-pop{position:absolute;z-index:2600;width:262px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 14px 34px rgba(0,0,0,.4)}
+  html.tema-claro .dp-pop{box-shadow:0 14px 34px rgba(0,0,0,.14)}
+  .dp-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .dp-nav{width:32px;height:32px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--line);border-radius:8px;color:var(--text);cursor:pointer;padding:0;transition:all .12s}
+  .dp-nav:hover{border-color:var(--cyan);color:var(--cyan)}
+  .dp-title{flex:1;height:32px;background:none;border:0;color:var(--text);font-family:inherit;font-size:.92rem;font-weight:600;cursor:pointer;border-radius:8px;transition:color .12s}
+  .dp-title:hover{color:var(--cyan)}
+  .dp-grid{display:grid;gap:6px}
+  .dp-grid.g3{grid-template-columns:repeat(3,1fr)}
+  .dp-grid.g7{grid-template-columns:repeat(7,1fr);gap:3px}
+  .dp-dow{height:22px;display:flex;align-items:center;justify-content:center;font-size:.68rem;color:var(--muted-2);font-weight:600}
+  .dp-cell{height:34px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid transparent;border-radius:8px;color:var(--text);font-family:inherit;font-size:.82rem;cursor:pointer;padding:0;transition:all .1s}
+  .dp-cell:hover{background:color-mix(in srgb,var(--cyan) 14%,transparent);border-color:var(--cyan)}
+  .dp-cell.sel{background:color-mix(in srgb,var(--cyan) 20%,transparent);border-color:var(--cyan);color:var(--cyan);font-weight:700}
+  .dp-cell.today{border-color:var(--muted-2)}
   #fin-area .card{padding:11px 14px}
   #fin-area .card .c-name{font-size:1rem}
   #fin-area .card .c-meta{margin-top:7px}
@@ -1260,7 +1291,7 @@
         </div>
         <div id="fin-wrap-honorarios">
           <div class="fin-ctlbox">
-            <label class="fin-mes">Painel de <input type="month" id="fin-mes" onchange="setFinMes()"></label>
+            <label class="fin-mes">Painel de <span id="fin-mes-host"></span></label>
           </div>
           <div class="rel-tiles" id="fin-tiles"></div>
           <div class="fin-ctlbox">
@@ -1864,7 +1895,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.141';
+const APP_VERSAO = 'v1.8.142';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5357,6 +5388,101 @@ function relRowProvFeita(x){
 }
 
 /* ---------- modais ---------- */
+/* ===== Seletor de data/mês próprio (mês+ano sempre visíveis) ===== */
+const DP_MS=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const DP_MF=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DP_DOW=['D','S','T','Q','Q','S','S'];
+const ICO_CAL='<svg class="dp-cal" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+const ICO_L='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>';
+const ICO_R='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+const ICO_UP='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>';
+const ICO_DN='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10M17 8v9H8"/></svg>';
+const ICO_EQ='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h14M5 15h14"/></svg>';
+
+function dpMesLabel(v){ if(!v) return 'Selecionar mês'; const y=v.slice(0,4), m=+v.slice(5,7); return (DP_MF[m-1]||'')+' de '+y; }
+function dpDataLabel(v){ if(!v) return 'dd/mm/aaaa'; const p=String(v).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function dpMes(id,val,cb){ return `<span class="dpw"><input type="hidden" id="${id}" value="${val||''}"><button type="button" class="datepick" id="${id}-btn" data-mode="mes" onclick="DP.open('${id}','mes','${cb||''}')"><span class="dp-val${val?'':' ph'}">${dpMesLabel(val)}</span>${ICO_CAL}</button></span>`; }
+function dpData(id,val,cb){ return `<span class="dpw"><input type="hidden" id="${id}" value="${val||''}"><button type="button" class="datepick" id="${id}-btn" data-mode="data" onclick="DP.open('${id}','data','${cb||''}')"><span class="dp-val${val?'':' ph'}">${dpDataLabel(val)}</span>${ICO_CAL}</button></span>`; }
+
+const DP={
+  el:null, id:null, cb:null, mode:null, st:null,
+  open(id,mode,cb){
+    this.close();
+    this.id=id; this.mode=mode; this.cb=cb||null;
+    const h=document.getElementById(id); const v=(h&&h.value)||''; const has=!!v;
+    const now=new Date(); let y,m,d;
+    if(has){ y=+v.slice(0,4); m=+v.slice(5,7); d=(mode==='data')?+v.slice(8,10):1; }
+    else { y=now.getFullYear(); m=now.getMonth()+1; d=now.getDate(); }
+    this.st={y,m,d,has,viewY:y,viewM:m,view:(mode==='data'?'days':'months'),decStart:y-((y%12+12)%12)};
+    const pop=document.createElement('div'); pop.className='dp-pop'; this.el=pop; document.body.appendChild(pop);
+    this.render(); this.position();
+    setTimeout(()=>{ document.addEventListener('mousedown',DP._out); document.addEventListener('keydown',DP._esc); window.addEventListener('resize',DP._rep); window.addEventListener('scroll',DP._rep,true); },0);
+  },
+  close(){
+    if(this.el){ this.el.remove(); this.el=null; }
+    document.removeEventListener('mousedown',DP._out); document.removeEventListener('keydown',DP._esc);
+    window.removeEventListener('resize',DP._rep); window.removeEventListener('scroll',DP._rep,true);
+    this.id=null; this.cb=null; this.st=null;
+  },
+  setVal(id,val){
+    const h=document.getElementById(id); if(h) h.value=val;
+    const b=document.getElementById(id+'-btn'); if(b){ const s=b.querySelector('.dp-val'); if(s){ s.textContent=(b.dataset.mode==='data'?dpDataLabel(val):dpMesLabel(val)); s.classList.remove('ph'); } }
+  },
+  commit(val){ const id=this.id, cb=this.cb; DP.setVal(id,val); this.close(); if(cb && typeof window[cb]==='function') window[cb](); },
+  nav(dir){ const s=this.st;
+    if(s.view==='days'){ s.viewM+=dir; if(s.viewM<1){s.viewM=12;s.viewY--;} else if(s.viewM>12){s.viewM=1;s.viewY++;} }
+    else if(s.view==='months'){ s.viewY+=dir; }
+    else { s.decStart+=dir*12; }
+    this.render();
+  },
+  go(v){ const s=this.st; if(v==='years'){ s.decStart=s.viewY-((s.viewY%12+12)%12); } s.view=v; this.render(); },
+  pickYear(y){ this.st.viewY=y; this.st.view='months'; this.render(); },
+  pickMonth(m){ const s=this.st; if(this.mode==='mes'){ this.commit(s.viewY+'-'+String(m).padStart(2,'0')); } else { s.viewM=m; s.view='days'; this.render(); } },
+  pickDay(d){ const s=this.st; this.commit(s.viewY+'-'+String(s.viewM).padStart(2,'0')+'-'+String(d).padStart(2,'0')); },
+  render(){
+    const s=this.st; let h='';
+    if(s.view==='days'){
+      h+=`<div class="dp-head"><button class="dp-nav" onclick="DP.nav(-1)" aria-label="Mês anterior">${ICO_L}</button><button class="dp-title" onclick="DP.go('months')">${DP_MF[s.viewM-1]} ${s.viewY}</button><button class="dp-nav" onclick="DP.nav(1)" aria-label="Próximo mês">${ICO_R}</button></div>`;
+      h+='<div class="dp-grid g7">'+DP_DOW.map(x=>`<div class="dp-dow">${x}</div>`).join('')+'</div>';
+      const first=new Date(s.viewY,s.viewM-1,1).getDay(); const dim=new Date(s.viewY,s.viewM,0).getDate();
+      const now=new Date(); const curMonth=(now.getFullYear()===s.viewY && now.getMonth()+1===s.viewM);
+      let cells='';
+      for(let i=0;i<first;i++) cells+='<div></div>';
+      for(let dd=1;dd<=dim;dd++){
+        const sel=(s.has && s.viewY===s.y && s.viewM===s.m && dd===s.d);
+        const tod=curMonth && dd===now.getDate();
+        cells+=`<button class="dp-cell${sel?' sel':''}${(tod&&!sel)?' today':''}" onclick="DP.pickDay(${dd})">${dd}</button>`;
+      }
+      h+='<div class="dp-grid g7" style="margin-top:3px">'+cells+'</div>';
+    } else if(s.view==='months'){
+      h+=`<div class="dp-head"><button class="dp-nav" onclick="DP.nav(-1)" aria-label="Ano anterior">${ICO_L}</button><button class="dp-title" onclick="DP.go('years')">${s.viewY}</button><button class="dp-nav" onclick="DP.nav(1)" aria-label="Próximo ano">${ICO_R}</button></div>`;
+      h+='<div class="dp-grid g3">'+DP_MS.map((mn,i)=>{
+        const sel=(this.mode==='mes') ? (s.has && s.viewY===s.y && (i+1)===s.m) : ((i+1)===s.viewM);
+        return `<button class="dp-cell${sel?' sel':''}" onclick="DP.pickMonth(${i+1})">${mn}</button>`;
+      }).join('')+'</div>';
+    } else {
+      const start=s.decStart;
+      h+=`<div class="dp-head"><button class="dp-nav" onclick="DP.nav(-1)" aria-label="Anos anteriores">${ICO_L}</button><button class="dp-title" onclick="DP.go('months')">${start} – ${start+11}</button><button class="dp-nav" onclick="DP.nav(1)" aria-label="Próximos anos">${ICO_R}</button></div>`;
+      let ys='';
+      for(let yy=start;yy<start+12;yy++){ ys+=`<button class="dp-cell${yy===s.viewY?' sel':''}" onclick="DP.pickYear(${yy})">${yy}</button>`; }
+      h+='<div class="dp-grid g3">'+ys+'</div>';
+    }
+    this.el.innerHTML=h;
+  },
+  position(){
+    const b=document.getElementById(this.id+'-btn'); if(!b||!this.el) return;
+    const r=b.getBoundingClientRect(); const pw=this.el.offsetWidth||262, ph=this.el.offsetHeight||300;
+    const vw=document.documentElement.clientWidth, vh=window.innerHeight;
+    let left=r.left; let top=r.bottom+6;
+    if(left+pw>vw-8) left=vw-8-pw; if(left<8) left=8;
+    if(top+ph>vh-8){ const above=r.top-6-ph; top=(above>8)?above:Math.max(8,vh-8-ph); }
+    this.el.style.left=(left+window.scrollX)+'px'; this.el.style.top=(top+window.scrollY)+'px';
+  }
+};
+DP._out=function(e){ if(!DP.el) return; const b=DP.id?document.getElementById(DP.id+'-btn'):null; if(DP.el.contains(e.target)||(b&&b.contains(e.target))) return; DP.close(); };
+DP._esc=function(e){ if(e.key==='Escape') DP.close(); };
+DP._rep=function(){ if(DP.el) DP.position(); };
+
 /* ============ FINANCEIRO ============ */
 let HONORARIOS=[], finMes=null, finOpenId=null, finTab='ativos', finPrioAtraso=false, finPainel=null, finListAberta=false;
 let finFatModo='mes', finFatMes=null, finFatAno=null, finFatIni=null, finFatFim=null, finFatData=null;
@@ -5366,7 +5492,8 @@ function mesAtual(){ return new Date().toISOString().slice(0,7); }
 
 function carregarFinanceiro(){
   finListAberta=false;
-  if(!finMes){ finMes=mesAtual(); const i=document.getElementById('fin-mes'); if(i) i.value=finMes; }
+  if(!finMes){ finMes=mesAtual(); }
+  const finMesHost=document.getElementById('fin-mes-host'); if(finMesHost) finMesHost.innerHTML=dpMes('fin-mes', finMes, 'setFinMes');
   if(!finFatMes) finFatMes=mesAtual();
   if(!finFatAno) finFatAno=new Date().getFullYear();
   carregarPainel();
@@ -5501,12 +5628,12 @@ function renderFatControls(){
     +'</div>';
   let inputs='';
   if(finFatModo==='mes'){
-    inputs=`<label>Mês <input type="month" id="ff-mes" value="${esc(finFatMes||mesAtual())}" onchange="fatInput()"></label>`;
+    inputs=`<label>Mês ${dpMes('ff-mes', finFatMes||mesAtual(), 'fatInput')}</label>`;
   }else if(finFatModo==='ano'){
     inputs=`<label>Ano <input type="number" id="ff-ano" min="2000" max="2100" step="1" value="${esc(String(finFatAno||new Date().getFullYear()))}" onchange="fatInput()"></label>`;
   }else{
-    inputs=`<label>De <input type="date" id="ff-ini" value="${esc(finFatIni||'')}" onchange="fatInput()"></label>`
-          +`<label>Até <input type="date" id="ff-fim" value="${esc(finFatFim||'')}" onchange="fatInput()"></label>`;
+    inputs=`<label>De ${dpData('ff-ini', finFatIni||'', 'fatInput')}</label>`
+          +`<label>Até ${dpData('ff-fim', finFatFim||'', 'fatInput')}</label>`;
   }
   box.innerHTML=`<span class="fin-fat-lbl">Faturamento</span>${seg}<div class="ff-inputs">${inputs}</div>`;
 }
@@ -5551,13 +5678,14 @@ async function fatRecalc(){
     const rec=Number(r.total_recebido)||0, desp=Number(r.total_despesas)||0, luc=Number(r.lucro)||(rec-desp);
     const np=Number(r.qtd_parcelas)||0, npr=Number(r.qtd_processos)||0;
     finFatData={ini:p.ini, fim:p.fim, recebido:rec, despesas:desp, lucro:luc, parcelas:np, processos:npr};
-    const stat=(lbl,val,cor)=>`<div class="ff-stat"><span class="ff-lbl">${lbl}</span><span class="ff-num" style="color:${cor}">${esc(fmtBRL(val))}</span></div>`;
+    const line=(ic,lbl,val,cor,pref)=>`<div class="ff-line"><span class="ff-line-l"><span class="ff-line-ic" style="color:${cor}">${ic}</span>${lbl}</span><span class="ff-line-v" style="color:${cor}">${pref||''}${esc(fmtBRL(val))}</span></div>`;
+    const corSaldo = luc>=0?'var(--ok)':'var(--danger)';
     res.innerHTML=`<div class="ff-sub">${np} ${np===1?'parcela paga':'parcelas pagas'} · ${npr} ${npr===1?'processo':'processos'}</div>`
-      +'<div class="ff-stats">'
-      +stat('Recebido', rec, 'var(--ok)')
-      +stat('Despesas', desp, 'var(--danger)')
-      +stat('Lucro', luc, luc>=0?'var(--ok)':'var(--danger)')
-      +'</div>';
+      +'<div class="ff-demo">'
+      +line(ICO_UP,'Recebido', rec, 'var(--ok)','')
+      +line(ICO_DN,'Despesas', desp, 'var(--danger)','− ')
+      +'</div>'
+      +`<div class="ff-saldo"><span class="ff-saldo-l"><span class="ff-line-ic" style="color:${corSaldo}">${ICO_EQ}</span>Saldo do período</span><span class="ff-saldo-v" style="color:${corSaldo}">${esc(fmtBRL(luc))}</span></div>`;
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
     res.innerHTML='<div class="ff-sub" style="color:var(--danger)">Não foi possível calcular: '+esc(traduzErro(e))+'</div>'; }
 }
