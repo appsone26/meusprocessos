@@ -594,6 +594,8 @@
   .seg{display:flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:3px}
   .seg button{border:0;background:none;color:var(--muted);padding:7px 14px;border-radius:7px;font-family:inherit;font-size:.86rem;font-weight:500;cursor:pointer}
   .seg button.active{background:rgba(34,211,238,.14);color:var(--cyan)}
+  .proc-count-chip{display:inline-flex;align-items:center;background:rgba(34,211,238,.14);color:var(--cyan);font-size:.72rem;font-weight:600;padding:2px 9px;border-radius:20px;vertical-align:middle;margin-left:8px;white-space:nowrap;letter-spacing:.2px}
+  html.tema-claro .proc-count-chip{background:rgba(79,70,229,.12)}
   .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;transition:border-color .15s}
   .card:hover{border-color:rgba(34,211,238,.4)}
@@ -1007,7 +1009,7 @@
       <!-- VIEW: PROCESSOS -->
       <div id="view-processos">
         <div class="view-head">
-          <div><h2>Processos</h2><p>Acompanhe seus processos ativos e finalizados.</p></div>
+          <div><h2>Processos <span id="proc-count-chip" class="proc-count-chip" style="display:none"></span></h2><p>Acompanhe seus processos ativos e finalizados.</p></div>
           <div class="vh-actions">
             <button class="btn btn-primary btn-sm" onclick="abrirModalProcesso()">+ Novo processo</button>
             <button class="btn btn-ghost btn-sm" onclick="exportarProcessosExcel()">📊 Excel</button>
@@ -1927,6 +1929,7 @@ window.addEventListener('popstate', function(e){
 /* estado do app */
 let TOKEN = null, SESS = null;
 let CLIENTES = [], PROCESSOS = [], ALERTAS = [], LIXEIRA = [], PROVALERTAS = [], alertaTab = 'agenda', statusProc = 'ativo', alertExpand = false, procAtual = null, relPeriodo = '7', relHorizonte = 7, RELDATA = null, relCat = 'novos', relProvTab = 'pendentes';
+let TOTAL_ATIVOS = null; // total de processos ativos cadastrados (chip da aba Processos)
 
 /* ============================================================
    BUSCA UNIVERSAL — local, sobre CLIENTES / PROCESSOS / ALERTAS
@@ -3660,12 +3663,20 @@ function setStatusProc(st){ statusProc=st;
   document.getElementById('seg-final').classList.toggle('active',st==='finalizado');
   carregarProcessos();
 }
+function atualizarChipAtivos(){
+  const chip=document.getElementById('proc-count-chip');
+  if(!chip) return;
+  if(TOTAL_ATIVOS===null){ chip.style.display='none'; return; }
+  chip.textContent = TOTAL_ATIVOS===1 ? '1 ativo' : TOTAL_ATIVOS+' ativos';
+  chip.style.display='';
+}
 async function carregarProcessos(){
   document.getElementById('proc-area').innerHTML='<div class="loading">Carregando…</div>';
   try{
     const {data,error} = await db.rpc('sp_listar_processos',{p_token:TOKEN,p_status:statusProc});
     if(error) throw error;
     PROCESSOS=data||[];
+    if(statusProc==='ativo'){ TOTAL_ATIVOS = PROCESSOS.length; atualizarChipAtivos(); }
     // Carrega config Escavador em paralelo (silencioso se falhar)
     try{
       const {data:cfgData}=await db.rpc('sp_escavador_config_buscar',{p_token:TOKEN});
@@ -5054,16 +5065,14 @@ function esconderSugestoesDoc(){ const box=document.getElementById('sug-doc'); i
 function abrirModalMov(tipo){
   if(procAtual && procAtual.status==='finalizado'){ toast('Processo finalizado. Restaure para editar.','err'); return; }
   document.getElementById('mm-tipo').value=tipo; document.getElementById('mm-id').value='';
-  document.getElementById('mm-desc').value='';
+  document.getElementById('mm-desc').value=''; document.getElementById('mm-data').value=new Date().toISOString().slice(0,10);
   document.getElementById('mm-msg').className='modal-msg';
   if(tipo==='providencia'){ document.getElementById('mm-title').textContent='Nova providência';
     document.getElementById('mm-sub').textContent='O que precisa ser feito (próximo passo).';
     document.getElementById('mm-datalabel').textContent='Prazo';
-    document.getElementById('mm-data').value='';   // prazo obrigatório: começa em branco, força o usuário a escolher
   }else{ document.getElementById('mm-title').textContent='Novo andamento';
     document.getElementById('mm-sub').textContent='Registre o que aconteceu no processo.';
     document.getElementById('mm-datalabel').textContent='Data';
-    document.getElementById('mm-data').value=new Date().toISOString().slice(0,10);   // andamento: fato passado, default hoje
   }
   document.getElementById('modal-mov').classList.add('open');
 }
@@ -5071,12 +5080,7 @@ async function salvarMov(){
   const desc=document.getElementById('mm-desc').value.trim(); const msg=document.getElementById('mm-msg');
   if(!desc){ msg.textContent='Informe a descrição.'; msg.className='modal-msg err'; return; }
   const tipo=document.getElementById('mm-tipo').value;
-  let data=document.getElementById('mm-data').value;
-  if(tipo==='providencia'){
-    if(!data){ msg.textContent='Informe o prazo.'; msg.className='modal-msg err'; return; }
-  }else{
-    data = data || new Date().toISOString().slice(0,10);
-  }
+  const data=document.getElementById('mm-data').value||new Date().toISOString().slice(0,10);
   const btn=document.getElementById('mm-save'); setLoading(btn,true);
   try{ const {error}=await db.rpc('sp_salvar_movimentacao',{p_token:TOKEN,p_processo_id:procAtual.id,p_descricao:desc,p_data_mov:data,p_tipo:tipo,p_id:null}); if(error) throw error;
     fecharModal('modal-mov'); toast(tipo==='providencia'?'Providência adicionada.':'Andamento registrado.','ok'); carregarMovs();
