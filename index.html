@@ -1864,7 +1864,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.139';
+const APP_VERSAO = 'v1.8.140';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2335,7 +2335,7 @@ function irPara(view, _fromPop){
 
 /* ============ AVISO IN-APP (Gestor → todos escritórios) ============ */
 let AVISO_POLL_TIMER=null;
-const AVISO_SESS_KEY='mp_aviso_visto_id'; // sessionStorage — guarda o id do aviso já fechado
+// "Já visto" agora é controlado no banco, por escritório (sp_aviso_gestor_marcar_visto).
 
 function iniciarPollingAviso(){
   verificarAvisoGestor(); // checa imediatamente ao logar
@@ -2349,9 +2349,7 @@ async function verificarAvisoGestor(){
     if(error) return;
     const row=(Array.isArray(data)?data[0]:data)||{};
     if(!row.id){ fecharAvisoGestorSilencioso(); return; }
-    // Se o usuário já fechou esse aviso nesta sessão, não mostra de novo
-    const visto=sessionStorage.getItem(AVISO_SESS_KEY);
-    if(visto===String(row.id)) return;
+    // O banco já esconde o que este escritório fechou; se veio id, é pra mostrar.
     // Exibe a bolha
     const msgEl=document.getElementById('aviso-gestor-msg');
     const bubble=document.getElementById('aviso-gestor-bubble');
@@ -2362,12 +2360,13 @@ async function verificarAvisoGestor(){
   }catch(e){ /* silencioso */ }
 }
 
-function fecharAvisoGestor(){
+async function fecharAvisoGestor(){
   const bubble=document.getElementById('aviso-gestor-bubble');
   if(!bubble) return;
   const id=bubble.dataset.avisoId;
-  if(id) sessionStorage.setItem(AVISO_SESS_KEY, id);
-  bubble.classList.remove('show');
+  bubble.classList.remove('show'); // esconde na hora
+  // Grava no banco que este escritório fechou este aviso — não volta em nenhum aparelho
+  if(id){ try{ await db.rpc('sp_aviso_gestor_marcar_visto',{p_token:TOKEN,p_aviso_id:id}); }catch(_){/* silencioso */} }
 }
 
 function fecharAvisoGestorSilencioso(){
@@ -2385,8 +2384,7 @@ async function publicarAvisoGestor(){
     const {data,error}=await db.rpc('sp_aviso_gestor_salvar',{p_token:TOKEN,p_mensagem:txt});
     if(error) throw error;
     if(st) st.textContent='✅ Aviso publicado! Aparecerá para todos os escritórios logados.';
-    // Limpa o sessionStorage local para o próprio dono ver o aviso
-    sessionStorage.removeItem(AVISO_SESS_KEY);
+    // Aviso novo tem id novo — o banco mostra pra todos, inclusive pro próprio dono
     verificarAvisoGestor();
     toast('Aviso publicado com sucesso.','ok');
   }catch(e){
