@@ -215,7 +215,7 @@
     .cli-proc-mob{display:inline-block;flex:0 0 auto;color:var(--cyan);cursor:pointer;font-weight:500;white-space:nowrap}
   }
   .li-acts{display:flex;gap:6px;flex-shrink:0}
-  @media (max-width:640px){.li-tags{display:none}.li-main{display:block}.li-sub{margin-top:1px}.alert-row:not(.trash){display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:start}.alert-row:not(.trash) .ar-main{grid-column:1;grid-row:1;min-width:0}.alert-row:not(.trash) .ar-when{grid-column:1;grid-row:2;justify-self:start}.alert-row:not(.trash) .li-acts{display:contents}.alert-row:not(.trash) .li-acts .lnk{grid-column:2;justify-self:end}.alert-row:not(.trash) .li-acts .lnk:first-child{grid-row:1;align-self:start}.alert-row:not(.trash) .li-acts .lnk:last-child{grid-row:2;align-self:end}.alert-row.trash{flex-wrap:wrap;align-items:flex-start}}
+  @media (max-width:640px){.li-tags>.tagx{display:none}.li-main{display:block}.li-sub{margin-top:1px}.alert-row:not(.trash){display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:start}.alert-row:not(.trash) .ar-main{grid-column:1;grid-row:1;min-width:0}.alert-row:not(.trash) .ar-when{grid-column:1;grid-row:2;justify-self:start}.alert-row:not(.trash) .li-acts{display:contents}.alert-row:not(.trash) .li-acts .lnk{grid-column:2;justify-self:end}.alert-row:not(.trash) .li-acts .lnk:first-child{grid-row:1;align-self:start}.alert-row:not(.trash) .li-acts .lnk:last-child{grid-row:2;align-self:end}.alert-row.trash{flex-wrap:wrap;align-items:flex-start}}
   .field .hint{font-size:.75rem;color:var(--muted-2);margin-top:5px}
   .field .hint.good{color:var(--ok)} .field .hint.bad{color:var(--danger)}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -1895,7 +1895,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.142';
+const APP_VERSAO = 'v1.8.143';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
