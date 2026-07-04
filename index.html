@@ -1174,6 +1174,11 @@
           <div id="pf-robo-ro" class="msub" style="display:none;color:var(--warn)">Somente o responsável (master) pode alterar o robô. Você pode visualizar.</div>
 
           <div class="robo-row">
+            <div class="rr-main"><div class="rr-tit">Exigir e-mail do cliente</div><div class="rr-sub">Ligado, o cadastro de cliente pede e-mail (o robô usa pra avisar). Desligue para cadastrar cliente sem e-mail. Salva na hora.</div></div>
+            <label class="sw"><input type="checkbox" id="cli-email-obrig" onchange="salvarClienteEmailObrig(this.checked)"><span class="sl"></span></label>
+          </div>
+
+          <div class="robo-row">
             <div class="rr-main"><div class="rr-tit">Ligar o robô</div><div class="rr-sub">Chave geral dos envios automáticos. Desligada, nada sai automaticamente.</div></div>
             <label class="sw"><input type="checkbox" id="robo-ativo"><span class="sl"></span></label>
           </div>
@@ -1398,7 +1403,7 @@
     <input type="hidden" id="mc-id">
     <div class="field"><label>Nome <span class="req">*</span></label><input type="text" id="mc-nome" placeholder="Nome do cliente"></div>
     <div class="row2">
-      <div class="field"><label>E-mail <span class="req">*</span></label><input type="email" id="mc-email" placeholder="cliente@email.com"></div>
+      <div class="field"><label>E-mail <span class="req" id="mc-email-req">*</span></label><input type="email" id="mc-email" placeholder="cliente@email.com"></div>
       <div class="field"><label>Telefone <span class="req">*</span></label><input type="text" id="mc-tel" placeholder="(00) 00000-0000" oninput="maskTel(this)"></div>
     </div>
     <div class="row2">
@@ -1898,7 +1903,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.144';
+const APP_VERSAO = 'v1.8.145';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3620,6 +3625,7 @@ function abrirModalCliente(id){
     document.getElementById('mc-uf').value=c.uf||'';
     carregarEdicoes('clientes', c.id, 'mc-edicoes', 'mc-edicoes-sec');
   }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); }
+  const reqEl=document.getElementById('mc-email-req'); if(reqEl) reqEl.style.display=(SESS&&SESS.cliente_email_obrig===false)?'none':'';
   m.classList.add('open');
 }
 // Modal "Processos de <cliente>" — abre a lista de processos ativos do cliente
@@ -3673,15 +3679,16 @@ async function salvarCliente(){
   const msg=document.getElementById('mc-msg');
   function erro(t){ msg.textContent=t; msg.className='modal-msg err'; }
   if(!nome)  return erro('Informe o nome do cliente.');
-  if(!email) return erro('Informe o e-mail do cliente.');
-  if(!emailOk(email)) return erro('Digite um e-mail válido.');
+  const emailObrig=!(SESS&&SESS.cliente_email_obrig===false);
+  if(emailObrig && !email) return erro('Informe o e-mail do cliente.');
+  if(email && !emailOk(email)) return erro('Digite um e-mail válido.');
   if(!tel)   return erro('Informe o telefone do cliente.');
   if(!nasc)  return erro('Informe a data de nascimento.');
   if(new Date(nasc) > new Date()) return erro('A data de nascimento não pode ser no futuro.');
   const id=document.getElementById('mc-id').value||null;
   const btn=document.getElementById('mc-save'); setLoading(btn,true);
   try{ const {error}=await db.rpc('sp_salvar_cliente',{p_token:TOKEN,p_id:id,p_nome:nome,
-      p_email:email, p_telefone:tel, p_data_nasc:nasc, p_cpf:(cpf||null),
+      p_email:(email||null), p_telefone:tel, p_data_nasc:nasc, p_cpf:(cpf||null),
       p_nacionalidade:(nac||null), p_estado_civil:(ec||null), p_profissao:(prof||null),
       p_cep:(cep||null), p_logradouro:(log||null), p_numero:(num||null), p_complemento:(comp||null),
       p_bairro:(bai||null), p_cidade:(cid||null), p_uf:(uf||null)}); if(error) throw error;
@@ -4136,6 +4143,23 @@ function sincronizarLogoPos(){
     if(SESS){ SESS.logo_pos=pos; salvarSessao(SESS); }
     renderTopoEscritorio(SESS);
   }).catch(()=>{});
+  db.rpc('sp_cliente_email_obrig',{p_token:TOKEN}).then(r=>{
+    if(SESS){ SESS.cliente_email_obrig=(r&&r.data===false)?false:true; salvarSessao(SESS); }
+  }).catch(()=>{});
+}
+async function salvarClienteEmailObrig(val){
+  try{
+    const {error}=await db.rpc('sp_salvar_cliente_email_obrig',{p_token:TOKEN,p_val:!!val});
+    if(error) throw error;
+    if(SESS){ SESS.cliente_email_obrig=!!val; salvarSessao(SESS); }
+    const req=document.getElementById('mc-email-req'); if(req) req.style.display=val?'':'none';
+    toast(val?'E-mail do cliente agora é obrigatório.':'E-mail do cliente agora é opcional.','ok');
+  }catch(e){
+    if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
+    if((e.message||'').includes('PERMISSAO_NEGADA')) toast('Só o responsável (master) pode alterar isso.','err');
+    else toast('Não consegui salvar essa opção.','err');
+    const el=document.getElementById('cli-email-obrig'); if(el) el.checked=!val;
+  }
 }
 function pfLogoAplicarPos(pos){
   PERFIL_LOGO_POS=pos;
@@ -6335,7 +6359,8 @@ function roboEhMaster(){ return !!((PERM&&PERM.perfil==='master')||(SESS&&SESS.p
 async function carregarRobo(){
   const master=roboEhMaster();
   const ro=document.getElementById('pf-robo-ro'); if(ro) ro.style.display=master?'none':'block';
-  ['robo-ativo','robo-aniv-ativo','robo-aniv-assunto','robo-aniv-corpo','robo-prazo-ativo','robo-prazo-email','robo-prazo-dias','robo-prazo-resp','robo-avulso-assunto','robo-avulso-corpo'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=!master; });
+  ['robo-ativo','robo-aniv-ativo','robo-aniv-assunto','robo-aniv-corpo','robo-prazo-ativo','robo-prazo-email','robo-prazo-dias','robo-prazo-resp','robo-avulso-assunto','robo-avulso-corpo','cli-email-obrig'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=!master; });
+  const ceo=document.getElementById('cli-email-obrig'); if(ceo) ceo.checked=!(SESS&&SESS.cliente_email_obrig===false);
   ['robo-cfg-save','robo-teste-btn','robo-data-nova','robo-avulso-btn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=master?'':'none'; });
   try{
     const {data,error}=await db.rpc('sp_robo_obter_config',{p_token:TOKEN});
