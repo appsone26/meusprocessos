@@ -773,7 +773,9 @@
   .pf-logo-col{display:flex;flex-direction:column;align-items:center;gap:10px}
   .pf-logo-prev{width:120px;height:120px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#fff;border:1.5px solid var(--line);font-family:'Space Grotesk';font-weight:700;font-size:2.1rem;color:#fff}
   .pf-logo-prev.empty{background:linear-gradient(135deg,var(--cyan),var(--blue));color:#06121e}
-  .pf-logo-prev img{width:100%;height:100%;object-fit:cover}
+  .pf-logo-prev img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
+  .pf-logo-prev.pf-arrasta{cursor:grab;touch-action:none}
+  .pf-logo-prev.arrastando{cursor:grabbing;border-color:var(--cyan)}
   .ajuda-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;max-width:980px}
   .ajuda-item{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .ajuda-head{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 16px;background:none;border:0;color:var(--text);font-family:inherit;font-size:.98rem;font-weight:600;text-align:left;cursor:pointer}
@@ -1131,6 +1133,7 @@
                 <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('pf-logo-input').click()">Trocar logo</button>
                 <button class="btn btn-ghost btn-sm" type="button" id="pf-logo-remove" style="display:none" onclick="removerPerfilLogo()">Remover</button>
               </div>
+              <div class="pf-hint" id="pf-logo-hint" style="display:none">Arraste o logo pra ajustar · salve no botão abaixo.</div>
               <div class="pf-hint">PNG ou JPG. Fica redondo no topo.</div>
             </div>
             <div class="pf-fields">
@@ -1895,7 +1898,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.143';
+const APP_VERSAO = 'v1.8.144';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2298,6 +2301,7 @@ function abrirApp(s){
   document.body.classList.add('in-app');
   document.body.style.overflow='';
   renderTopoEscritorio(s);
+  sincronizarLogoPos();
   document.getElementById('side-versao').textContent='Meus Processos '+APP_VERSAO;
   // Garante que o botão de tema exiba o ícone correto após login
   aplicarTema(localStorage.getItem(TEMA_KEY)||'escuro');
@@ -4082,7 +4086,7 @@ function renderTopoEscritorio(s){
   btn.title='Perfil — '+nome; btn.setAttribute('aria-label','Perfil do escritório '+nome);
   const logo=s&&s.logo_url;
   btn.innerHTML='';
-  if(logo){ const i=document.createElement('img'); i.src=logo; i.alt=''; btn.appendChild(i); btn.style.background='#fff'; }
+  if(logo){ const i=document.createElement('img'); i.src=logo; i.alt=''; i.style.objectPosition=(s&&s.logo_pos)||'50% 50%'; btn.appendChild(i); btn.style.background='#fff'; }
   else { btn.textContent=iniciaisEscritorio(nome); btn.style.background=''; }
 }
 function abrirPerfil(){
@@ -4123,6 +4127,40 @@ function renderAjuda(secoes){
 }
 function toggleAjuda(btn){ const it=btn.closest('.ajuda-item'); if(it) it.classList.toggle('open'); }
 let PERFIL_LOGO; // undefined = sem mudança; '' = remover; string = novo data URL
+let PERFIL_LOGO_POS='50% 50%'; // object-position do logo dentro do círculo
+function ehMasterPerfil(){ return !!((PERM&&PERM.perfil==='master')||(SESS&&SESS.perfil==='master')); }
+function sincronizarLogoPos(){
+  if(!TOKEN) return;
+  db.rpc('sp_logo_pos',{p_token:TOKEN}).then(r=>{
+    const pos=(r&&r.data)||'50% 50%';
+    if(SESS){ SESS.logo_pos=pos; salvarSessao(SESS); }
+    renderTopoEscritorio(SESS);
+  }).catch(()=>{});
+}
+function pfLogoAplicarPos(pos){
+  PERFIL_LOGO_POS=pos;
+  const pi=document.querySelector('#pf-logo-prev img'); if(pi) pi.style.objectPosition=pos;
+  const ti=document.querySelector('#tb-esc-logo img'); if(ti) ti.style.objectPosition=pos;
+}
+function pfLogoDragSetup(box){
+  if(box._dragOn) return; box._dragOn=true;
+  let drag=false,sx=0,sy=0,px=50,py=50;
+  const clamp=v=>Math.max(0,Math.min(100,v));
+  box.addEventListener('pointerdown',e=>{
+    if(!box.querySelector('img')||!ehMasterPerfil()) return;
+    drag=true; box.classList.add('arrastando');
+    const m=(PERFIL_LOGO_POS||'50% 50%').match(/(\d+)%\s+(\d+)%/); px=m?+m[1]:50; py=m?+m[2]:50;
+    sx=e.clientX; sy=e.clientY; try{box.setPointerCapture(e.pointerId);}catch(_){}
+  });
+  box.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const W=box.clientWidth||120,H=box.clientHeight||120;
+    const nx=clamp(px-(e.clientX-sx)/W*110), ny=clamp(py-(e.clientY-sy)/H*110);
+    pfLogoAplicarPos(Math.round(nx)+'% '+Math.round(ny)+'%');
+  });
+  const end=()=>{ drag=false; box.classList.remove('arrastando'); };
+  box.addEventListener('pointerup',end); box.addEventListener('pointercancel',end);
+}
 function pfSet(id,v){ const el=document.getElementById(id); if(el) el.value=(v==null?'':v); }
 function pfVal(id){ const el=document.getElementById(id); return el?el.value:''; }
 async function carregarPerfil(){
@@ -4136,6 +4174,7 @@ async function carregarPerfil(){
     pfSet('pf-razao',p.razao_social); pfSet('pf-oab',p.oab); pfSet('pf-tel',p.telefone);
     pfSet('pf-end',p.endereco); pfSet('pf-cidade',p.cidade); pfSet('pf-uf',p.uf); pfSet('pf-cep',p.cep);
     pfSet('pf-email',p.email);
+    PERFIL_LOGO_POS=(SESS&&SESS.logo_pos)||'50% 50%';
     renderPerfilLogo(p.logo_url, p.nome);
     renderPlanoCard(p);
     // atualiza o limite de upload com o valor do pacote do escritório
@@ -4150,10 +4189,18 @@ async function carregarPerfil(){
 }
 function renderPerfilLogo(url,nome){
   const box=document.getElementById('pf-logo-prev'); if(!box) return;
-  box.innerHTML='';
-  if(url){ const i=document.createElement('img'); i.src=url; i.alt='Logo do escritório'; box.appendChild(i); box.classList.remove('empty'); }
-  else { box.textContent=iniciaisEscritorio(nome||pfVal('pf-nome')); box.classList.add('empty'); }
+  box.innerHTML=''; box.classList.remove('pf-arrasta');
+  const master=ehMasterPerfil();
+  if(url){
+    const i=document.createElement('img'); i.src=url; i.alt='Logo do escritório';
+    i.style.objectPosition=(PERFIL_LOGO_POS||(SESS&&SESS.logo_pos)||'50% 50%');
+    box.appendChild(i); box.classList.remove('empty');
+    if(master){ box.classList.add('pf-arrasta'); pfLogoDragSetup(box); }
+  } else {
+    box.textContent=iniciaisEscritorio(nome||pfVal('pf-nome')); box.classList.add('empty');
+  }
   const rm=document.getElementById('pf-logo-remove'); if(rm) rm.style.display=url?'':'none';
+  const hint=document.getElementById('pf-logo-hint'); if(hint) hint.style.display=(url&&master)?'':'none';
 }
 function onPerfilLogoEscolhido(input){
   const file=input.files&&input.files[0]; input.value='';
@@ -4166,6 +4213,7 @@ function onPerfilLogoEscolhido(input){
       const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
       cv.getContext('2d').drawImage(img,0,0,w,h);
       PERFIL_LOGO=cv.toDataURL('image/png');
+      PERFIL_LOGO_POS='50% 50%';
       renderPerfilLogo(PERFIL_LOGO, pfVal('pf-nome'));
       toast('Logo carregado. Clique em Salvar para confirmar.','ok');
     };
@@ -4227,7 +4275,9 @@ async function salvarPerfil(){
     });
     if(error) throw error;
     const p=(Array.isArray(data)?data[0]:data)||{};
-    if(SESS){ SESS.logo_url=p.logo_url||null; SESS.escritorio_nome=p.nome||SESS.escritorio_nome; salvarSessao(SESS); }
+    const posSalvar=PERFIL_LOGO_POS||(SESS&&SESS.logo_pos)||'50% 50%';
+    try{ await db.rpc('sp_salvar_logo_pos',{p_token:TOKEN,p_pos:posSalvar}); }catch(_){}
+    if(SESS){ SESS.logo_url=p.logo_url||null; SESS.escritorio_nome=p.nome||SESS.escritorio_nome; SESS.logo_pos=posSalvar; salvarSessao(SESS); }
     renderTopoEscritorio(SESS);
     PERFIL_LOGO=undefined;
     renderPerfilLogo(p.logo_url, p.nome);
