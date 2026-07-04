@@ -1899,7 +1899,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.146';
+const APP_VERSAO = 'v1.8.147';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2215,6 +2215,7 @@ function traduzErro(e){ const r=(e&&(e.message||e.hint||''))||'';
   if(r.includes('SESSAO_INVALIDA')) return 'Sua sessão expirou. Entre novamente.';
   if(r.includes('PERMISSAO_NEGADA')) return 'Você não tem permissão para isso.';
   if(r.includes('LIMITE_PROCESSOS')) return 'Você atingiu o limite de processos do seu plano. Finalize um processo ou faça upgrade.';
+  if(r.includes('CNJ_DUPLICADO')) return 'Já existe um processo com esse número no seu escritório.';
   if(r.includes('LIMITE_USUARIOS')) return 'Você atingiu o limite de usuários do seu plano.';
   if(r.includes('NAO_PODE_EXCLUIR_SE')) return 'Você não pode excluir o seu próprio usuário.';
   if(r.includes('NAO_PODE_EXCLUIR_MASTER')) return 'O usuário master (dono) não pode ser excluído.';
