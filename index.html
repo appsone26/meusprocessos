@@ -1926,7 +1926,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.149';
+const APP_VERSAO = 'v1.8.150';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5011,15 +5011,14 @@ async function escAtualizarTodos(){
     if(error) throw error;
     if(!data||!data.ok){ toast(data?.erro||'Não foi possível iniciar a atualização.','err'); return; }
     const lista=data.processos||[];
-    if(!lista.length){ toast('Todos os processos já foram atualizados recentemente.','ok'); return; }
-    toast(`Atualizando ${lista.length} processo${lista.length>1?'s':''}…`,'ok');
-    // Edge Function processa em massa
+    if(!lista.length){ toast('Nenhum processo para atualizar — os monitorados já são acompanhados sozinhos.','ok'); return; }
+    toast(`Enviando ${lista.length} processo${lista.length>1?'s':''} ao tribunal…`,'ok');
+    // Edge dispara a atualização NO TRIBUNAL (assíncrona): os andamentos novos
+    // chegam depois pelo webhook. A resposta traz enviados/ja_atualizados/erros/msg.
     const r=await efEscavador({action:'atualizar_todos',processos:lista});
-    if(r.importados>0){
-      toast(`✅ ${r.importados} andamento${r.importados>1?'s':''} importado${r.importados>1?'s':''} em ${r.processados} processo${r.processados>1?'s':''}.`,'ok');
-      carregarProcessos();
-    }else{
-      toast(r.msg||'Todos os processos já estão atualizados.','ok');
+    toast(r.msg||'Solicitação enviada ao tribunal.','ok');
+    if(r.erros>0){
+      toast(`⚠️ ${r.erros} processo${r.erros>1?'s':''} não pôde ser enviado. Tente novamente mais tarde.`,'err');
     }
   }catch(e){
     if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
