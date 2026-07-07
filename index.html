@@ -1364,6 +1364,26 @@
           </div>
           <div id="pnl-aviso-status" style="margin-top:8px;font-size:.8rem;color:var(--muted)"></div>
         </div>
+        <!-- Card: Teste de cobrança Pix (Mercado Pago) — só master -->
+        <div class="card" id="pnl-pix-card" style="margin-bottom:18px">
+          <div class="view-head" style="margin-bottom:10px"><div><h2 style="font-size:1.05rem">💳 Teste de cobrança Pix</h2><p style="margin:0;font-size:.8rem">Gera uma cobrança Pix real. Use valores baixos — cai de verdade.</p></div></div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;max-width:640px">
+            <div style="flex:1 1 240px">
+              <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Escritório</label>
+              <div style="background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:.88rem;color:var(--text)">Edgard Investimentos<br><span style="font-size:.72rem;color:var(--muted-2)">640162a3-2f0a-4bae-b885-d242e0d28ec2</span></div>
+            </div>
+            <div style="flex:0 0 120px">
+              <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Valor (R$)</label>
+              <input id="pix-valor" value="0,50" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 12px">
+            </div>
+          </div>
+          <div style="margin-top:10px;max-width:640px">
+            <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Descrição</label>
+            <input id="pix-desc" value="Teste Meus Processos" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 12px">
+          </div>
+          <div style="margin-top:12px"><button class="btn btn-primary btn-sm" id="pix-btn-gerar" type="button" onclick="pixGerarCobranca()">Gerar cobrança Pix</button></div>
+          <div id="pix-resultado" style="margin-top:14px"></div>
+        </div>
         <div id="pnl-cap"><div class="loading">Carregando…</div></div>
         <div class="view-head" style="margin:26px 0 10px"><div><h2 style="font-size:1.05rem">Escritórios</h2><p style="margin:0">Limite e consumo de cada conta.</p></div></div>
         <div class="pnl-tabs">
@@ -1906,7 +1926,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.148';
+const APP_VERSAO = 'v1.8.149';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2532,6 +2552,103 @@ function renderPainelCap(c, escTot){
       '<button class="pnl-btn-acao ok" type="button" onclick="abrirIncrIA()">+ Incrementar pool</button>')+
     saldoCard+
     '</div>';
+}
+
+// ===================================================================
+// Teste de cobrança Pix (Mercado Pago) — só master. Muleta de polling.
+// (O webhook empurrado é o caminho definitivo; ver Edge "pagamentos".)
+// ===================================================================
+const PIX_ESC_ID   = '640162a3-2f0a-4bae-b885-d242e0d28ec2';
+const PIX_ESC_MAIL = 'edgardinvestimentos@gmail.com';
+let PIX_POLL = null;
+let PIX_PAG  = null;
+
+async function pixEdge(payload){
+  const r = await fetch(SUPABASE_URL+'/functions/v1/pagamentos',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+    body: JSON.stringify(payload)
+  });
+  let j={}; try{ j=await r.json(); }catch(_){}
+  return { ok:r.ok, status:r.status, body:j };
+}
+function pixValorCentavos(s){
+  s=String(s||'').trim().replace(/[^\d.,]/g,'');
+  if(s.indexOf(',')>=0) s=s.replace(/\./g,'').replace(',','.');
+  const reais=Number(s);
+  if(!isFinite(reais)||reais<=0) return 0;
+  return Math.round(reais*100);
+}
+function pixEscAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function pixGerarCobranca(){
+  const btn=document.getElementById('pix-btn-gerar');
+  const out=document.getElementById('pix-resultado');
+  const centavos=pixValorCentavos(document.getElementById('pix-valor').value);
+  const desc=(document.getElementById('pix-desc').value||'').trim();
+  if(!centavos){ out.innerHTML='<div style="color:var(--danger);font-size:.85rem">Valor inválido.</div>'; return; }
+  if(PIX_POLL){ clearInterval(PIX_POLL); PIX_POLL=null; }
+  btn.disabled=true; btn.textContent='Gerando…';
+  out.innerHTML='<div style="color:var(--muted);font-size:.85rem">Gerando cobrança…</div>';
+  try{
+    const res=await pixEdge({ acao:'criar', token:TOKEN, escritorio_id:PIX_ESC_ID, valor_centavos:centavos, descricao:desc, email:PIX_ESC_MAIL });
+    if(!res.ok || res.body.erro){
+      out.innerHTML='<div style="color:var(--danger);font-size:.85rem">Erro ao gerar: '+pixEscAttr(res.body.erro||('HTTP '+res.status))+'</div>';
+    }else{
+      PIX_PAG={ pagamento_id:res.body.pagamento_id, mp_order_id:res.body.mp_order_id };
+      pixRenderPix(res.body);
+      pixIniciarPolling();
+    }
+  }catch(e){
+    out.innerHTML='<div style="color:var(--danger);font-size:.85rem">Falha de conexão: '+pixEscAttr(e&&e.message||e)+'</div>';
+  }
+  btn.disabled=false; btn.textContent='Gerar nova cobrança';
+}
+
+function pixRenderPix(b){
+  const out=document.getElementById('pix-resultado');
+  const qr = b.pix_qr_base64
+    ? '<img src="data:image/png;base64,'+b.pix_qr_base64+'" alt="QR Pix" style="width:200px;height:200px;border-radius:8px;background:#fff;padding:6px;box-sizing:border-box">'
+    : (b.ticket_url ? '<a href="'+pixEscAttr(b.ticket_url)+'" target="_blank" class="btn btn-ghost btn-sm">Abrir Pix</a>' : '<div style="color:var(--danger);font-size:.85rem">QR não retornado.</div>');
+  const cc=b.pix_copia_cola||'';
+  out.innerHTML=
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">'+
+      '<div>'+qr+'</div>'+
+      '<div style="flex:1 1 260px;min-width:240px">'+
+        '<label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Pix copia-e-cola</label>'+
+        '<div style="display:flex;gap:6px">'+
+          '<input id="pix-cc" readonly value="'+pixEscAttr(cc)+'" style="flex:1;min-width:0;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.8rem;padding:8px 10px">'+
+          '<button class="btn btn-ghost btn-sm" type="button" onclick="pixCopiar()">Copiar</button>'+
+        '</div>'+
+        '<div id="pix-status" style="margin-top:12px;font-size:.9rem;font-weight:600;color:var(--muted)">⏳ Aguardando pagamento…</div>'+
+        '<div style="margin-top:4px;font-size:.72rem;color:var(--muted-2)">A cobrança expira em ~30 min. O status atualiza sozinho.</div>'+
+      '</div>'+
+    '</div>';
+}
+
+function pixCopiar(){
+  const el=document.getElementById('pix-cc'); if(!el) return;
+  el.focus(); el.select(); try{ el.setSelectionRange(0,99999); }catch(_){}
+  try{ document.execCommand('copy'); }catch(_){}
+  if(navigator.clipboard){ try{ navigator.clipboard.writeText(el.value); }catch(_){} }
+  const btn=(typeof event!=='undefined')&&event&&event.target;
+  if(btn){ const t=btn.textContent; btn.textContent='Copiado!'; setTimeout(function(){ btn.textContent=t; },1500); }
+}
+
+function pixIniciarPolling(){
+  if(PIX_POLL){ clearInterval(PIX_POLL); }
+  let n=0;
+  PIX_POLL=setInterval(async function(){
+    n++;
+    if(n>120 || !PIX_PAG){ clearInterval(PIX_POLL); PIX_POLL=null; return; }
+    try{
+      const res=await pixEdge({ acao:'consultar', token:TOKEN, pagamento_id:PIX_PAG.pagamento_id, mp_order_id:PIX_PAG.mp_order_id });
+      const st=res.body && res.body.status;
+      const s=document.getElementById('pix-status');
+      if(st==='pago'){ clearInterval(PIX_POLL); PIX_POLL=null; if(s){ s.style.color='var(--ok)'; s.innerHTML='✅ Pago!'; } }
+      else if(st==='cancelado'||st==='expirado'){ clearInterval(PIX_POLL); PIX_POLL=null; if(s){ s.style.color='var(--danger)'; s.innerHTML='✕ '+st; } }
+    }catch(_){}
+  }, 5000);
 }
 
 function setPainelTab(t){
