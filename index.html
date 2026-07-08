@@ -634,6 +634,21 @@
   .card .c-meta{margin-top:12px;display:flex;flex-wrap:wrap;gap:7px}
   .tagx{font-size:.72rem;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted)}
   .tagx.cy{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3);color:var(--cyan)}
+  /* ---- Assinatura (v1.8.154) ---- */
+  .ass-incl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .ass-incl{background:rgba(148,163,184,.08);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
+  .ass-incl-lbl{color:var(--muted);font-size:.78rem}
+  .ass-incl-val{color:var(--text);font-family:'Space Grotesk';font-weight:600;font-size:1.05rem;margin-top:3px}
+  .ass-consumo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  .ass-cons{padding:13px 15px}
+  .ass-cons-lbl{color:var(--muted);font-size:.82rem}
+  .ass-cons-num{font-family:'Space Grotesk';color:var(--muted);font-size:.92rem;margin-top:4px}
+  .ass-cons-num b{color:var(--text);font-weight:700;font-size:1.5rem}
+  .ass-bar{margin-top:11px;height:6px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden}
+  html.tema-claro .ass-bar{background:rgba(0,0,0,.06)}
+  .ass-bar-fill{height:100%;width:0%;border-radius:6px;background:var(--blue);transition:width .4s ease}
+  @media(max-width:900px){.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:640px){.ass-incl-grid{grid-template-columns:repeat(2,1fr)}.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
   .tagx.al{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);color:var(--warn)}
   .card .c-acts{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
   .lnk{font-size:.82rem;color:var(--muted);cursor:pointer;padding:5px 10px;border-radius:7px;border:1px solid var(--line);background:none;font-family:inherit;transition:all .15s}
@@ -1345,55 +1360,35 @@
       <div id="view-assinaturas" class="hidden">
         <div class="view-head">
           <div><h2>Assinatura</h2><p>Seu plano e o consumo do mês.</p></div>
+          <span id="ass-selo-ativo" class="tagx" style="background:rgba(52,211,153,.14);border-color:rgba(52,211,153,.35);color:var(--ok);font-weight:600">Ativo</span>
         </div>
 
         <!-- Card do plano -->
-        <div class="card" style="margin-bottom:14px">
+        <div class="card" style="margin-bottom:16px">
           <div class="c-top">
-            <div>
-              <div class="c-name" id="ass-plano-nome">Carregando…</div>
-              <div class="c-sub" id="ass-plano-desc"></div>
-            </div>
-            <span class="c-name" id="ass-plano-selo" style="display:none;color:var(--ok)">Grátis</span>
+            <div class="c-name" id="ass-plano-nome">Carregando…</div>
+            <button class="btn btn-ghost btn-sm" onclick="verPlanos()">Ver planos ↗</button>
           </div>
-          <div class="c-sub" id="ass-plano-aviso" style="display:none;margin-top:10px;opacity:.85"></div>
+          <div class="c-sub" style="margin-top:14px;margin-bottom:11px">Já incluído no seu plano:</div>
+          <div class="ass-incl-grid">
+            <div class="ass-incl"><div class="ass-incl-lbl">Processos</div><div class="ass-incl-val" id="ass-incl-proc">—</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Usuário</div><div class="ass-incl-val" id="ass-incl-usr">—</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Armazenamento</div><div class="ass-incl-val" id="ass-incl-arm">—</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Créditos de atualização</div><div class="ass-incl-val" id="ass-incl-cred">—</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">IA</div><div class="ass-incl-val" id="ass-incl-ia">—</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Capa e andamentos</div><div class="ass-incl-val">Inclusos</div></div>
+          </div>
+          <div class="c-sub" id="ass-plano-aviso" style="display:none;margin-top:13px;opacity:.7;font-size:.8rem"></div>
         </div>
 
-        <!-- 4 medidores de consumo -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
-
-          <div class="card" style="padding:12px 16px">
-            <div class="c-top"><div class="c-name">Processos</div><div class="c-name" id="ass-proc-pct" style="color:var(--cyan)">—</div></div>
-            <div style="margin-top:10px;height:10px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden">
-              <div id="ass-proc-fill" style="height:100%;width:0%;border-radius:8px;background:var(--ok);transition:width .4s ease,background .3s ease"></div>
-            </div>
-            <div class="c-sub" id="ass-proc-sub" style="margin-top:8px">Carregando…</div>
-          </div>
-
-          <div class="card" style="padding:12px 16px">
-            <div class="c-top"><div class="c-name">Armazenamento</div><div class="c-name" id="ass-arm-pct" style="color:var(--cyan)">—</div></div>
-            <div style="margin-top:10px;height:10px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden">
-              <div id="ass-arm-fill" style="height:100%;width:0%;border-radius:8px;background:var(--ok);transition:width .4s ease,background .3s ease"></div>
-            </div>
-            <div class="c-sub" id="ass-arm-sub" style="margin-top:8px">Carregando…</div>
-          </div>
-
-          <div class="card" style="padding:12px 16px">
-            <div class="c-top"><div class="c-name">Créditos de atualização</div><div class="c-name" id="ass-cred-pct" style="color:var(--cyan)">—</div></div>
-            <div style="margin-top:10px;height:10px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden">
-              <div id="ass-cred-fill" style="height:100%;width:0%;border-radius:8px;background:var(--ok);transition:width .4s ease,background .3s ease"></div>
-            </div>
-            <div class="c-sub" id="ass-cred-sub" style="margin-top:8px">Carregando…</div>
-          </div>
-
-          <div class="card" style="padding:12px 16px">
-            <div class="c-top"><div class="c-name">Tokens de IA</div><div class="c-name" id="ass-ia-pct" style="color:var(--cyan)">—</div></div>
-            <div style="margin-top:10px;height:10px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden">
-              <div id="ass-ia-fill" style="height:100%;width:0%;border-radius:8px;background:var(--ok);transition:width .4s ease,background .3s ease"></div>
-            </div>
-            <div class="c-sub" id="ass-ia-sub" style="margin-top:8px">Carregando…</div>
-          </div>
-
+        <!-- Consumo do mês -->
+        <div class="c-sub" style="margin:0 2px 11px;font-size:.95rem">Seu consumo este mês</div>
+        <div class="ass-consumo-grid">
+          <div class="card ass-cons"><div class="ass-cons-lbl">Processos</div><div class="ass-cons-num"><b id="ass-c-proc">—</b> / <span id="ass-c-proc-lim">—</span></div><div class="ass-bar"><div id="ass-c-proc-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">Usuários</div><div class="ass-cons-num"><b id="ass-c-usr">—</b> / <span id="ass-c-usr-lim">—</span></div><div class="ass-bar"><div id="ass-c-usr-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">Armazenamento</div><div class="ass-cons-num"><b id="ass-c-arm">—</b> / <span id="ass-c-arm-lim">—</span></div><div class="ass-bar"><div id="ass-c-arm-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">Créditos</div><div class="ass-cons-num"><b id="ass-c-cred">—</b> / <span id="ass-c-cred-lim">—</span></div><div class="ass-bar"><div id="ass-c-cred-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">IA</div><div class="ass-cons-num"><b id="ass-c-ia">—</b> / <span id="ass-c-ia-lim">—</span></div><div class="ass-bar"><div id="ass-c-ia-fill" class="ass-bar-fill"></div></div></div>
         </div>
       </div>
       <!-- VIEW: USUÁRIOS (só master) -->
@@ -1987,7 +1982,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.153';
+const APP_VERSAO = 'v1.8.154';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3057,6 +3052,18 @@ function assSetBar(pctId,fillId,pct){
   const p=document.getElementById(pctId); if(p){ p.textContent=pct+'%'; p.style.color=cor; }
   return pct;
 }
+/* medidor de consumo (número grande "usado / limite" + barra fina, cor fixa por categoria, sem %) */
+function assNum(numId,limId,usado,limite){
+  const n=document.getElementById(numId); if(n) n.textContent=(usado==null?'—':usado);
+  const l=document.getElementById(limId); if(l) l.textContent=(limite==null?'—':limite);
+}
+function assBar2(fillId,pct,cor){
+  pct=Math.max(0,Math.min(100,Math.round(Number(pct)||0)));
+  const f=document.getElementById(fillId); if(f){ f.style.width=pct+'%'; f.style.background=cor||'var(--blue)'; }
+}
+function assConsErro(numId){ const n=document.getElementById(numId); if(n) n.textContent='—'; }
+const ASS_IA_TOKENS_FREE=300000;  // teto de IA do plano grátis exibido em tokens (~R$2,00 @ R$5,50/US$)
+function verPlanos(){ toast('Planos pagos em breve.','ok'); }
 async function carregarAssinaturas(){
   // ---- Plano + limites ----
   let lim={};
@@ -3068,51 +3075,73 @@ async function carregarAssinaturas(){
   const pacote=(lim.pacote||(SESS&&SESS.pacote)||'free');
   const ehFree=(pacote==='free');
   const nomePlano = ehFree ? 'Plano Inicial' : ('Plano '+pacote.charAt(0).toUpperCase()+pacote.slice(1));
-  const elNome=document.getElementById('ass-plano-nome'); if(elNome) elNome.textContent=nomePlano;
-  const selo=document.getElementById('ass-plano-selo'); if(selo) selo.style.display=ehFree?'':'none';
-  const elDesc=document.getElementById('ass-plano-desc');
-  if(elDesc) elDesc.textContent =
-    (lim.limite_processos!=null?lim.limite_processos:2)+' processos · '+
-    (lim.limite_usuarios!=null?lim.limite_usuarios:1)+' usuário(s) · '+
-    assFmtMB(lim.storage_mb!=null?lim.storage_mb:100)+' de armazenamento';
+
+  const limProc = (lim.limite_processos!=null?Number(lim.limite_processos):2);
+  const limUsr  = (lim.limite_usuarios!=null?Number(lim.limite_usuarios):1);
+  const limMB   = (lim.storage_mb!=null?Number(lim.storage_mb):100);
+  const credIncl = ehFree ? 10 : '—';                   // créditos inclusos no plano (free = 10)
+  const iaTokens = ehFree ? ASS_IA_TOKENS_FREE : null;  // teto de IA exibido em tokens
+
+  // ---- Nome do plano (selo "· Grátis" inline no free) ----
+  const elNome=document.getElementById('ass-plano-nome');
+  if(elNome) elNome.innerHTML = esc(nomePlano) + (ehFree ? ' · <span style="color:var(--ok);font-weight:600">Grátis</span>' : '');
+
+  // ---- Grade "Já incluído no seu plano" ----
+  const setIncl=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  setIncl('ass-incl-proc', limProc);
+  setIncl('ass-incl-usr',  limUsr);
+  setIncl('ass-incl-arm',  assFmtMB(limMB));
+  setIncl('ass-incl-cred', credIncl);
+  setIncl('ass-incl-ia',   iaTokens!=null ? assFmtTokens(iaTokens)+' tokens' : '—');
+
+  // ---- Aviso 90 dias (discreto, só free) ----
   const aviso=document.getElementById('ass-plano-aviso');
   if(aviso){
-    if(ehFree){ aviso.style.display=''; aviso.textContent='Contas gratuitas sem uso por 90 dias podem ser desativadas. Use o sistema regularmente para mantê-la ativa.'; }
+    if(ehFree){ aviso.style.display=''; aviso.textContent='Contas gratuitas sem uso por 90 dias podem ser desativadas.'; }
     else aviso.style.display='none';
   }
 
-  // ---- Processos ----
+  // ==== Consumo deste mês ====
+  // -- Processos --
   const usadosP = Array.isArray(PROCESSOS)?PROCESSOS.length:0;
-  const limP = Number(lim.limite_processos)||0;
-  assSetBar('ass-proc-pct','ass-proc-fill', limP>0 ? (usadosP/limP*100) : 0);
-  const subP=document.getElementById('ass-proc-sub'); if(subP) subP.textContent = usadosP+' de '+(limP||'—')+' processos';
+  assNum('ass-c-proc','ass-c-proc-lim', usadosP, limProc);
+  assBar2('ass-c-proc-fill', limProc>0?(usadosP/limProc*100):0, 'var(--blue)');
 
-  // ---- Armazenamento ----
+  // -- Usuários (conta ativos via sp_listar_usuarios) --
+  try{
+    const {data,error}=await db.rpc('sp_listar_usuarios',{p_token:TOKEN}); if(error) throw error;
+    const arr=Array.isArray(data)?data:[];
+    const ativos=arr.filter(u=>u&&u.ativo).length;
+    assNum('ass-c-usr','ass-c-usr-lim', ativos, limUsr);
+    assBar2('ass-c-usr-fill', limUsr>0?(ativos/limUsr*100):0, 'var(--blue)');
+  }catch(e){ assConsErro('ass-c-usr'); }
+
+  // -- Armazenamento --
   try{
     const {data,error}=await db.rpc('sp_uso_storage',{p_token:TOKEN}); if(error) throw error;
     const s=(Array.isArray(data)?data[0]:data)||{};
-    assSetBar('ass-arm-pct','ass-arm-fill',s.pct);
-    const sub=document.getElementById('ass-arm-sub'); if(sub) sub.textContent = assFmtMB(s.usado_mb)+' de '+assFmtMB(s.limite_mb)+' usados';
-  }catch(e){ const sub=document.getElementById('ass-arm-sub'); if(sub) sub.textContent='Não foi possível carregar.'; }
+    assNum('ass-c-arm','ass-c-arm-lim', assFmtMB(s.usado_mb), assFmtMB(s.limite_mb));
+    assBar2('ass-c-arm-fill', s.pct, 'var(--ok)');
+  }catch(e){ assConsErro('ass-c-arm'); }
 
-  // ---- Créditos de atualização ----
+  // -- Créditos (usado / concedido) --
   try{
     const {data,error}=await db.rpc('sp_credito_saldo',{p_escritorio_id:(SESS&&SESS.escritorio_id)}); if(error) throw error;
     let c=(Array.isArray(data)?data[0]:data)||{};
     if(c.sp_credito_saldo) c=c.sp_credito_saldo;   // jsonb pode vir aninhado no nome da função
-    const saldo=Number(c.saldo)||0, usado=Number(c.usado)||0;
+    const usado=Number(c.usado)||0;
     const concedido=(Number(c.concedido_plano)||0)+(Number(c.concedido_compra)||0)+(Number(c.concedido_estorno)||0);
-    assSetBar('ass-cred-pct','ass-cred-fill', concedido>0 ? (usado/concedido*100) : 0);
-    const sub=document.getElementById('ass-cred-sub'); if(sub) sub.textContent = saldo+' disponível(is) · '+usado+' usado(s) este ciclo';
-  }catch(e){ const sub=document.getElementById('ass-cred-sub'); if(sub) sub.textContent='Não foi possível carregar.'; }
+    assNum('ass-c-cred','ass-c-cred-lim', usado, concedido||'—');
+    assBar2('ass-c-cred-fill', concedido>0?(usado/concedido*100):0, 'var(--warn)');
+  }catch(e){ assConsErro('ass-c-cred'); }
 
-  // ---- Tokens de IA ----
+  // -- IA (número em tokens usados; barra = % real do teto em custo US$) --
   try{
     const {data,error}=await db.rpc('sp_painel_ia',{p_token:TOKEN}); if(error) throw error;
     const p=(Array.isArray(data)?data[0]:data)||{};
-    const pct=assSetBar('ass-ia-pct','ass-ia-fill',p.pct);
-    const sub=document.getElementById('ass-ia-sub'); if(sub) sub.textContent = assFmtTokens(p.tokens_mes)+' tokens usados · restam '+(100-pct)+'% do limite do mês';
-  }catch(e){ const sub=document.getElementById('ass-ia-sub'); if(sub) sub.textContent='Não foi possível carregar.'; }
+    assNum('ass-c-ia','ass-c-ia-lim', assFmtTokens(p.tokens_mes), iaTokens!=null?assFmtTokens(iaTokens):'—');
+    assBar2('ass-c-ia-fill', p.pct, 'var(--cyan)');
+  }catch(e){ assConsErro('ass-c-ia'); }
 }
 
 /* ============ IA JURÍDICA ============ */
