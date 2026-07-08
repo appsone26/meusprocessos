@@ -1931,7 +1931,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.151';
+const APP_VERSAO = 'v1.8.152';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2539,7 +2539,7 @@ function renderPainelCap(c, escTot){
   const saldoCard =
     '<div class="pnl-card">'+
       '<div class="pnl-card-h"><span class="pnl-ic">🏛️</span> Saldo no tribunal</div>'+
-      '<div class="pnl-rest" style="color:var(--muted)">—<span>saldo atual <span class="pnl-saldo-tag">a definir</span></span></div>'+
+      '<div class="pnl-rest" id="pnl-saldo-tribunal" style="color:var(--muted)">—<span>saldo atual <span class="pnl-saldo-tag">carregando…</span></span></div>'+
       '<div class="pnl-saldo-brk">'+
         '<span>Capa <b>'+escFmtCent(tc("capa_centavos"))+'</b></span>'+
         '<span>Atualização <b>'+escFmtCent(tc("trib_centavos"))+'</b></span>'+
@@ -2557,6 +2557,26 @@ function renderPainelCap(c, escTot){
       '<button class="pnl-btn-acao ok" type="button" onclick="abrirIncrIA()">+ Incrementar pool</button>')+
     saldoCard+
     '</div>';
+  atualizarSaldoTribunal();
+}
+
+// [v1.8.152] Saldo REAL da conta no tribunal (via API), no card do painel master.
+// Busca assíncrona — não bloqueia o render. Usa efEscavador (já injeta o TOKEN).
+// Só master (a Edge valida via sp_admin_uid). Falha nunca quebra o painel.
+async function atualizarSaldoTribunal(){
+  const el = document.getElementById('pnl-saldo-tribunal');
+  if(!el) return;
+  try{
+    const r = await efEscavador({action:'saldo_tribunal'});
+    if(r && r.ok && r.saldo_descricao){
+      el.style.color = '';   // volta pro ciano padrão do .pnl-rest
+      el.innerHTML = r.saldo_descricao + '<span>saldo disponível no tribunal</span>';
+    }else{
+      el.innerHTML = '—<span>saldo atual <span class="pnl-saldo-tag">indisponível</span></span>';
+    }
+  }catch(_){
+    el.innerHTML = '—<span>saldo atual <span class="pnl-saldo-tag">indisponível</span></span>';
+  }
 }
 
 // ===================================================================
