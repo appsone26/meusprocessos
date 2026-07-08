@@ -1843,9 +1843,14 @@
           <span style="font-size:.72rem;color:var(--muted)">Intervalo mínimo entre atualizações</span>
         </div>
         <div class="field">
-          <label>Slots de monitoramento</label>
-          <input type="number" id="pac-esc-slots" min="0" max="999" step="1" placeholder="0 = nenhum">
-          <span style="font-size:.72rem;color:var(--muted)">Processos monitorados simultaneamente</span>
+          <label>Slots — diário</label>
+          <input type="number" id="pac-esc-slots" min="0" max="999" step="1" placeholder="0 = nenhum" oninput="pacEscSlotsSync()">
+          <span style="font-size:.72rem;color:var(--muted)">Processos monitorados (diário)</span>
+        </div>
+        <div class="field">
+          <label>Slots — semanal</label>
+          <input type="number" id="pac-esc-slots-semanal" min="0" max="999" step="1" placeholder="0 = nenhum" oninput="pacEscSlotsSync()">
+          <span style="font-size:.72rem;color:var(--muted)">Escritório é OU diário OU semanal</span>
         </div>
         <div class="field" style="justify-content:flex-end">
           <label>Atualização em massa</label>
@@ -1926,7 +1931,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.150';
+const APP_VERSAO = 'v1.8.151';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2728,6 +2733,8 @@ function abrirAcaoEscritorio(e){
   // levers Escavador
   document.getElementById('pac-esc-intervalo').value=e.esc_atualizacao_intervalo_dias||0;
   document.getElementById('pac-esc-slots').value=e.esc_monitoramento_slots||0;
+  document.getElementById('pac-esc-slots-semanal').value=e.esc_monitoramento_slots_semanal||0;
+  pacEscSlotsSync();
   document.getElementById('pac-esc-massa').value=e.esc_atualizacao_massa_habilitada?'1':'0';
   pacMsg('');
   // status
@@ -2842,11 +2849,26 @@ async function pacCreditoIA(){
   finally{ setLoading(btn,false,'+ Adicionar'); }
 }
 
+// Regra OU/OU: um escritório é OU diário OU semanal, nunca os dois.
+// Ao ligar um (valor > 0), zera e desabilita o outro. Semanal ganha o empate
+// (espelha o porteiro sp_pode_monitorar).
+function pacEscSlotsSync(){
+  const d=document.getElementById('pac-esc-slots');
+  const s=document.getElementById('pac-esc-slots-semanal');
+  const dv=parseInt(d.value)||0;
+  const sv=parseInt(s.value)||0;
+  if(sv>0){ d.value=0; d.disabled=true;  s.disabled=false; }
+  else if(dv>0){ s.value=0; s.disabled=true;  d.disabled=false; }
+  else { d.disabled=false; s.disabled=false; }
+}
+
 async function pacSalvarEscavador(){
   const id=document.getElementById('pac-id').value;
   if(!id){ pacMsg('Escritório não identificado.','err'); return; }
   const intervalo=parseInt(document.getElementById('pac-esc-intervalo').value)||0;
-  const slots=parseInt(document.getElementById('pac-esc-slots').value)||0;
+  let slots=parseInt(document.getElementById('pac-esc-slots').value)||0;
+  const slotsSem=parseInt(document.getElementById('pac-esc-slots-semanal').value)||0;
+  if(slotsSem>0) slots=0; // OU/OU: semanal ganha (não persiste os dois)
   const massa=document.getElementById('pac-esc-massa').value==='1';
   pacMsg('');
   try{
@@ -2857,6 +2879,7 @@ async function pacSalvarEscavador(){
       p_movimentacoes_habilitadas:true,
       p_atualizacao_intervalo_dias:intervalo,
       p_monitoramento_slots:slots,
+      p_monitoramento_slots_semanal:slotsSem,
       p_atualizacao_massa_habilitada:massa
     });
     if(error) throw error;
