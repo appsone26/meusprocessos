@@ -647,6 +647,7 @@
   .ass-bar{margin-top:11px;height:6px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden}
   html.tema-claro .ass-bar{background:rgba(0,0,0,.06)}
   .ass-bar-fill{height:100%;width:0%;border-radius:6px;background:var(--blue);transition:width .4s ease}
+  .ass-bar-pct{text-align:right;font-size:.66rem;color:var(--muted);line-height:1;height:.8em;margin-bottom:3px}
   @media(max-width:900px){.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:640px){.ass-incl-grid{grid-template-columns:repeat(2,1fr)}.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
   .tagx.al{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);color:var(--warn)}
@@ -1384,11 +1385,11 @@
         <!-- Consumo do mês -->
         <div class="c-sub" style="margin:0 2px 11px;font-size:.95rem">Seu consumo este mês</div>
         <div class="ass-consumo-grid">
-          <div class="card ass-cons"><div class="ass-cons-lbl">Processos</div><div class="ass-cons-num"><b id="ass-c-proc">—</b> / <span id="ass-c-proc-lim">—</span></div><div class="ass-bar"><div id="ass-c-proc-fill" class="ass-bar-fill"></div></div></div>
-          <div class="card ass-cons"><div class="ass-cons-lbl">Usuários</div><div class="ass-cons-num"><b id="ass-c-usr">—</b> / <span id="ass-c-usr-lim">—</span></div><div class="ass-bar"><div id="ass-c-usr-fill" class="ass-bar-fill"></div></div></div>
-          <div class="card ass-cons"><div class="ass-cons-lbl">Armazenamento</div><div class="ass-cons-num"><b id="ass-c-arm">—</b> / <span id="ass-c-arm-lim">—</span></div><div class="ass-bar"><div id="ass-c-arm-fill" class="ass-bar-fill"></div></div></div>
-          <div class="card ass-cons"><div class="ass-cons-lbl">Créditos</div><div class="ass-cons-num"><b id="ass-c-cred">—</b> / <span id="ass-c-cred-lim">—</span></div><div class="ass-bar"><div id="ass-c-cred-fill" class="ass-bar-fill"></div></div></div>
-          <div class="card ass-cons"><div class="ass-cons-lbl">IA</div><div class="ass-cons-num"><b id="ass-c-ia">—</b> / <span id="ass-c-ia-lim">—</span></div><div class="ass-bar"><div id="ass-c-ia-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">Processos</div><div class="ass-cons-num"><b id="ass-c-proc">—</b> / <span id="ass-c-proc-lim">—</span></div><div class="ass-bar-pct" id="ass-c-proc-pct"></div><div class="ass-bar"><div id="ass-c-proc-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">Usuários</div><div class="ass-cons-num"><b id="ass-c-usr">—</b> / <span id="ass-c-usr-lim">—</span></div><div class="ass-bar-pct" id="ass-c-usr-pct"></div><div class="ass-bar"><div id="ass-c-usr-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">Armazenamento</div><div class="ass-cons-num"><b id="ass-c-arm">—</b> / <span id="ass-c-arm-lim">—</span></div><div class="ass-bar-pct" id="ass-c-arm-pct"></div><div class="ass-bar"><div id="ass-c-arm-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">Créditos</div><div class="ass-cons-num"><b id="ass-c-cred">—</b> / <span id="ass-c-cred-lim">—</span></div><div class="ass-bar-pct" id="ass-c-cred-pct"></div><div class="ass-bar"><div id="ass-c-cred-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">IA</div><div class="ass-cons-num"><b id="ass-c-ia">—</b> / <span id="ass-c-ia-lim">—</span></div><div class="ass-bar-pct" id="ass-c-ia-pct"></div><div class="ass-bar"><div id="ass-c-ia-fill" class="ass-bar-fill"></div></div></div>
         </div>
       </div>
       <!-- VIEW: USUÁRIOS (só master) -->
@@ -1982,7 +1983,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.154';
+const APP_VERSAO = 'v1.8.155';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3060,6 +3061,7 @@ function assNum(numId,limId,usado,limite){
 function assBar2(fillId,pct,cor){
   pct=Math.max(0,Math.min(100,Math.round(Number(pct)||0)));
   const f=document.getElementById(fillId); if(f){ f.style.width=pct+'%'; f.style.background=cor||'var(--blue)'; }
+  const p=document.getElementById(fillId.replace('-fill','-pct')); if(p) p.textContent = pct>0 ? pct+'%' : '';
 }
 function assConsErro(numId){ const n=document.getElementById(numId); if(n) n.textContent='—'; }
 const ASS_IA_TOKENS_FREE=300000;  // teto de IA do plano grátis exibido em tokens (~R$2,00 @ R$5,50/US$)
