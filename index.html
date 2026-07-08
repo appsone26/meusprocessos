@@ -1022,6 +1022,7 @@
       <button class="navitem active" id="nav-processos" onclick="irPara('processos')"><span class="ico">⚖️</span> Processos</button>
       <button class="navitem" id="nav-clientes" onclick="irPara('clientes')"><span class="ico">👥</span> Clientes</button>
       <button class="navitem" id="nav-alertas" onclick="irPara('alertas')"><span class="ico">🔔</span> Alertas / Agenda</button>
+      <button class="navitem" id="nav-assinaturas" style="display:none" onclick="irPara('assinaturas')"><span class="ico">💳</span> Assinatura</button>
       <button class="navitem" id="nav-documentos" style="display:none" onclick="irPara('documentos')"><span class="ico">📎</span> Documentos</button>
       <button class="navitem" id="nav-financeiro" style="display:none" onclick="irPara('financeiro')"><span class="ico">💰</span> Financeiro</button>
       <button class="navitem" id="nav-relatorios" style="display:none" onclick="irPara('relatorios')"><span class="ico">📊</span> Relatórios</button>
@@ -1338,6 +1339,61 @@
             <button class="btn btn-primary btn-sm" id="ia-chat-send" onclick="enviarChatIA()">Enviar</button>
           </div>
           <div class="powered" style="margin-top:10px"><span class="pdot"></span> IA com tecnologia <b>Claude, da Anthropic</b> · a conversa fica só nesta sessão</div>
+        </div>
+      </div>
+      <!-- VIEW: ASSINATURA (plano + consumo) -->
+      <div id="view-assinaturas" class="hidden">
+        <div class="view-head">
+          <div><h2>Assinatura</h2><p>Seu plano e o consumo do mês.</p></div>
+        </div>
+
+        <!-- Card do plano -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="c-top">
+            <div>
+              <div class="c-name" id="ass-plano-nome">Carregando…</div>
+              <div class="c-sub" id="ass-plano-desc"></div>
+            </div>
+            <span class="c-name" id="ass-plano-selo" style="display:none;color:var(--ok)">Grátis</span>
+          </div>
+          <div class="c-sub" id="ass-plano-aviso" style="display:none;margin-top:10px;opacity:.85"></div>
+        </div>
+
+        <!-- 4 medidores de consumo -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
+
+          <div class="card" style="padding:12px 16px">
+            <div class="c-top"><div class="c-name">Processos</div><div class="c-name" id="ass-proc-pct" style="color:var(--cyan)">—</div></div>
+            <div style="margin-top:10px;height:10px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden">
+              <div id="ass-proc-fill" style="height:100%;width:0%;border-radius:8px;background:var(--ok);transition:width .4s ease,background .3s ease"></div>
+            </div>
+            <div class="c-sub" id="ass-proc-sub" style="margin-top:8px">Carregando…</div>
+          </div>
+
+          <div class="card" style="padding:12px 16px">
+            <div class="c-top"><div class="c-name">Armazenamento</div><div class="c-name" id="ass-arm-pct" style="color:var(--cyan)">—</div></div>
+            <div style="margin-top:10px;height:10px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden">
+              <div id="ass-arm-fill" style="height:100%;width:0%;border-radius:8px;background:var(--ok);transition:width .4s ease,background .3s ease"></div>
+            </div>
+            <div class="c-sub" id="ass-arm-sub" style="margin-top:8px">Carregando…</div>
+          </div>
+
+          <div class="card" style="padding:12px 16px">
+            <div class="c-top"><div class="c-name">Créditos de atualização</div><div class="c-name" id="ass-cred-pct" style="color:var(--cyan)">—</div></div>
+            <div style="margin-top:10px;height:10px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden">
+              <div id="ass-cred-fill" style="height:100%;width:0%;border-radius:8px;background:var(--ok);transition:width .4s ease,background .3s ease"></div>
+            </div>
+            <div class="c-sub" id="ass-cred-sub" style="margin-top:8px">Carregando…</div>
+          </div>
+
+          <div class="card" style="padding:12px 16px">
+            <div class="c-top"><div class="c-name">Tokens de IA</div><div class="c-name" id="ass-ia-pct" style="color:var(--cyan)">—</div></div>
+            <div style="margin-top:10px;height:10px;border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden">
+              <div id="ass-ia-fill" style="height:100%;width:0%;border-radius:8px;background:var(--ok);transition:width .4s ease,background .3s ease"></div>
+            </div>
+            <div class="c-sub" id="ass-ia-sub" style="margin-top:8px">Carregando…</div>
+          </div>
+
         </div>
       </div>
       <!-- VIEW: USUÁRIOS (só master) -->
@@ -1931,7 +1987,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.152';
+const APP_VERSAO = 'v1.8.153';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -1987,7 +2043,7 @@ window.addEventListener('popstate', function(e){
   // Se o app estiver visível (usuário logado)
   if(!document.getElementById('app') || document.getElementById('app').style.display==='none') return;
   const view=(e.state&&e.state.view)||'processos';
-  const viewsValidas=['processos','alertas','clientes','documentos','financeiro','relatorios','usuarios','ia','ajuda','painel'];
+  const viewsValidas=['processos','alertas','clientes','documentos','financeiro','relatorios','usuarios','ia','assinaturas','ajuda','painel'];
   if(viewsValidas.includes(view)){
     irPara(view, true); // true = veio do popstate, não empurra novo estado
   }
@@ -2360,6 +2416,7 @@ async function aplicarPermissoes(){
   const navs=[['nav-processos',PERM.pode_processos],['nav-clientes',PERM.pode_clientes],['nav-documentos',PERM.pode_processos],['nav-alertas',PERM.pode_alertas],['nav-financeiro',PERM.pode_financeiro],['nav-relatorios',PERM.pode_relatorios],['nav-ia',PERM.pode_ia]];
   navs.forEach(([nid,ok])=>{ document.getElementById(nid).style.display = ok?'':'none'; });
   document.getElementById('nav-usuarios').style.display = (PERM.perfil==='master')?'':'none';
+  document.getElementById('nav-assinaturas').style.display = (PERM.perfil==='master')?'':'none';
   const ordem=[['processos',PERM.pode_processos],['alertas',PERM.pode_alertas],['clientes',PERM.pode_clientes],['documentos',PERM.pode_processos],['financeiro',PERM.pode_financeiro],['relatorios',PERM.pode_relatorios],['ia',PERM.pode_ia]];
   const primeira=(ordem.find(o=>o[1])||['processos'])[0];
   irPara(primeira);
@@ -2376,7 +2433,7 @@ function toggleMenu(force){
 function irPara(view, _fromPop){
   { const vp=document.getElementById('view-perfil'); if(vp) vp.classList.add('hidden'); }
   document.getElementById('view-detalhe').classList.add('hidden');
-  ['processos','alertas','clientes','documentos','financeiro','relatorios','usuarios','ia','ajuda','painel'].forEach(v=>{
+  ['processos','alertas','clientes','documentos','financeiro','relatorios','usuarios','ia','assinaturas','ajuda','painel'].forEach(v=>{
     document.getElementById('view-'+v).classList.toggle('hidden',v!==view);
     document.getElementById('nav-'+v).classList.toggle('active',v===view);
   });
@@ -2387,6 +2444,7 @@ function irPara(view, _fromPop){
   if(view==='relatorios') carregarRelatorio();
   if(view==='usuarios') carregarUsuarios();
   if(view==='ia') carregarIA();
+  if(view==='assinaturas') carregarAssinaturas();
   if(view==='ajuda') carregarAjuda();
   if(view==='painel') carregarPainelGestor();
   // Scroll sempre para o topo ao trocar de aba
@@ -2978,6 +3036,83 @@ async function abrirIncrIA(){
     toast('+'+pnlFmtUSD(usd)+' adicionados ao pool de IA.','ok');
     PAINEL_DATA=null; carregarPainelGestor(true);
   }catch(e){ toast(traduzErro(e),'err'); }
+}
+
+/* ============ ASSINATURA (plano + consumo) ============ */
+function assFmtMB(mb){
+  mb=Number(mb)||0;
+  if(mb>=1024){ const g=mb/1024; return (Math.round(g*10)/10).toString().replace('.',',')+' GB'; }
+  return (Math.round(mb*10)/10).toString().replace('.',',')+' MB';
+}
+function assFmtTokens(n){
+  n=Number(n)||0;
+  if(n>=1e6) return (Math.round(n/1e5)/10).toString().replace('.',',')+' mi';
+  if(n>=1000) return Math.round(n/1000)+' mil';
+  return String(n);
+}
+function assSetBar(pctId,fillId,pct){
+  pct=Math.max(0,Math.min(100,Math.round(Number(pct)||0)));
+  const cor = pct>=90?'var(--danger)':(pct>=60?'var(--warn)':'var(--ok)');
+  const f=document.getElementById(fillId); if(f){ f.style.width=pct+'%'; f.style.background=cor; }
+  const p=document.getElementById(pctId); if(p){ p.textContent=pct+'%'; p.style.color=cor; }
+  return pct;
+}
+async function carregarAssinaturas(){
+  // ---- Plano + limites ----
+  let lim={};
+  try{
+    const {data,error}=await db.rpc('sp_obter_perfil_escritorio',{p_token:TOKEN}); if(error) throw error;
+    lim=(Array.isArray(data)?data[0]:data)||{};
+  }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); }
+
+  const pacote=(lim.pacote||(SESS&&SESS.pacote)||'free');
+  const ehFree=(pacote==='free');
+  const nomePlano = ehFree ? 'Plano Inicial' : ('Plano '+pacote.charAt(0).toUpperCase()+pacote.slice(1));
+  const elNome=document.getElementById('ass-plano-nome'); if(elNome) elNome.textContent=nomePlano;
+  const selo=document.getElementById('ass-plano-selo'); if(selo) selo.style.display=ehFree?'':'none';
+  const elDesc=document.getElementById('ass-plano-desc');
+  if(elDesc) elDesc.textContent =
+    (lim.limite_processos!=null?lim.limite_processos:2)+' processos · '+
+    (lim.limite_usuarios!=null?lim.limite_usuarios:1)+' usuário(s) · '+
+    assFmtMB(lim.storage_mb!=null?lim.storage_mb:100)+' de armazenamento';
+  const aviso=document.getElementById('ass-plano-aviso');
+  if(aviso){
+    if(ehFree){ aviso.style.display=''; aviso.textContent='Contas gratuitas sem uso por 90 dias podem ser desativadas. Use o sistema regularmente para mantê-la ativa.'; }
+    else aviso.style.display='none';
+  }
+
+  // ---- Processos ----
+  const usadosP = Array.isArray(PROCESSOS)?PROCESSOS.length:0;
+  const limP = Number(lim.limite_processos)||0;
+  assSetBar('ass-proc-pct','ass-proc-fill', limP>0 ? (usadosP/limP*100) : 0);
+  const subP=document.getElementById('ass-proc-sub'); if(subP) subP.textContent = usadosP+' de '+(limP||'—')+' processos';
+
+  // ---- Armazenamento ----
+  try{
+    const {data,error}=await db.rpc('sp_uso_storage',{p_token:TOKEN}); if(error) throw error;
+    const s=(Array.isArray(data)?data[0]:data)||{};
+    assSetBar('ass-arm-pct','ass-arm-fill',s.pct);
+    const sub=document.getElementById('ass-arm-sub'); if(sub) sub.textContent = assFmtMB(s.usado_mb)+' de '+assFmtMB(s.limite_mb)+' usados';
+  }catch(e){ const sub=document.getElementById('ass-arm-sub'); if(sub) sub.textContent='Não foi possível carregar.'; }
+
+  // ---- Créditos de atualização ----
+  try{
+    const {data,error}=await db.rpc('sp_credito_saldo',{p_escritorio_id:(SESS&&SESS.escritorio_id)}); if(error) throw error;
+    let c=(Array.isArray(data)?data[0]:data)||{};
+    if(c.sp_credito_saldo) c=c.sp_credito_saldo;   // jsonb pode vir aninhado no nome da função
+    const saldo=Number(c.saldo)||0, usado=Number(c.usado)||0;
+    const concedido=(Number(c.concedido_plano)||0)+(Number(c.concedido_compra)||0)+(Number(c.concedido_estorno)||0);
+    assSetBar('ass-cred-pct','ass-cred-fill', concedido>0 ? (usado/concedido*100) : 0);
+    const sub=document.getElementById('ass-cred-sub'); if(sub) sub.textContent = saldo+' disponível(is) · '+usado+' usado(s) este ciclo';
+  }catch(e){ const sub=document.getElementById('ass-cred-sub'); if(sub) sub.textContent='Não foi possível carregar.'; }
+
+  // ---- Tokens de IA ----
+  try{
+    const {data,error}=await db.rpc('sp_painel_ia',{p_token:TOKEN}); if(error) throw error;
+    const p=(Array.isArray(data)?data[0]:data)||{};
+    const pct=assSetBar('ass-ia-pct','ass-ia-fill',p.pct);
+    const sub=document.getElementById('ass-ia-sub'); if(sub) sub.textContent = assFmtTokens(p.tokens_mes)+' tokens usados · restam '+(100-pct)+'% do limite do mês';
+  }catch(e){ const sub=document.getElementById('ass-ia-sub'); if(sub) sub.textContent='Não foi possível carregar.'; }
 }
 
 /* ============ IA JURÍDICA ============ */
@@ -4282,7 +4417,7 @@ function renderTopoEscritorio(s){
 }
 function abrirPerfil(){
   document.getElementById('view-detalhe').classList.add('hidden');
-  ['processos','alertas','clientes','documentos','financeiro','relatorios','usuarios','ia','ajuda','painel'].forEach(v=>{
+  ['processos','alertas','clientes','documentos','financeiro','relatorios','usuarios','ia','assinaturas','ajuda','painel'].forEach(v=>{
     const vw=document.getElementById('view-'+v); if(vw) vw.classList.add('hidden');
     const nv=document.getElementById('nav-'+v); if(nv) nv.classList.remove('active');
   });
