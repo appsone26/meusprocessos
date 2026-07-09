@@ -2053,7 +2053,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.156';
+const APP_VERSAO = 'v1.8.157';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3310,6 +3310,7 @@ async function carregarAssinaturas(){
     const concedido=(Number(c.concedido_plano)||0)+(Number(c.concedido_compra)||0)+(Number(c.concedido_estorno)||0);
     assNum('ass-c-cred','ass-c-cred-lim', usado, concedido||'—');
     assBar2('ass-c-cred-fill', concedido>0?(usado/concedido*100):0, 'var(--warn)');
+    var _ic=document.getElementById('ass-incl-cred'); if(_ic) _ic.textContent=concedido||'—';  // [v1.8.157] "Já incluído: Créditos" = plano + comprado (soma)
   }catch(e){ assConsErro('ass-c-cred'); }
 
   // -- IA (número em tokens usados; barra = % real do teto em custo US$) --
