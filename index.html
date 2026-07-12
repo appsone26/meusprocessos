@@ -1555,6 +1555,25 @@
           </div>
           <div id="pnl-aviso-status" style="margin-top:8px;font-size:.8rem;color:var(--muted)"></div>
         </div>
+        <!-- Card: Suporte (WhatsApp) — v1.8.159 — só master -->
+        <div class="card" id="pnl-suporte-card" style="margin-bottom:18px">
+          <div class="view-head" style="margin-bottom:10px"><div><h2 style="font-size:1.05rem">💬 Suporte (WhatsApp)</h2><p style="margin:0;font-size:.8rem">Número que recebe o botão "Fale com a gente" da aba Ajuda. Deixe em branco para esconder o botão.</p></div></div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;max-width:640px">
+            <div style="flex:1 1 240px">
+              <label style="display:block;font-size:.8rem;color:var(--muted);margin-bottom:6px">Número (com DDI 55)</label>
+              <input id="sup-whats" placeholder="5521999999999" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 12px">
+            </div>
+            <div style="flex:1 1 240px">
+              <label style="display:block;font-size:.8rem;color:var(--muted);margin-bottom:6px">Horário de atendimento</label>
+              <input id="sup-horario" placeholder="Seg a sex, 9h às 17h" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 12px">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-primary btn-sm" id="sup-btn-salvar" type="button" onclick="salvarSuporte()">Salvar contato</button>
+            <a class="btn btn-ghost btn-sm" id="sup-btn-testar" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none">↗ Testar link</a>
+          </div>
+          <div id="sup-status" style="margin-top:8px;font-size:.8rem;color:var(--muted)"></div>
+        </div>
         <!-- Card: Teste de cobrança Pix (Mercado Pago) — só master -->
         <div class="card" id="pnl-pix-card" style="margin-bottom:18px">
           <div class="view-head" style="margin-bottom:10px"><div><h2 style="font-size:1.05rem">💳 Teste de cobrança Pix</h2><p style="margin:0;font-size:.8rem">Gera uma cobrança Pix real. Use valores baixos — cai de verdade.</p></div></div>
@@ -1593,6 +1612,8 @@
           <div><h2>Ajuda</h2><p>Como usar o Meus Processos. As mesmas explicações que a IA do app consulta.</p></div>
         </div>
         <div id="ajuda-area"><div class="loading">Carregando…</div></div>
+        <!-- v1.8.159 — escape pro humano: só aparece se o master cadastrou o número no painel -->
+        <div id="ajuda-suporte" style="display:none"></div>
       </div>
     </main>
   </div>
@@ -2134,7 +2155,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.158';
+const APP_VERSAO = 'v1.8.159';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2649,6 +2670,59 @@ function fecharAvisoGestorSilencioso(){
 }
 
 /* Funções do Painel do Gestor para publicar/limpar aviso */
+// v1.8.159 — SUPORTE (painel master): lê e grava o WhatsApp que aparece na aba Ajuda
+function supAtualizaBotaoTeste(num){
+  const a=document.getElementById('sup-btn-testar'); if(!a) return;
+  const n=String(num||'').replace(/\D/g,'');
+  if(!n){ a.style.display='none'; a.removeAttribute('href'); return; }
+  a.href='https://wa.me/'+n;
+  a.style.display='inline-flex';
+}
+async function carregarSuportePainel(){
+  const inNum=document.getElementById('sup-whats'); if(!inNum) return;
+  const inHor=document.getElementById('sup-horario');
+  try{
+    const {data,error}=await db.rpc('sp_suporte_buscar',{p_token:TOKEN});
+    if(error) throw error;
+    const s=(data&&typeof data==='object')?data:{};
+    inNum.value=s.whatsapp||'';
+    if(inHor) inHor.value=s.horario||'';
+    supAtualizaBotaoTeste(s.whatsapp);
+  }catch(e){
+    const st=document.getElementById('sup-status');
+    if(st) st.textContent='Não consegui carregar o contato de suporte agora.';
+  }
+}
+async function salvarSuporte(){
+  const inNum=document.getElementById('sup-whats');
+  const inHor=document.getElementById('sup-horario');
+  const st=document.getElementById('sup-status');
+  const btn=document.getElementById('sup-btn-salvar');
+  if(!inNum) return;
+  const num=(inNum.value||'').trim();
+  const hor=(inHor?inHor.value:'').trim();
+  if(st) st.textContent='Salvando…';
+  if(btn) btn.disabled=true;
+  try{
+    const {error}=await db.rpc('sp_admin_suporte_salvar',{p_token:TOKEN,p_whatsapp:num,p_horario:hor});
+    if(error) throw error;
+    SUPORTE_CACHE=null; // força a aba Ajuda a reler o número novo
+    await carregarSuportePainel();
+    if(st) st.textContent=num?'✅ Contato salvo. O botão "Fale com a gente" já usa esse número.':'✅ Contato limpo. O botão "Fale com a gente" foi escondido.';
+    toast('Contato de suporte salvo.','ok');
+  }catch(e){
+    const r=(e&&(e.message||e.hint))||'';
+    let m='Não consegui salvar o contato.';
+    if(/TELEFONE_INVALIDO/.test(r)) m='Número inválido. Use DDI + DDD + número (ex.: 5521999999999).';
+    else if(/TELEFONE_SEM_DDI/.test(r)) m='Falta o DDI. O número precisa começar com 55.';
+    else if(/HORARIO_MUITO_LONGO/.test(r)) m='O horário está longo demais. Use um texto curto.';
+    else if(/NAO_AUTORIZADO/.test(r)) m='Só o dono pode alterar o contato de suporte.';
+    if(st) st.textContent='⚠️ '+m;
+    toast(m,'err');
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
 async function publicarAvisoGestor(){
   const txt=(document.getElementById('pnl-aviso-texto')?.value||'').trim();
   if(!txt){ toast('Digite a mensagem do aviso.','err'); return; }
@@ -2702,6 +2776,7 @@ function pnlNum(v){ return String(Number(v)||0); }
 
 async function carregarPainelGestor(force){
   const cap=document.getElementById('pnl-cap'); if(!cap) return;
+  carregarSuportePainel(); // v1.8.159 — secundário: nunca derruba o painel
   if(PAINEL_DATA && !force){ renderPainelCap(PAINEL_DATA.cap, PAINEL_DATA.escTot); renderPainelLista(PAINEL_DATA.escs); return; }
   cap.innerHTML='<div class="loading">Carregando…</div>';
   document.getElementById('pnl-escritorios').innerHTML='';
@@ -4715,6 +4790,7 @@ function abrirPerfil(){
 let AJUDA_CACHE=null;
 async function carregarAjuda(){
   const box=document.getElementById('ajuda-area'); if(!box) return;
+  carregarSuporteAjuda(); // secundário: nunca derruba a Ajuda
   if(AJUDA_CACHE){ renderAjuda(AJUDA_CACHE); return; }
   box.innerHTML='<div class="loading">Carregando…</div>';
   try{
@@ -4726,6 +4802,42 @@ async function carregarAjuda(){
   }catch(e){
     box.innerHTML='<div class="rel-card">Não consegui carregar a ajuda agora. Tente de novo em instantes.</div>';
   }
+}
+// v1.8.159 — contato de suporte (WhatsApp) vem do banco; master troca no painel, sem mexer no código
+let SUPORTE_CACHE=null;
+async function carregarSuporteAjuda(){
+  const box=document.getElementById('ajuda-suporte'); if(!box) return;
+  try{
+    if(!SUPORTE_CACHE){
+      const {data,error}=await db.rpc('sp_suporte_buscar',{p_token:TOKEN});
+      if(error) throw error;
+      SUPORTE_CACHE=(data&&typeof data==='object')?data:{};
+    }
+    renderSuporteAjuda(SUPORTE_CACHE);
+  }catch(e){ box.style.display='none'; }
+}
+function renderSuporteAjuda(s){
+  const box=document.getElementById('ajuda-suporte'); if(!box) return;
+  const num=(s&&s.whatsapp)?String(s.whatsapp).replace(/\D/g,''):'';
+  if(!num){ box.style.display='none'; box.innerHTML=''; return; }
+  const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const hor=(s&&s.horario)?esc(s.horario):'';
+  const msg=encodeURIComponent('Olá! Preciso de ajuda no Meus Processos.');
+  const link='https://wa.me/'+num+'?text='+msg;
+  box.style.display='block';
+  box.innerHTML=
+    '<div class="card" style="margin-top:18px;max-width:980px;border-color:var(--cyan)">'+
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between">'+
+        '<div style="flex:1 1 320px;min-width:0">'+
+          '<div style="font-weight:600;font-size:1rem;margin-bottom:4px">Não achou a resposta?</div>'+
+          '<div style="color:var(--muted);font-size:.88rem;line-height:1.5">'+
+            'Fale com uma pessoa de verdade. A conversa abre direto no WhatsApp.'+
+            (hor?'<br><span style="color:var(--muted-2)">Atendimento: '+hor+'. Fora do horário sua mensagem não se perde.</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<a class="btn btn-primary btn-sm" href="'+link+'" target="_blank" rel="noopener" style="text-decoration:none;flex:0 0 auto">💬 Fale com a gente</a>'+
+      '</div>'+
+    '</div>';
 }
 function renderAjuda(secoes){
   const box=document.getElementById('ajuda-area'); if(!box) return;
