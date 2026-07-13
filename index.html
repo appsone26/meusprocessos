@@ -1445,12 +1445,12 @@
           <div class="ass-buy on">
             <div class="ass-buy-t">Créditos de atualização</div>
             <div class="ass-buy-d">Atualize qualquer processo na hora, direto no tribunal. Não expiram.</div>
-            <div class="ass-buy-p">R$ 0,15 cada · mínimo 10</div>
+            <div class="ass-buy-p">R$ 0,25 cada · mínimo 10</div>
             <div class="ass-buy-step">
               <button type="button" aria-label="menos" onclick="credAjustar(-1)">−</button>
               <input id="cred-qtd" type="text" inputmode="numeric" value="10" oninput="credDigitou()" onblur="credCorrige()">
               <button type="button" aria-label="mais" onclick="credAjustar(1)">+</button>
-              <span class="ass-buy-sub" id="cred-sub">R$ 1,50</span>
+              <span class="ass-buy-sub" id="cred-sub">R$ 2,50</span>
             </div>
           </div>
           <div class="ass-buy soon">
@@ -1472,7 +1472,7 @@
         <div class="ass-buy-total">
           <span class="lbl">Total das compras</span>
           <div class="rt">
-            <span class="val" id="cred-total-val">R$ 1,50</span>
+            <span class="val" id="cred-total-val">R$ 2,50</span>
             <button class="btn btn-primary btn-sm" id="cred-pagar" onclick="credComprar()">Pagar com Pix</button>
           </div>
         </div>
@@ -2174,7 +2174,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.160';
+const APP_VERSAO = 'v1.8.161';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2976,7 +2976,7 @@ function pixIniciarPolling(){
 }
 
 /* ===== Comprar créditos (Fatia 5b) — reusa pixEdge; polling em consultar_sessao ===== */
-var CRED_QTD=10, CRED_MIN=10, CRED_PRECO=0.15, CRED_POLL=null, CRED_PAG=null;
+var CRED_QTD=10, CRED_MIN=10, CRED_PRECO=0.25, CRED_POLL=null, CRED_PAG=null;  /* [v1.8.161] 0,15 -> 0,25. ESPELHO da Edge pagamentos: CREDITO_PRECO_CENTAVOS=25 (Fatia 6). Mudou lá, muda aqui. */
 function credBRL(n){ return 'R$ '+(Math.round(n*100)/100).toFixed(2).replace('.',','); }
 function credRenderTotal(){
   var v=CRED_QTD*CRED_PRECO;
