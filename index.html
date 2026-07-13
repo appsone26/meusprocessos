@@ -635,11 +635,11 @@
   .tagx{font-size:.72rem;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted)}
   .tagx.cy{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3);color:var(--cyan)}
   /* ---- Assinatura (v1.8.154) ---- */
-  .ass-incl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .ass-incl-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}  /* [v1.8.162] 5 numa linha (saiu o card de IA) */
   .ass-incl{background:rgba(148,163,184,.08);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
   .ass-incl-lbl{color:var(--muted);font-size:.78rem}
   .ass-incl-val{color:var(--text);font-family:'Space Grotesk';font-weight:600;font-size:1.05rem;margin-top:3px}
-  .ass-consumo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  .ass-consumo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}  /* [v1.8.162] 4 numa linha (saiu o card de IA) */
   .ass-cons{padding:13px 15px}
   .ass-cons-lbl{color:var(--muted);font-size:.82rem}
   .ass-cons-num{font-family:'Space Grotesk';color:var(--muted);font-size:.92rem;margin-top:4px}
@@ -648,6 +648,7 @@
   html.tema-claro .ass-bar{background:rgba(0,0,0,.06)}
   .ass-bar-fill{height:100%;width:0%;border-radius:6px;background:var(--blue);transition:width .4s ease}
   .ass-bar-pct{text-align:right;font-size:.66rem;color:var(--muted);line-height:1;height:.8em;margin-bottom:3px}
+  @media(max-width:1100px){.ass-incl-grid{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:900px){.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:640px){.ass-incl-grid{grid-template-columns:repeat(2,1fr)}.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
   .ass-buy-h{font-size:.95rem;font-weight:600;color:var(--text);margin:24px 2px 11px}
@@ -1423,7 +1424,6 @@
             <div class="ass-incl"><div class="ass-incl-lbl">Usuário</div><div class="ass-incl-val" id="ass-incl-usr">—</div></div>
             <div class="ass-incl"><div class="ass-incl-lbl">Armazenamento</div><div class="ass-incl-val" id="ass-incl-arm">—</div></div>
             <div class="ass-incl"><div class="ass-incl-lbl">Créditos de atualização</div><div class="ass-incl-val" id="ass-incl-cred">—</div></div>
-            <div class="ass-incl"><div class="ass-incl-lbl">IA</div><div class="ass-incl-val" id="ass-incl-ia">—</div></div>
             <div class="ass-incl"><div class="ass-incl-lbl">Capa e andamentos</div><div class="ass-incl-val">Inclusos</div></div>
           </div>
           <div class="c-sub" id="ass-plano-aviso" style="display:none;margin-top:13px;opacity:.7;font-size:.8rem"></div>
@@ -1436,7 +1436,6 @@
           <div class="card ass-cons"><div class="ass-cons-lbl">Usuários</div><div class="ass-cons-num"><b id="ass-c-usr">—</b> / <span id="ass-c-usr-lim">—</span></div><div class="ass-bar-pct" id="ass-c-usr-pct"></div><div class="ass-bar"><div id="ass-c-usr-fill" class="ass-bar-fill"></div></div></div>
           <div class="card ass-cons"><div class="ass-cons-lbl">Armazenamento</div><div class="ass-cons-num"><b id="ass-c-arm">—</b> / <span id="ass-c-arm-lim">—</span></div><div class="ass-bar-pct" id="ass-c-arm-pct"></div><div class="ass-bar"><div id="ass-c-arm-fill" class="ass-bar-fill"></div></div></div>
           <div class="card ass-cons"><div class="ass-cons-lbl">Créditos</div><div class="ass-cons-num"><b id="ass-c-cred">—</b> / <span id="ass-c-cred-lim">—</span></div><div class="ass-bar-pct" id="ass-c-cred-pct"></div><div class="ass-bar"><div id="ass-c-cred-fill" class="ass-bar-fill"></div></div></div>
-          <div class="card ass-cons"><div class="ass-cons-lbl">IA</div><div class="ass-cons-num"><b id="ass-c-ia">—</b> / <span id="ass-c-ia-lim">—</span></div><div class="ass-bar-pct" id="ass-c-ia-pct"></div><div class="ass-bar"><div id="ass-c-ia-fill" class="ass-bar-fill"></div></div></div>
         </div>
 
         <!-- Comprar mais (Fatia 5b) -->
@@ -2174,7 +2173,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.161';
+const APP_VERSAO = 'v1.8.162';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3439,13 +3438,13 @@ async function carregarAssinaturas(){
 
   const pacote=(lim.pacote||(SESS&&SESS.pacote)||'free');
   const ehFree=(pacote==='free');
-  const nomePlano = ehFree ? 'Plano Inicial' : ('Plano '+pacote.charAt(0).toUpperCase()+pacote.slice(1));
-
   const limProc = (lim.limite_processos!=null?Number(lim.limite_processos):2);
+  // [v1.8.162] pacote passou a valer 'plano' -> gerava "Plano Plano". Nomeia pela FAIXA real.
+  const nomePlano = ehFree ? 'Plano Inicial' : ('Plano '+limProc+' processos');
+
   const limUsr  = (lim.limite_usuarios!=null?Number(lim.limite_usuarios):1);
   const limMB   = (lim.storage_mb!=null?Number(lim.storage_mb):100);
   const credIncl = ehFree ? 10 : '—';                   // créditos inclusos no plano (free = 10)
-  const iaTokens = ehFree ? ASS_IA_TOKENS_FREE : null;  // teto de IA exibido em tokens
 
   // ---- Nome do plano (selo "· Grátis" inline no free) ----
   const elNome=document.getElementById('ass-plano-nome');
@@ -3457,7 +3456,6 @@ async function carregarAssinaturas(){
   setIncl('ass-incl-usr',  limUsr);
   setIncl('ass-incl-arm',  assFmtMB(limMB));
   setIncl('ass-incl-cred', credIncl);
-  setIncl('ass-incl-ia',   iaTokens!=null ? assFmtTokens(iaTokens)+' tokens' : '—');
 
   // ---- Aviso 90 dias (discreto, só free) ----
   const aviso=document.getElementById('ass-plano-aviso');
@@ -3501,13 +3499,12 @@ async function carregarAssinaturas(){
     var _ic=document.getElementById('ass-incl-cred'); if(_ic) _ic.textContent=concedido||'—';  // [v1.8.157] "Já incluído: Créditos" = plano + comprado (soma)
   }catch(e){ assConsErro('ass-c-cred'); }
 
-  // -- IA (número em tokens usados; barra = % real do teto em custo US$) --
-  try{
-    const {data,error}=await db.rpc('sp_painel_ia',{p_token:TOKEN}); if(error) throw error;
-    const p=(Array.isArray(data)?data[0]:data)||{};
-    assNum('ass-c-ia','ass-c-ia-lim', assFmtTokens(p.tokens_mes), iaTokens!=null?assFmtTokens(iaTokens):'—');
-    assBar2('ass-c-ia-fill', p.pct, 'var(--cyan)');
-  }catch(e){ assConsErro('ass-c-ia'); }
+  /* [v1.8.162] Cards de IA REMOVIDOS da tela de Assinatura (aqui e em "Já incluído").
+     O advogado não tem cota de IA — ele tem CRÉDITO, e a IA consome crédito
+     (texto/Word=2, PDF=6). Mostrar uma barra de IA sugeria um segundo saldo que
+     não existe. O custo de IA em US$ continua visível no PAINEL MASTER
+     (ia_usado / ia_usado_total). A sp_painel_ia CONTINUA VIVA e é usada pela
+     aba IA Jurídica — nada foi apagado no banco. */
 }
 
 /* ============ IA JURÍDICA ============ */
