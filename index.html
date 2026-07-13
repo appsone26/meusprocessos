@@ -1454,21 +1454,6 @@
               <span class="ass-buy-sub" id="cred-sub">R$ 2,50</span>
             </div>
           </div>
-          <div class="ass-buy soon">
-            <span class="ass-buy-soon-tag">em breve</span>
-            <div class="ass-buy-t">Slot de monitoramento</div>
-            <div class="ass-buy-d">Monitore processos 24h em tempo real. Cada slot cobre um processo.</div>
-          </div>
-          <div class="ass-buy soon">
-            <span class="ass-buy-soon-tag">em breve</span>
-            <div class="ass-buy-t">Armazenamento</div>
-            <div class="ass-buy-d">Aumente o espaço para arquivos e documentos, à medida que precisar.</div>
-          </div>
-          <div class="ass-buy soon">
-            <span class="ass-buy-soon-tag">em breve</span>
-            <div class="ass-buy-t">Tokens de IA</div>
-            <div class="ass-buy-d">Mais resumos, petições e conversas com a inteligência artificial.</div>
-          </div>
         </div>
         <div class="ass-buy-total">
           <span class="lbl">Total das compras</span>
@@ -1891,6 +1876,21 @@
 </div>
 
 <!-- MODAL PLANOS (comparação) -->
+<!-- MODAL SELETOR DE PLANOS [v1.8.164 — Peça 41]
+     Fonte da verdade: sp_planos_listar(token). Nada de preço chumbado no front.
+     Compra: Edge pagamentos (Fatia 6), ação 'comprar_plano'.
+     409 PLANO_NAO_CABE -> mostra impedimentos e NÃO cobra. -->
+<div class="modal" id="modal-seletor">
+  <div class="box" style="max-width:720px">
+    <h3>Escolha o seu plano</h3>
+    <p class="msub">Arraste até o número de processos que você vai ter. O preço, os usuários e os créditos acompanham.</p>
+    <div id="sel-body"><div class="loading">Carregando planos…</div></div>
+    <div class="mfoot">
+      <button class="btn btn-ghost btn-sm" type="button" onclick="fecharSeletor()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modal-planos">
   <div class="box" style="max-width:560px">
     <h3>Planos</h3>
@@ -2175,7 +2175,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.163';
+const APP_VERSAO = 'v1.8.164';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2490,7 +2490,7 @@ function traduzErro(e){ const r=(e&&(e.message||e.hint||''))||'';
   if(r.includes('SENHA_FRACA')) return 'A senha precisa de 8+ caracteres, com maiúscula, minúscula e número.';
   if(r.includes('SESSAO_INVALIDA')) return 'Sua sessão expirou. Entre novamente.';
   if(r.includes('PERMISSAO_NEGADA')) return 'Você não tem permissão para isso.';
-  if(r.includes('LIMITE_PROCESSOS')) return 'Você atingiu o limite de processos do seu plano. Finalize um processo ou faça upgrade.';
+  if(r.includes('LIMITE_PROCESSOS')) return 'Você atingiu o limite de processos do seu plano. Finalize um processo que já acabou, ou faça upgrade em Assinatura › Ver planos.';
   if(r.includes('CNJ_DUPLICADO')) return 'Já existe um processo com esse número no seu escritório.';
   if(r.includes('LIMITE_USUARIOS')) return 'Você atingiu o limite de usuários do seu plano.';
   if(r.includes('NAO_PODE_EXCLUIR_SE')) return 'Você não pode excluir o seu próprio usuário.';
@@ -3429,7 +3429,308 @@ function assBar2(fillId,pct,cor){
 }
 function assConsErro(numId){ const n=document.getElementById(numId); if(n) n.textContent='—'; }
 const ASS_IA_TOKENS_FREE=300000;  // teto de IA do plano grátis exibido em tokens (~R$2,00 @ R$5,50/US$)
-function verPlanos(){ toast('Planos pagos em breve.','ok'); }
+/* ===================================================================
+   SELETOR DE PLANOS — [v1.8.164 / Peça 41]
+   FONTE DA VERDADE: sp_planos_listar(token). NADA de preço chumbado aqui.
+   Mudou o preço? É UPDATE na tabela planos — não é deploy de front.
+   COMPRA: Edge "pagamentos" (Fatia 6), ação 'comprar_plano'.
+     - A Edge simula ANTES de gerar o Pix. Se não couber, devolve 409
+       PLANO_NAO_CABE com os impedimentos e NÃO cria cobrança nenhuma.
+     - O plano é aplicado pela sp_pgto_webhook, na mesma transação do 'pago'
+       (vale pro webhook e pro polling). O front não aplica plano.
+   =================================================================== */
+var SEL_PLANOS=[], SEL_Q=0, SEL_ATUAL=null, SEL_POLL=null, SEL_PAG=null, SEL_SIMT=null, SEL_PODE=true;
+var SUP_WPP='5521993141281';                 /* +55 21 99314-1281 — WhatsApp do atendimento */
+var SUP_EMAIL='contato@appsone.com.br';      /* leads acima de 300 processos */
+
+function selBRL(c){ return 'R$ '+(Math.round(Number(c)||0)/100).toFixed(2).replace('.',','); }
+function selMB(mb){ mb=Number(mb)||0; return mb<1000 ? (mb+' MB') : (String(Math.round(mb/100)/10).replace('.',',')+' GB'); }
+function selIdx(q){ for(var i=0;i<SEL_PLANOS.length;i++){ if(Number(SEL_PLANOS[i].processos)===Number(q)) return i; } return 0; }
+
+async function verPlanos(){
+  var m=document.getElementById('modal-seletor'); if(!m) return;
+  var body=document.getElementById('sel-body');
+  m.classList.add('open');
+  if(body) body.innerHTML='<div class="loading">Carregando planos…</div>';
+  try{
+    const {data,error}=await db.rpc('sp_planos_listar',{p_token:TOKEN}); if(error) throw error;
+    let r=(Array.isArray(data)?data[0]:data)||{};
+    if(r.sp_planos_listar) r=r.sp_planos_listar;          /* jsonb pode vir aninhado no nome da função */
+    if(r.ok!==true){ if(String(r.motivo||'')==='SESSAO_INVALIDA') return sessaoExpirou(); throw new Error(r.motivo||'FALHA'); }
+    SEL_PLANOS=(r.planos||[]).slice().sort(function(a,b){ return Number(a.processos)-Number(b.processos); });
+    if(!SEL_PLANOS.length) throw new Error('SEM_PLANOS');
+
+    /* Plano atual (só pra marcar na tela). free -> null. */
+    SEL_ATUAL=null;
+    try{
+      const p=await db.rpc('sp_obter_perfil_escritorio',{p_token:TOKEN});
+      const L=(Array.isArray(p.data)?p.data[0]:p.data)||{};
+      if(String(L.pacote||'free')!=='free' && L.limite_processos!=null) SEL_ATUAL=Number(L.limite_processos);
+    }catch(_){}
+
+    /* Onde a régua nasce: no plano atual; se free, na menor faixa que cabe o que ele já tem. */
+    var usados=Array.isArray(PROCESSOS)?PROCESSOS.length:0;
+    var alvo=SEL_ATUAL||0;
+    if(!alvo){
+      alvo=SEL_PLANOS[0].processos;
+      for(var i=0;i<SEL_PLANOS.length;i++){ if(Number(SEL_PLANOS[i].processos)>=usados){ alvo=SEL_PLANOS[i].processos; break; } }
+    }
+    SEL_Q=alvo;
+    selRender();
+    selSimular();
+  }catch(e){
+    if(body) body.innerHTML='<div style="color:var(--danger);font-size:.88rem">Não foi possível carregar os planos. '+esc(traduzErro(e))+'</div>';
+  }
+}
+
+function fecharSeletor(){
+  if(SEL_POLL){ clearInterval(SEL_POLL); SEL_POLL=null; }
+  if(SEL_SIMT){ clearTimeout(SEL_SIMT); SEL_SIMT=null; }
+  SEL_PAG=null;
+  fecharModal('modal-seletor');
+}
+
+function selRender(){
+  var body=document.getElementById('sel-body'); if(!body) return;
+  var ult=SEL_PLANOS[SEL_PLANOS.length-1];
+  body.innerHTML=
+    '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'+
+        '<span style="color:var(--muted);font-size:.85rem">Quantos processos você vai ter</span>'+
+        '<span id="sel-q" style="font-size:1.5rem;font-weight:700">—</span>'+
+      '</div>'+
+      '<input type="range" id="sel-range" min="0" max="'+(SEL_PLANOS.length-1)+'" step="1" value="0" style="width:100%" oninput="selMover(this.value)" onchange="selSimular()">'+
+      '<div style="display:flex;justify-content:space-between;color:var(--muted-2);font-size:.7rem"><span>'+SEL_PLANOS[0].processos+'</span><span>'+ult.processos+'</span></div>'+
+    '</div>'+
+    '<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">'+
+        '<div>'+
+          '<div style="color:var(--muted);font-size:.85rem">Plano <span id="sel-q2">—</span> processos <span id="sel-atual-tag"></span></div>'+
+          '<div style="font-size:1.9rem;font-weight:700;margin-top:2px" id="sel-preco">—<span style="font-size:.85rem;font-weight:400;color:var(--muted)">/mês</span></div>'+
+        '</div>'+
+        '<div style="text-align:right">'+
+          '<div style="color:var(--muted);font-size:.85rem">Cada processo sai por</div>'+
+          '<div style="font-size:1.2rem;font-weight:700;color:var(--cyan);margin-top:2px" id="sel-pp">—</div>'+
+        '</div>'+
+      '</div>'+
+      '<div id="sel-comp" style="margin-top:12px;background:var(--bg-2);border-radius:8px;padding:9px 12px;color:var(--muted);font-size:.82rem"></div>'+
+      '<div id="sel-marco" style="display:none;margin-top:8px;background:rgba(34,211,238,.10);border:1px solid rgba(34,211,238,.30);color:var(--cyan);border-radius:8px;padding:8px 12px;font-size:.82rem">Neste degrau entram mais um usuário e mais armazenamento.</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">'+
+        '<div style="background:var(--bg-2);border-radius:8px;padding:10px 12px"><div style="color:var(--muted);font-size:.75rem">Usuários</div><div style="font-size:1.25rem;font-weight:700;margin-top:2px" id="sel-usr">—</div></div>'+
+        '<div style="background:var(--bg-2);border-radius:8px;padding:10px 12px"><div style="color:var(--muted);font-size:.75rem">Armazenamento</div><div style="font-size:1.25rem;font-weight:700;margin-top:2px" id="sel-arm">—</div></div>'+
+        '<div style="background:var(--bg-2);border-radius:8px;padding:10px 12px"><div style="color:var(--muted);font-size:.75rem">Créditos de boas-vindas</div><div style="font-size:1.25rem;font-weight:700;margin-top:2px" id="sel-cred">—</div></div>'+
+      '</div>'+
+      '<div style="margin:16px 0 8px;font-weight:600;font-size:.92rem">Já vem junto, em todos os planos</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 18px;font-size:.8rem;color:var(--muted);line-height:1.45">'+
+        '<span><b style="color:var(--text)">Cadastro automático.</b> Digite o número: capa e histórico vêm do tribunal, sem custo.</span>'+
+        '<span><b style="color:var(--text)">Monitoramento no tribunal.</b> Toda semana os andamentos novos entram sozinhos.</span>'+
+        '<span><b style="color:var(--text)">E-mail para a equipe.</b> Movimentou, o responsável e o time ficam sabendo.</span>'+
+        '<span><b style="color:var(--text)">Alerta de prazo.</b> Prazo perto de vencer avisa antes, não depois.</span>'+
+        '<span><b style="color:var(--text)">Agenda.</b> Tudo que vence, num lugar só.</span>'+
+        '<span><b style="color:var(--text)">Financeiro simples.</b> Honorários, entradas e saídas.</span>'+
+        '<span><b style="color:var(--text)">IA jurídica.</b> Resume, debate e monta a petição. Consome crédito.</span>'+
+        '<span><b style="color:var(--text)">Seus arquivos não saem daqui.</b> Do upload ao fim, dentro do sistema.</span>'+
+      '</div>'+
+      '<div style="margin:16px 0 8px;font-weight:600;font-size:.92rem">Como você quer pagar</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">'+
+        '<div style="border:2px solid var(--blue);border-radius:12px;padding:10px 12px"><div style="font-weight:600">Pix, mês a mês</div><div style="color:var(--muted);font-size:.8rem;margin-top:2px">Pagou, liberou na hora.</div></div>'+
+        '<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;opacity:.65"><div style="font-weight:600">Assinatura recorrente <span class="ass-buy-soon-tag" style="position:static;display:inline-block;margin-left:4px">em breve</span></div><div style="color:var(--muted);font-size:.8rem;margin-top:2px">Debita sozinho todo mês.</div></div>'+
+      '</div>'+
+      '<div id="sel-aviso" style="display:none;margin-top:14px"></div>'+
+      '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">'+
+        '<button class="btn btn-primary btn-sm" type="button" id="sel-btn" onclick="selAssinar()">Assinar este plano</button>'+
+        '<button class="btn btn-ghost btn-sm" type="button" onclick="selContato()">Preciso de mais de '+ult.processos+' processos</button>'+
+      '</div>'+
+      '<div id="sel-300" style="display:none;margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:12px 14px">'+
+        '<div style="font-weight:600">Acima de '+ult.processos+' processos é atendimento direto</div>'+
+        '<div style="color:var(--muted);font-size:.82rem;margin-top:3px;line-height:1.45">A gente monta o plano na medida do seu escritório. Escolha o canal — a mensagem já vai preenchida.</div>'+
+        '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
+          '<button class="btn btn-ghost btn-sm" type="button" onclick="selLeadWpp()">Falar no WhatsApp</button>'+
+          '<button class="btn btn-ghost btn-sm" type="button" onclick="selLeadEmail()">Enviar por e-mail</button>'+
+        '</div>'+
+      '</div>'+
+      '<div id="sel-pix"></div>'+
+    '</div>';
+  var rg=document.getElementById('sel-range'); if(rg) rg.value=String(selIdx(SEL_Q));
+  selPinta();
+}
+
+function selMover(i){
+  var p=SEL_PLANOS[Number(i)||0]; if(!p) return;
+  SEL_Q=Number(p.processos);
+  selPinta();
+}
+
+/* Pinta os números da faixa. Tudo vem da tabela planos — nenhuma fórmula aqui. */
+function selPinta(){
+  var p=SEL_PLANOS[selIdx(SEL_Q)]; if(!p) return;
+  var base=SEL_PLANOS[0];
+  var cheio=Math.round((Number(base.valor_centavos)/Number(base.processos))*Number(p.processos));
+  var set=function(id,v){ var el=document.getElementById(id); if(el) el.innerHTML=v; };
+  set('sel-q',   String(p.processos));
+  set('sel-q2',  String(p.processos));
+  set('sel-preco', selBRL(p.valor_centavos)+'<span style="font-size:.85rem;font-weight:400;color:var(--muted)">/mês</span>');
+  set('sel-pp',  selBRL(Number(p.valor_centavos)/Number(p.processos)));
+  set('sel-usr', String(p.usuarios));
+  set('sel-arm', selMB(p.storage_mb));
+  set('sel-cred',String(p.creditos_cortesia));
+
+  var tag=document.getElementById('sel-atual-tag');
+  if(tag) tag.innerHTML = (SEL_ATUAL===Number(p.processos)) ? '<span class="tagx" style="margin-left:6px">seu plano atual</span>' : '';
+
+  var comp=document.getElementById('sel-comp');
+  if(comp){
+    if(Number(p.processos)<=Number(base.processos) || cheio<=Number(p.valor_centavos)){ comp.style.display='none'; }
+    else{
+      comp.style.display='';
+      comp.innerHTML='No plano de entrada, '+p.processos+' processos sairiam por <b style="color:var(--text)">'+selBRL(cheio)+'</b>. Aqui saem por <b style="color:var(--text)">'+selBRL(p.valor_centavos)+'</b>.';
+    }
+  }
+  var mar=document.getElementById('sel-marco');
+  if(mar) mar.style.display = (p.upgrade===true) ? '' : 'none';
+}
+
+/* Simulação em tempo real: mostra o "não cabe" ANTES de ele clicar em assinar.
+   Quem manda de verdade é a Edge (ela simula de novo antes de cobrar) — isto aqui
+   é cortesia com o cliente, não é a trava. 🔒 lê "pode", não "ok". */
+function selSimular(){
+  if(SEL_SIMT) clearTimeout(SEL_SIMT);
+  SEL_SIMT=setTimeout(async function(){
+    var av=document.getElementById('sel-aviso'), bt=document.getElementById('sel-btn');
+    try{
+      const {data,error}=await db.rpc('sp_plano_simular',{p_token:TOKEN,p_processos:SEL_Q}); if(error) throw error;
+      let s=(Array.isArray(data)?data[0]:data)||{};
+      if(s.sp_plano_simular) s=s.sp_plano_simular;
+      if(s.ok!==true) return;
+      SEL_PODE=(s.pode===true);
+      if(SEL_PODE){
+        if(av){ av.style.display='none'; av.innerHTML=''; }
+        if(bt){ bt.disabled=false; bt.textContent = (s.tipo==='UPGRADE'?'Fazer upgrade':(s.tipo==='DOWNGRADE'?'Mudar para este plano':'Assinar este plano')); }
+      }else{
+        if(bt){ bt.disabled=true; bt.textContent='Assinar este plano'; }
+        if(av){ av.style.display=''; av.innerHTML=selAvisoNaoCabe(s.impedimentos, s.uso, s.alvo); }
+      }
+    }catch(_){}
+  }, 350);
+}
+
+function selAvisoNaoCabe(imps, uso, alvo){
+  var li=(Array.isArray(imps)&&imps.length)
+    ? imps.map(function(t){ return '<li>'+esc(String(t))+'</li>'; }).join('')
+    : '<li>Este plano é menor do que o que você já usa hoje.</li>';
+  var pe='';
+  if(uso&&alvo) pe='<div style="color:var(--muted-2);font-size:.75rem;margin-top:6px">Hoje: '+(uso.processos||0)+' processos · '+(uso.usuarios||0)+' usuários. Neste plano: '+(alvo.processos||0)+' processos · '+(alvo.usuarios||0)+' usuários.</div>';
+  return '<div style="border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.08);border-radius:12px;padding:12px 14px">'+
+    '<div style="color:var(--danger);font-weight:600;font-size:.88rem">Este plano não cabe no que você já tem</div>'+
+    '<ul style="margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:.82rem;line-height:1.5">'+li+'</ul>'+
+    pe+
+    '<div style="color:var(--muted-2);font-size:.75rem;margin-top:8px">Nada foi cobrado. Ajuste a régua ou finalize/desative o que sobra e volte aqui.</div>'+
+  '</div>';
+}
+
+/* Compra: a Edge é quem decide. 409 = não cabe = NÃO cobrou. */
+async function selAssinar(){
+  var bt=document.getElementById('sel-btn'), area=document.getElementById('sel-pix'), av=document.getElementById('sel-aviso');
+  if(SEL_POLL){ clearInterval(SEL_POLL); SEL_POLL=null; }
+  if(bt){ bt.disabled=true; bt.textContent='Gerando…'; }
+  if(area) area.innerHTML='<div style="color:var(--muted);font-size:.85rem;margin-top:10px">Gerando cobrança…</div>';
+  try{
+    var res=await pixEdge({ acao:'comprar_plano', token:TOKEN, processos:SEL_Q });
+    var b=res.body||{};
+    if(res.status===409 && b.erro==='PLANO_NAO_CABE'){
+      if(area) area.innerHTML='';
+      if(av){ av.style.display=''; av.innerHTML=selAvisoNaoCabe(b.impedimentos, b.uso, b.alvo); av.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+      SEL_PODE=false;
+    }else if(!res.ok || !b.ok || b.erro){
+      var m=b.mensagem||b.erro||('Erro '+res.status);
+      if(area) area.innerHTML='<div style="color:var(--danger);font-size:.85rem;margin-top:10px">'+esc(m)+'</div>';
+    }else{
+      SEL_PAG={ pagamento_id:b.pagamento_id, mp_order_id:b.mp_order_id };
+      selRenderPix(b);
+      selPolling();
+    }
+  }catch(e){
+    if(area) area.innerHTML='<div style="color:var(--danger);font-size:.85rem;margin-top:10px">Falha de conexão: '+esc((e&&e.message)||e)+'</div>';
+  }
+  if(bt){ bt.disabled=!SEL_PODE; bt.textContent='Assinar este plano'; }
+}
+
+function selRenderPix(b){
+  var area=document.getElementById('sel-pix'); if(!area) return;
+  var qr = b.pix_qr_base64
+    ? '<img src="data:image/png;base64,'+b.pix_qr_base64+'" alt="QR Pix" style="width:180px;height:180px;border-radius:8px;background:#fff;padding:6px;box-sizing:border-box">'
+    : (b.ticket_url ? '<a href="'+esc(b.ticket_url)+'" target="_blank" class="btn btn-ghost btn-sm">Abrir Pix</a>' : '<div style="color:var(--danger);font-size:.85rem">QR não retornado.</div>');
+  var cort = (b.creditos_cortesia!=null && Number(b.creditos_cortesia)>0)
+    ? '<div style="margin-top:4px;font-size:.72rem;color:var(--muted-2)">Ao confirmar o pagamento entram '+Number(b.creditos_cortesia)+' créditos de boas-vindas.</div>' : '';
+  area.innerHTML=
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-top:14px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px">'+
+      '<div>'+qr+'</div>'+
+      '<div style="flex:1 1 240px;min-width:220px">'+
+        '<label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Pix copia-e-cola — Plano '+esc(String(b.processos||SEL_Q))+' processos ('+selBRL(b.valor_centavos)+')</label>'+
+        '<div style="display:flex;gap:6px">'+
+          '<input id="sel-cc" readonly value="'+esc(b.pix_copia_cola||'')+'" style="flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.8rem;padding:8px 10px">'+
+          '<button class="btn btn-ghost btn-sm" type="button" onclick="selCopiar()">Copiar</button>'+
+        '</div>'+
+        '<div id="sel-status" style="margin-top:12px;font-size:.9rem;font-weight:600;color:var(--muted)">⏳ Aguardando pagamento…</div>'+
+        '<div style="margin-top:4px;font-size:.72rem;color:var(--muted-2)">A cobrança expira em ~30 min. O plano é liberado sozinho ao pagar.</div>'+
+        cort+
+      '</div>'+
+    '</div>';
+}
+
+function selCopiar(){
+  var el=document.getElementById('sel-cc'); if(!el) return;
+  el.focus(); el.select(); try{ el.setSelectionRange(0,99999); }catch(_){}
+  try{ document.execCommand('copy'); }catch(_){}
+  if(navigator.clipboard){ try{ navigator.clipboard.writeText(el.value); }catch(_){} }
+  var btn=(typeof event!=='undefined')&&event&&event.target;
+  if(btn){ var t=btn.textContent; btn.textContent='Copiado!'; setTimeout(function(){ btn.textContent=t; },1500); }
+}
+
+function selPolling(){
+  if(SEL_POLL){ clearInterval(SEL_POLL); }
+  var n=0;
+  SEL_POLL=setInterval(async function(){
+    n++;
+    if(n>120 || !SEL_PAG){ clearInterval(SEL_POLL); SEL_POLL=null; return; }
+    try{
+      var res=await pixEdge({ acao:'consultar_sessao', token:TOKEN, pagamento_id:SEL_PAG.pagamento_id, mp_order_id:SEL_PAG.mp_order_id });
+      var st=res.body && res.body.status;
+      var s=document.getElementById('sel-status');
+      if(st==='pago'){
+        clearInterval(SEL_POLL); SEL_POLL=null;
+        if(s){ s.style.color='var(--ok)'; s.innerHTML='✅ Pago! Plano liberado.'; }
+        try{ toast('Plano ativado. Bem-vindo!','ok'); }catch(_){}
+        try{ carregarAssinaturas(); }catch(_){}
+        setTimeout(function(){ fecharSeletor(); }, 2200);
+      }else if(st==='cancelado'||st==='expirado'){
+        clearInterval(SEL_POLL); SEL_POLL=null;
+        if(s){ s.style.color='var(--danger)'; s.innerHTML='✕ '+esc(String(st)); }
+      }
+    }catch(_){}
+  }, 5000);
+}
+
+/* Acima do teto: lead pelos DOIS canais. O navegador não dispara os dois num
+   clique só (bloqueia a 2ª janela) — então o cliente escolhe. A mensagem já vai
+   pronta, com escritório e quantidade. */
+function selLeadTexto(){
+  var e=(SESS&&SESS.escritorio_nome)||'meu escritório';
+  var u=(SESS&&SESS.usuario_nome)||'';
+  var q=Array.isArray(PROCESSOS)?PROCESSOS.length:0;
+  var ult=SEL_PLANOS.length?SEL_PLANOS[SEL_PLANOS.length-1].processos:300;
+  return 'Olá! Sou '+(u?u+', d':'d')+'o escritório '+e+'. Preciso de um plano acima de '+ult+' processos'+(q?' (hoje tenho '+q+' cadastrados)':'')+'. Podem me passar uma proposta?';
+}
+function selContato(){ var b=document.getElementById('sel-300'); if(b) b.style.display=(b.style.display==='none'?'':'none'); }
+function selLeadWpp(){
+  try{ window.open('https://wa.me/'+SUP_WPP+'?text='+encodeURIComponent(selLeadTexto()),'_blank'); }
+  catch(_){ toast('Não consegui abrir o WhatsApp. Fale com '+SUP_EMAIL,'err'); }
+}
+function selLeadEmail(){
+  var s='Plano acima do teto — '+((SESS&&SESS.escritorio_nome)||'escritório');
+  try{ window.location.href='mailto:'+SUP_EMAIL+'?subject='+encodeURIComponent(s)+'&body='+encodeURIComponent(selLeadTexto()); }
+  catch(_){ toast('Escreva para '+SUP_EMAIL,'err'); }
+}
 async function carregarAssinaturas(){
   // ---- Plano + limites ----
   let lim={};
@@ -5026,7 +5327,12 @@ function renderPlanoCard(p){
   const ehMaster=!!((PERM&&PERM.perfil==='master')||(SESS&&SESS.perfil==='master'));
   if(acts) acts.style.display=ehMaster?'':'none';
 }
-function abrirComparaPlanos(){
+/* [v1.8.164] O modal legado de planos (constante PACOTES: Free/Básico/Premium 50+)
+   anunciava uma escada que NÃO EXISTE MAIS. Tela de cliente logado não pode mentir
+   preço: este botão passa a abrir o SELETOR de verdade (tabela planos).
+   O corpo antigo segue abaixo, morto, até a varredura do site público. */
+function abrirComparaPlanos(){ return verPlanos(); }
+function abrirComparaPlanosLegado(){
   const list=document.getElementById('mpl-list'); if(!list) return;
   list.innerHTML = PACOTES.map(p=>{
     const atual = (p.id===PERFIL_PACOTE_ATUAL);
