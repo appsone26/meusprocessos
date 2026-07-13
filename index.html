@@ -653,9 +653,22 @@
   @media(max-width:900px){.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:640px){.ass-incl-grid{grid-template-columns:repeat(2,1fr)}.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
   .ass-buy-h{font-size:.95rem;font-weight:600;color:var(--text);margin:24px 2px 11px}
-  .ass-buy-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
-  @media(max-width:640px){.ass-buy-grid{grid-template-columns:1fr}}
-  .ass-buy{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  /* [v1.8.165] Sobrou UM card de compra (Créditos). Duas colunas deixavam meia tela vazia
+     e o botão de pagar boiava numa linha solta embaixo. Agora o card ocupa a largura toda,
+     alinhado com os medidores de cima, e o pagamento mora DENTRO dele, na direita. */
+  .ass-buy-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px}
+  .ass-buy{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+  .ass-buy-info{flex:1 1 320px;min-width:250px}
+  .ass-buy-pay{flex:0 1 280px;min-width:240px;border-left:1px solid var(--line);padding-left:22px}
+  .ass-buy-qlbl{font-size:.74rem;color:var(--muted);margin-bottom:7px}
+  .ass-buy-tot{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .ass-buy-tot .lbl{font-size:.8rem;color:var(--muted)}
+  .ass-buy-tot .val{font-size:1.15rem;font-weight:700;color:var(--text)}
+  #cred-pagar{width:100%;margin-top:10px;justify-content:center}
+  /* No celular a direita vira embaixo: sem divisória vertical, empilhado. */
+  @media(max-width:720px){
+    .ass-buy-pay{flex:1 1 100%;border-left:none;border-top:1px solid var(--line);padding-left:0;padding-top:14px}
+  }
   .ass-buy.on{border-color:rgba(34,211,238,.45)}
   .ass-buy.soon{opacity:.58}
   .ass-buy-t{font-size:.92rem;font-weight:600;color:var(--text);margin-bottom:5px}
@@ -666,11 +679,6 @@
   .ass-buy-step button{width:34px;height:34px;padding:0;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:9px;font-size:1.15rem;font-weight:600;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;transition:border-color .15s}
   .ass-buy-step button:hover{border-color:var(--cyan)}
   .ass-buy-step input{width:66px;text-align:center;background:var(--bg-2);border:1px solid var(--line);border-radius:9px;color:var(--text);font-family:inherit;font-size:.92rem;padding:8px 6px}
-  .ass-buy-sub{margin-left:auto;font-size:.95rem;font-weight:600;color:var(--text)}
-  .ass-buy-total{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.25);border-radius:12px;padding:12px 16px;margin-bottom:8px}
-  .ass-buy-total .lbl{font-size:.85rem;color:var(--cyan)}
-  .ass-buy-total .rt{display:flex;align-items:center;gap:14px}
-  .ass-buy-total .val{font-size:1.05rem;font-weight:600;color:var(--text)}
   /* ===== Faturas (Fatia 5c — visual, mock fixo, ainda não conectado) ===== */
   .fat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:8px}
   .fat-card{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:15px}
@@ -1444,22 +1452,24 @@
         <div class="ass-buy-h" id="ass-buy-anchor">Comprar mais</div>
         <div class="ass-buy-grid">
           <div class="ass-buy on">
-            <div class="ass-buy-t">Créditos</div>
-            <div class="ass-buy-d">Servem para tudo: atualizar um processo na hora, direto no tribunal, e usar a IA jurídica. Não expiram.</div>
-            <div class="ass-buy-p">R$ 0,25 cada · mínimo 10</div>
-            <div class="ass-buy-step">
-              <button type="button" aria-label="menos" onclick="credAjustar(-1)">−</button>
-              <input id="cred-qtd" type="text" inputmode="numeric" value="10" oninput="credDigitou()" onblur="credCorrige()">
-              <button type="button" aria-label="mais" onclick="credAjustar(1)">+</button>
-              <span class="ass-buy-sub" id="cred-sub">R$ 2,50</span>
+            <div class="ass-buy-info">
+              <div class="ass-buy-t">Créditos</div>
+              <div class="ass-buy-d">Servem para tudo: atualizar um processo na hora, direto no tribunal, e usar a IA jurídica. Não expiram.</div>
+              <div class="ass-buy-p">R$ 0,25 cada · mínimo 10</div>
             </div>
-          </div>
-        </div>
-        <div class="ass-buy-total">
-          <span class="lbl">Total das compras</span>
-          <div class="rt">
-            <span class="val" id="cred-total-val">R$ 2,50</span>
-            <button class="btn btn-primary btn-sm" id="cred-pagar" onclick="credComprar()">Pagar com Pix</button>
+            <div class="ass-buy-pay">
+              <div class="ass-buy-qlbl">Quantidade</div>
+              <div class="ass-buy-step">
+                <button type="button" aria-label="menos" onclick="credAjustar(-1)">−</button>
+                <input id="cred-qtd" type="text" inputmode="numeric" value="10" oninput="credDigitou()" onblur="credCorrige()">
+                <button type="button" aria-label="mais" onclick="credAjustar(1)">+</button>
+              </div>
+              <div class="ass-buy-tot">
+                <span class="lbl">Total</span>
+                <span class="val" id="cred-total-val">R$ 2,50</span>
+              </div>
+              <button class="btn btn-primary btn-sm" id="cred-pagar" onclick="credComprar()">Pagar com Pix</button>
+            </div>
           </div>
         </div>
         <div id="ass-buy-pix"></div>
@@ -2175,7 +2185,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.164';
+const APP_VERSAO = 'v1.8.165';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2981,7 +2991,6 @@ var CRED_QTD=10, CRED_MIN=10, CRED_PRECO=0.25, CRED_POLL=null, CRED_PAG=null;  /
 function credBRL(n){ return 'R$ '+(Math.round(n*100)/100).toFixed(2).replace('.',','); }
 function credRenderTotal(){
   var v=CRED_QTD*CRED_PRECO;
-  var s=document.getElementById('cred-sub'); if(s) s.textContent=credBRL(v);
   var t=document.getElementById('cred-total-val'); if(t) t.textContent=credBRL(v);
 }
 function credAjustar(d){
