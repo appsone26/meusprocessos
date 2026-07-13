@@ -635,10 +635,12 @@
   .tagx{font-size:.72rem;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted)}
   .tagx.cy{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3);color:var(--cyan)}
   /* ---- Assinatura (v1.8.154) ---- */
-  .ass-incl-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}  /* [v1.8.162] 5 numa linha (saiu o card de IA) */
+  .ass-incl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}  /* [v1.8.163] 6 cards em 3+3 — sempre PAR, no celular vira 2+2+2 */
   .ass-incl{background:rgba(148,163,184,.08);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
   .ass-incl-lbl{color:var(--muted);font-size:.78rem}
   .ass-incl-val{color:var(--text);font-family:'Space Grotesk';font-weight:600;font-size:1.05rem;margin-top:3px}
+  .ass-incl-sub{color:var(--muted-2);font-size:.7rem;line-height:1.45;margin-top:5px}  /* [v1.8.163] explica o card pra quem acabou de entrar */
+  .ass-cons-foot{color:var(--muted-2);font-size:.72rem;line-height:1.3;margin-top:11px}  /* [v1.8.163] rodapé do card de crédito (substitui a barra) */
   .ass-consumo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}  /* [v1.8.162] 4 numa linha (saiu o card de IA) */
   .ass-cons{padding:13px 15px}
   .ass-cons-lbl{color:var(--muted);font-size:.82rem}
@@ -648,7 +650,6 @@
   html.tema-claro .ass-bar{background:rgba(0,0,0,.06)}
   .ass-bar-fill{height:100%;width:0%;border-radius:6px;background:var(--blue);transition:width .4s ease}
   .ass-bar-pct{text-align:right;font-size:.66rem;color:var(--muted);line-height:1;height:.8em;margin-bottom:3px}
-  @media(max-width:1100px){.ass-incl-grid{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:900px){.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:640px){.ass-incl-grid{grid-template-columns:repeat(2,1fr)}.ass-consumo-grid{grid-template-columns:repeat(2,1fr)}}
   .ass-buy-h{font-size:.95rem;font-weight:600;color:var(--text);margin:24px 2px 11px}
@@ -1420,11 +1421,12 @@
           </div>
           <div class="c-sub" style="margin-top:14px;margin-bottom:11px">Já incluído no seu plano:</div>
           <div class="ass-incl-grid">
-            <div class="ass-incl"><div class="ass-incl-lbl">Processos</div><div class="ass-incl-val" id="ass-incl-proc">—</div></div>
-            <div class="ass-incl"><div class="ass-incl-lbl">Usuário</div><div class="ass-incl-val" id="ass-incl-usr">—</div></div>
-            <div class="ass-incl"><div class="ass-incl-lbl">Armazenamento</div><div class="ass-incl-val" id="ass-incl-arm">—</div></div>
-            <div class="ass-incl"><div class="ass-incl-lbl">Créditos de atualização</div><div class="ass-incl-val" id="ass-incl-cred">—</div></div>
-            <div class="ass-incl"><div class="ass-incl-lbl">Capa e andamentos</div><div class="ass-incl-val">Inclusos</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Processos monitorados</div><div class="ass-incl-val" id="ass-incl-proc">—</div><div class="ass-incl-sub">Toda semana os andamentos novos entram sozinhos.</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Usuários</div><div class="ass-incl-val" id="ass-incl-usr">—</div><div class="ass-incl-sub">Sua equipe, no mesmo escritório.</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Armazenamento</div><div class="ass-incl-val" id="ass-incl-arm">—</div><div class="ass-incl-sub">O documento fica dentro do processo. Não sai do sistema.</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Créditos</div><div class="ass-incl-val" id="ass-incl-cred">—</div><div class="ass-incl-sub">Vieram com o seu plano. Servem para tudo: atualizar no tribunal e usar a IA jurídica.</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Capa e andamentos</div><div class="ass-incl-val">Inclusos</div><div class="ass-incl-sub">Digite o número: capa e histórico vêm do tribunal, sem custo.</div></div>
+            <div class="ass-incl"><div class="ass-incl-lbl">Envio de e-mail automático</div><div class="ass-incl-val">Incluso</div><div class="ass-incl-sub">Movimentou o processo, o responsável e a equipe ficam sabendo.</div></div>
           </div>
           <div class="c-sub" id="ass-plano-aviso" style="display:none;margin-top:13px;opacity:.7;font-size:.8rem"></div>
         </div>
@@ -1435,15 +1437,15 @@
           <div class="card ass-cons"><div class="ass-cons-lbl">Processos</div><div class="ass-cons-num"><b id="ass-c-proc">—</b> / <span id="ass-c-proc-lim">—</span></div><div class="ass-bar-pct" id="ass-c-proc-pct"></div><div class="ass-bar"><div id="ass-c-proc-fill" class="ass-bar-fill"></div></div></div>
           <div class="card ass-cons"><div class="ass-cons-lbl">Usuários</div><div class="ass-cons-num"><b id="ass-c-usr">—</b> / <span id="ass-c-usr-lim">—</span></div><div class="ass-bar-pct" id="ass-c-usr-pct"></div><div class="ass-bar"><div id="ass-c-usr-fill" class="ass-bar-fill"></div></div></div>
           <div class="card ass-cons"><div class="ass-cons-lbl">Armazenamento</div><div class="ass-cons-num"><b id="ass-c-arm">—</b> / <span id="ass-c-arm-lim">—</span></div><div class="ass-bar-pct" id="ass-c-arm-pct"></div><div class="ass-bar"><div id="ass-c-arm-fill" class="ass-bar-fill"></div></div></div>
-          <div class="card ass-cons"><div class="ass-cons-lbl">Créditos</div><div class="ass-cons-num"><b id="ass-c-cred">—</b> / <span id="ass-c-cred-lim">—</span></div><div class="ass-bar-pct" id="ass-c-cred-pct"></div><div class="ass-bar"><div id="ass-c-cred-fill" class="ass-bar-fill"></div></div></div>
+          <div class="card ass-cons"><div class="ass-cons-lbl">Créditos disponíveis</div><div class="ass-cons-num"><b id="ass-c-cred">—</b></div><div class="ass-cons-foot" id="ass-c-cred-foot">—</div></div>
         </div>
 
         <!-- Comprar mais (Fatia 5b) -->
         <div class="ass-buy-h" id="ass-buy-anchor">Comprar mais</div>
         <div class="ass-buy-grid">
           <div class="ass-buy on">
-            <div class="ass-buy-t">Créditos de atualização</div>
-            <div class="ass-buy-d">Atualize qualquer processo na hora, direto no tribunal. Não expiram.</div>
+            <div class="ass-buy-t">Créditos</div>
+            <div class="ass-buy-d">Servem para tudo: atualizar um processo na hora, direto no tribunal, e usar a IA jurídica. Não expiram.</div>
             <div class="ass-buy-p">R$ 0,25 cada · mínimo 10</div>
             <div class="ass-buy-step">
               <button type="button" aria-label="menos" onclick="credAjustar(-1)">−</button>
@@ -2173,7 +2175,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.162';
+const APP_VERSAO = 'v1.8.163';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3487,16 +3489,27 @@ async function carregarAssinaturas(){
     assBar2('ass-c-arm-fill', s.pct, 'var(--ok)');
   }catch(e){ assConsErro('ass-c-arm'); }
 
-  // -- Créditos (usado / concedido) --
+  /* -- Créditos [v1.8.163] --
+     Os dois números pararam de brigar. Antes os dois tentavam contar a mesma coisa:
+       "Já incluído" mostrava plano + COMPRADO  -> comprar crédito inflava o card do PLANO
+       "Consumo"     mostrava usado / concedido -> "1 / 750" não diz quanto ele TEM
+     Agora:
+       CIMA  = concedido_plano  -> o que o PLANO deu. Fixo. Compra não entra aqui.
+       BAIXO = saldo            -> o que ele TEM agora. Número absoluto, SEM barra.
+                                   (decisão travada nº 10) */
   try{
     const {data,error}=await db.rpc('sp_credito_saldo',{p_escritorio_id:(SESS&&SESS.escritorio_id)}); if(error) throw error;
     let c=(Array.isArray(data)?data[0]:data)||{};
     if(c.sp_credito_saldo) c=c.sp_credito_saldo;   // jsonb pode vir aninhado no nome da função
-    const usado=Number(c.usado)||0;
-    const concedido=(Number(c.concedido_plano)||0)+(Number(c.concedido_compra)||0)+(Number(c.concedido_estorno)||0);
-    assNum('ass-c-cred','ass-c-cred-lim', usado, concedido||'—');
-    assBar2('ass-c-cred-fill', concedido>0?(usado/concedido*100):0, 'var(--warn)');
-    var _ic=document.getElementById('ass-incl-cred'); if(_ic) _ic.textContent=concedido||'—';  // [v1.8.157] "Já incluído: Créditos" = plano + comprado (soma)
+    const saldo     = Number(c.saldo)||0;
+    const usado     = Number(c.usado)||0;
+    const doPlano   = Number(c.concedido_plano)||0;
+
+    const elC=document.getElementById('ass-c-cred');       if(elC) elC.textContent=String(saldo);
+    const elF=document.getElementById('ass-c-cred-foot');  if(elF) elF.textContent = usado>0 ? ('já usados: '+usado) : 'nenhum usado até agora';
+
+    const _ic=document.getElementById('ass-incl-cred');
+    if(_ic) _ic.textContent = doPlano>0 ? String(doPlano) : (ehFree ? String(credIncl) : '—');
   }catch(e){ assConsErro('ass-c-cred'); }
 
   /* [v1.8.162] Cards de IA REMOVIDOS da tela de Assinatura (aqui e em "Já incluído").
