@@ -871,6 +871,16 @@
   .pnl-esc-gasto b{color:var(--ok);font-weight:700}
   .pnl-esc-levs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
   .pnl-lev-lbl{font-size:.68rem;color:var(--muted-2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+  /* [v1.8.160] selo de plano ao lado do nome + medidor de crédito (sem barra: número absoluto) */
+  .pnl-plano{font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;background:rgba(34,211,238,.14);color:var(--cyan);border:1px solid rgba(34,211,238,.3);padding:2px 7px;border-radius:8px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+  .pnl-plano.free{background:var(--line);color:var(--muted-2);border-color:transparent}
+  .pnl-lev-lbl.cred{color:var(--ok)}
+  .pnl-cred-num{font-size:1.05rem;font-weight:700;color:var(--ok);line-height:1.15}
+  .pnl-cred-brk{font-size:.66rem;color:var(--muted-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pac-cred-box{border:1px solid rgba(52,211,153,.35);border-radius:10px;padding:12px 14px}
+  .pac-cred-num{font-size:1.7rem;font-weight:700;color:var(--ok);line-height:1.1}
+  .pac-cred-brk{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:.78rem;color:var(--muted)}
+  .pac-cred-brk b{color:var(--txt)}
   .pnl-lev-top{display:flex;align-items:baseline;gap:4px;font-size:.8rem;color:var(--text);font-weight:600}
   .pnl-lev-lim{color:var(--muted-2);font-weight:500;font-size:.72rem}
   .pnl-lev-bar{height:5px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:4px}
@@ -2047,14 +2057,23 @@
       <button class="btn btn-primary btn-sm" type="button" id="pac-salvar" style="margin-top:10px" onclick="pacSalvarLimites()">Salvar levers</button>
     </div>
 
-    <!-- Crédito rápido de IA -->
+    <!-- [v1.8.160] Crédito (moeda única, R$ 0,25) — SÓ LEITURA.
+         Substitui o antigo "Crédito rápido de IA (US$)", resíduo do modelo antigo.
+         Crédito entra por PLANO (Pix) ou pelo LINK DE BÔNUS. Não há concessão manual. -->
     <div class="pac-secao">
-      <h4>✨ Crédito rápido de IA</h4>
-      <div style="display:flex;gap:8px;align-items:flex-end">
-        <div class="field" style="flex:1;margin:0"><label>Valor a somar (US$)</label><input type="number" id="pac-credito" min="0.01" step="0.01" placeholder="Ex.: 1.00"></div>
-        <button class="btn btn-ghost btn-sm" type="button" id="pac-credito-btn" onclick="pacCreditoIA()">+ Adicionar</button>
+      <h4>🪙 Crédito</h4>
+      <div class="pac-cred-box">
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span class="pac-cred-num" id="pac-cred-saldo">—</span>
+          <span style="font-size:.8rem;color:var(--muted)">créditos disponíveis</span>
+        </div>
+        <div class="pac-cred-brk">
+          <span>Concedido <b id="pac-cred-conc">—</b></span>
+          <span>Comprado <b id="pac-cred-compr">—</b></span>
+          <span>Usado <b id="pac-cred-usado">—</b></span>
+        </div>
       </div>
-      <p class="pac-info">Soma ao limite de IA deste escritório. Trava se exceder o pool do dono.</p>
+      <p class="pac-info">Crédito entra pelo <b>plano</b> (Pix) ou pelo <b>link de bônus</b>. Não há concessão manual por aqui.</p>
     </div>
 
     <!-- Escavador -->
@@ -2155,7 +2174,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.159';
+const APP_VERSAO = 'v1.8.160';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3076,10 +3095,30 @@ function pnlMiniBar(usado,limite,fmt){
          '<div class="pnl-lev-bar"><div style="width:'+pct+'%;background:'+cor+'"></div></div>';
 }
 
+/* [v1.8.160] Selo do plano ao lado do nome.
+   plano_processos NULL = FREE. A forma ('pix'|'recorrente'|'cortesia') vem junto. */
+function pnlSeloPlano(e){
+  const n = e.plano_processos;
+  if(n===null || n===undefined || n==='') return '<span class="pnl-plano free">free</span>';
+  const f = e.plano_forma ? (' · '+esc(String(e.plano_forma))) : '';
+  return '<span class="pnl-plano">plano '+pnlNum(n)+f+'</span>';
+}
+
+/* [v1.8.160] Medidor de crédito: número absoluto, SEM barra (não existe "limite" de crédito).
+   'concedido' = origem plano/brinde de cadastro. 'comprado' = Pix. */
+function pnlLeverCredito(e){
+  const saldo=Number(e.credito_saldo)||0, conc=Number(e.credito_plano)||0, usado=Number(e.credito_usado)||0;
+  const compr=Math.max(0, saldo+usado-conc);
+  return '<div><div class="pnl-lev-lbl cred">Crédito</div>'+
+    '<div class="pnl-cred-num">'+pnlNum(saldo)+'</div>'+
+    '<div class="pnl-cred-brk" title="concedido '+conc+' · comprado '+compr+' · usado '+usado+'">conc. '+pnlNum(conc)+' · usado '+pnlNum(usado)+'</div>'+
+  '</div>';
+}
+
 function pnlCardEscritorio(e, idx){
   return '<div class="pnl-esc'+(e.ativo?'':' off')+'">'+
     '<div class="pnl-esc-h">'+
-      '<div><div class="pnl-esc-nome">'+esc(e.nome||'—')+'<span class="pnl-pacote">'+esc(e.pacote||'')+'</span></div>'+
+      '<div><div class="pnl-esc-nome">'+esc(e.nome||'—')+pnlSeloPlano(e)+'</div>'+
       '<div class="pnl-esc-mail">'+esc(e.email||'')+'</div>'+
       '<div class="pnl-esc-id" title="ID do escritório (clique para selecionar)">'+esc(e.id||'—')+'</div></div>'+
       '<div class="pnl-esc-acc">último acesso<br><b>'+(e.ultimo_acesso?esc(fmtData(e.ultimo_acesso)):'—')+'</b></div>'+
@@ -3088,9 +3127,9 @@ function pnlCardEscritorio(e, idx){
       '<div><div class="pnl-lev-lbl">Processos</div>'+pnlMiniBar(e.proc_usado,e.proc_limite,pnlNum)+'</div>'+
       '<div><div class="pnl-lev-lbl">Usuários</div>'+pnlMiniBar(e.usr_usado,e.usr_limite,pnlNum)+'</div>'+
       '<div><div class="pnl-lev-lbl">Armazenamento</div>'+pnlMiniBar(e.mb_usado,e.mb_limite,pnlFmtMB)+'</div>'+
-      '<div><div class="pnl-lev-lbl">IA (mês)</div>'+pnlMiniBar(e.ia_usado,e.ia_limite,pnlFmtUSD)+'</div>'+
+      pnlLeverCredito(e)+
     '</div>'+
-    '<div class="pnl-esc-gasto"><span>Gasto no tribunal</span><b>'+escFmtCent(e.esc_consumo_total_centavos)+'</b></div>'+
+    '<div class="pnl-esc-gasto"><span>Tribunal <b>'+escFmtCent(e.esc_consumo_total_centavos)+'</b> · IA no mês <b>'+pnlFmtUSD(e.ia_usado)+'</b></span></div>'+
     '<div class="pnl-esc-actions">'+
       '<button class="pnl-btn-acao" type="button" onclick="abrirAcaoEscritorioIdx('+idx+')">⚙️ Ações</button>'+
     '</div>'+
@@ -3134,7 +3173,13 @@ function abrirAcaoEscritorio(e){
   document.getElementById('pac-usr').value=e.usr_limite||0;
   document.getElementById('pac-ia').value=e.ia_limite||0;
   document.getElementById('pac-upload-max').value=e.upload_max_mb||10;
-  document.getElementById('pac-credito').value='';
+  // [v1.8.160] crédito — só leitura, vem da sp_admin_listar_escritorios (banco v1.8.91)
+  (function(){
+    const saldo=Number(e.credito_saldo)||0, conc=Number(e.credito_plano)||0, usado=Number(e.credito_usado)||0;
+    const compr=Math.max(0, saldo+usado-conc);
+    const set=(k,v)=>{ const el=document.getElementById('pac-cred-'+k); if(el) el.textContent=pnlNum(v); };
+    set('saldo',saldo); set('conc',conc); set('compr',compr); set('usado',usado);
+  })();
   // levers Escavador
   document.getElementById('pac-esc-intervalo').value=e.esc_atualizacao_intervalo_dias||0;
   document.getElementById('pac-esc-slots').value=e.esc_monitoramento_slots||0;
@@ -3235,24 +3280,11 @@ async function pacSalvarLimites(){
   finally{ setLoading(btn,false,'Salvar levers'); }
 }
 
-async function pacCreditoIA(){
-  const btn=document.getElementById('pac-credito-btn');
-  const id=document.getElementById('pac-id').value;
-  const credito=parseFloat(document.getElementById('pac-credito').value)||0;
-  if(credito<=0){ pacMsg('Informe um valor maior que zero.','err'); return; }
-  pacMsg(''); setLoading(btn,true,'+ Adicionar');
-  try{
-    const {data,error}=await db.rpc('sp_admin_credito_ia',{p_token:TOKEN, p_escritorio_id:id, p_credito_usd:credito});
-    if(error) throw error;
-    pacMsg('Crédito de IA adicionado!','ok');
-    document.getElementById('pac-credito').value='';
-    // atualiza o lever exibido
-    const iaEl=document.getElementById('pac-ia');
-    if(iaEl) iaEl.value=(parseFloat(iaEl.value)||0)+credito;
-    PAINEL_DATA=null; carregarPainelGestor(true);
-  }catch(e){ pacMsg(traduzErro(e),'err'); }
-  finally{ setLoading(btn,false,'+ Adicionar'); }
-}
+/* [v1.8.160] pacCreditoIA() REMOVIDA.
+   Era o "Crédito rápido de IA (US$)" — resíduo do modelo antigo, quando IA tinha
+   orçamento próprio em dólar. Hoje a moeda é ÚNICA (crédito a R$ 0,25) e entra
+   por plano ou link de bônus. A SP sp_admin_credito_ia CONTINUA VIVA no banco,
+   apenas não é mais chamada pela tela. */
 
 // Regra OU/OU: um escritório é OU diário OU semanal, nunca os dois.
 // Ao ligar um (valor > 0), zera e desabilita o outro. Semanal ganha o empate
