@@ -672,6 +672,16 @@
   .ass-buy-step button{width:34px;height:34px;padding:0;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:9px;font-size:1.15rem;font-weight:600;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;transition:border-color .15s}
   .ass-buy-step button:hover{border-color:var(--cyan)}
   .ass-buy-step input{width:66px;text-align:center;background:var(--bg-2);border:1px solid var(--line);border-radius:9px;color:var(--text);font-family:inherit;font-size:.92rem;padding:8px 6px}
+
+  /* ---- [v1.8.169] Caixa registradora DENTRO do modal de bloqueio da IA ----
+     O advogado bate na parede no meio da petição. Mandá-lo "procurar onde compra"
+     é perder a venda no momento exato em que ele quer pagar. Reusa .ass-buy-step /
+     .ass-buy-qlbl / .ass-buy-tot da aba Assinatura: mesma cara, mesmo motor. */
+  .iac-buy{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:15px}
+  .iac-buy-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .iac-buy-p{font-size:.74rem;color:var(--muted-2);margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+  #iac-pagar{width:100%;margin-top:12px;justify-content:center}
+  .iac-tot-v{font-size:1.3rem;font-weight:700;font-family:'Space Grotesk',inherit;line-height:1;white-space:nowrap}
   /* ===== Faturas (Fatia 5c — visual, mock fixo, ainda não conectado) ===== */
   .fat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:8px}
   .fat-card{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:15px}
@@ -1878,6 +1888,40 @@
   </div>
 </div>
 
+<!-- MODAL BLOQUEIO DA IA (v1.8.169) — resposta HTTP 402 da Edge ia-juridica.
+     Três estados, um modal só. Preenchido por avisoIABloqueio(cod):
+       SALDO_INSUFICIENTE -> caixa registradora aqui dentro (Pix sem sair da petição)
+       PLANO_RESTRITO     -> venceu o PLANO; crédito não resolve. Vai pra Ver planos.
+       PLANO_BLOQUEADO    -> dia 31+. A primeira linha DIZ que os dados estão intactos. -->
+<div class="modal" id="modal-ia-cred">
+  <div class="box" style="max-width:560px">
+    <h3 id="iac-title">—</h3>
+    <p class="msub" id="iac-sub">—</p>
+
+    <div id="iac-buy" class="iac-buy hidden">
+      <div class="iac-buy-top">
+        <div>
+          <div class="ass-buy-qlbl">Quantidade</div>
+          <div class="ass-buy-step">
+            <button type="button" aria-label="menos" onclick="iacAjustar(-1)">−</button>
+            <input id="iac-qtd" type="text" inputmode="numeric" value="10" oninput="iacDigitou()" onblur="iacCorrige()">
+            <button type="button" aria-label="mais" onclick="iacAjustar(1)">+</button>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="ass-buy-qlbl">Total</div>
+          <div class="iac-tot-v" id="iac-total-val">R$ 2,50</div>
+        </div>
+      </div>
+      <div class="iac-buy-p">R$ 0,25 por crédito · mínimo 10. O crédito serve para tudo — a IA e as atualizações no tribunal — e não expira.</div>
+      <button class="btn btn-primary btn-sm" id="iac-pagar" onclick="iacPagar()">Pagar com Pix</button>
+    </div>
+
+    <div id="iac-pix"></div>
+    <div class="mfoot" id="iac-foot"></div>
+  </div>
+</div>
+
 <!-- MODAL ARQUIVOS GRANDES (anexo em lote) -->
 <div class="modal" id="modal-grandes">
   <div class="box" style="max-width:440px">
@@ -2190,7 +2234,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.168';
+const APP_VERSAO = 'v1.8.169';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2496,6 +2540,12 @@ function traduzErro(e){ const r=(e&&(e.message||e.hint||''))||'';
   if(r.includes('SESSAO_INVALIDA')) return 'Sua sessão expirou. Entre novamente.';
   if(r.includes('PERMISSAO_NEGADA')) return 'Você não tem permissão para isso.';
   if(r.includes('LIMITE_PROCESSOS')) return 'Você atingiu o limite de processos do seu plano. Finalize um processo que já acabou, ou faça upgrade em Assinatura › Ver planos.';
+  /* [v1.8.169] HTTP 402 da Edge ia-juridica (Banco v1.8.92/93). Até aqui estas chaves
+     vazavam CRUAS na tela. O caminho bonito é o modal (avisoIABloqueio); estas linhas
+     são a rede de segurança para qualquer ponto que só jogue o erro num toast. */
+  if(r.includes('SALDO_INSUFICIENTE')) return 'Seus créditos acabaram. Compre mais em Assinatura › Comprar mais.';
+  if(r.includes('PLANO_RESTRITO')) return 'Seu plano venceu. Você continua vendo tudo, mas a IA e as atualizações no tribunal ficam pausadas até o pagamento.';
+  if(r.includes('PLANO_BLOQUEADO')) return 'Seu plano está vencido há mais de 30 dias. Nada foi apagado: assim que o pagamento cair, tudo volta no mesmo instante.';
   if(r.includes('CNJ_DUPLICADO')) return 'Já existe um processo com esse número no seu escritório.';
   if(r.includes('LIMITE_USUARIOS')) return 'Você atingiu o limite de usuários do seu plano.';
   if(r.includes('NAO_PODE_EXCLUIR_SE')) return 'Você não pode excluir o seu próprio usuário.';
@@ -3004,29 +3054,38 @@ function credCorrige(){
   if(!isFinite(v)||v<CRED_MIN){ CRED_QTD=CRED_MIN; i.value=CRED_MIN; credRenderTotal(); }
   else { i.value=v; }
 }
-async function credComprar(){
-  var btn=document.getElementById('cred-pagar');
-  var area=document.getElementById('ass-buy-pix');
+/* [v1.8.169] O motor de Pix ganhou destino. Chamado SEM argumento, o comportamento é
+   byte a byte o da v1.8.168 (aba Assinatura). Com argumento, desenha o QR dentro do
+   modal de bloqueio da IA. Uma trilha de código só — nada duplicado. */
+async function credComprar(alvo, qtd, btnId){
+  alvo  = alvo  || 'ass-buy-pix';
+  qtd   = Number(qtd) || CRED_QTD;
+  btnId = btnId || 'cred-pagar';
+  var btn=document.getElementById(btnId);
+  var area=document.getElementById(alvo);
   if(CRED_POLL){ clearInterval(CRED_POLL); CRED_POLL=null; }
   if(btn){ btn.disabled=true; btn.textContent='Gerando…'; }
   if(area) area.innerHTML='<div style="color:var(--muted);font-size:.85rem;margin-top:10px">Gerando cobrança…</div>';
   try{
-    var res=await pixEdge({ acao:'comprar_credito', token:TOKEN, quantidade:CRED_QTD });
+    var res=await pixEdge({ acao:'comprar_credito', token:TOKEN, quantidade:qtd });
     if(!res.ok || !res.body || !res.body.ok || res.body.erro){
       var m=(res.body&&(res.body.mensagem||res.body.erro))||('Erro '+res.status);
       if(area) area.innerHTML='<div style="color:var(--danger);font-size:.85rem;margin-top:10px">'+esc(m)+'</div>';
     }else{
       CRED_PAG={ pagamento_id:res.body.pagamento_id, mp_order_id:res.body.mp_order_id };
-      credRenderPix(res.body);
-      credPolling();
+      credRenderPix(res.body, alvo, qtd);
+      credPolling(alvo);
     }
   }catch(e){
     if(area) area.innerHTML='<div style="color:var(--danger);font-size:.85rem;margin-top:10px">Falha de conexão: '+esc(e&&e.message||e)+'</div>';
   }
   if(btn){ btn.disabled=false; btn.textContent='Pagar com Pix'; }
 }
-function credRenderPix(b){
-  var area=document.getElementById('ass-buy-pix'); if(!area) return;
+function credRenderPix(b, alvo, qtd){
+  alvo = alvo || 'ass-buy-pix';
+  qtd  = Number(qtd) || CRED_QTD;
+  var area=document.getElementById(alvo); if(!area) return;
+  var idCC=alvo+'-cc', idST=alvo+'-st';   /* ids derivados do container: dois Pix nunca colidem */
   var qr = b.pix_qr_base64
     ? '<img src="data:image/png;base64,'+b.pix_qr_base64+'" alt="QR Pix" style="width:190px;height:190px;border-radius:8px;background:#fff;padding:6px;box-sizing:border-box">'
     : (b.ticket_url ? '<a href="'+esc(b.ticket_url)+'" target="_blank" class="btn btn-ghost btn-sm">Abrir Pix</a>' : '<div style="color:var(--danger);font-size:.85rem">QR não retornado.</div>');
@@ -3035,25 +3094,26 @@ function credRenderPix(b){
     '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px">'+
       '<div>'+qr+'</div>'+
       '<div style="flex:1 1 240px;min-width:220px">'+
-        '<label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Pix copia-e-cola — '+CRED_QTD+' créditos ('+credBRL(CRED_QTD*CRED_PRECO)+')</label>'+
+        '<label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Pix copia-e-cola — '+qtd+' créditos ('+credBRL(qtd*CRED_PRECO)+')</label>'+
         '<div style="display:flex;gap:6px">'+
-          '<input id="cred-cc" readonly value="'+esc(cc)+'" style="flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.8rem;padding:8px 10px">'+
-          '<button class="btn btn-ghost btn-sm" type="button" onclick="credCopiar()">Copiar</button>'+
+          '<input id="'+idCC+'" readonly value="'+esc(cc)+'" style="flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.8rem;padding:8px 10px">'+
+          '<button class="btn btn-ghost btn-sm" type="button" onclick="credCopiar(\''+idCC+'\')">Copiar</button>'+
         '</div>'+
-        '<div id="cred-status" style="margin-top:12px;font-size:.9rem;font-weight:600;color:var(--muted)">⏳ Aguardando pagamento…</div>'+
+        '<div id="'+idST+'" style="margin-top:12px;font-size:.9rem;font-weight:600;color:var(--muted)">⏳ Aguardando pagamento…</div>'+
         '<div style="margin-top:4px;font-size:.72rem;color:var(--muted-2)">A cobrança expira em ~30 min. O saldo sobe sozinho ao pagar.</div>'+
       '</div>'+
     '</div>';
 }
-function credCopiar(){
-  var el=document.getElementById('cred-cc'); if(!el) return;
+function credCopiar(id){
+  var el=document.getElementById(id||'ass-buy-pix-cc'); if(!el) return;
   el.focus(); el.select(); try{ el.setSelectionRange(0,99999); }catch(_){}
   try{ document.execCommand('copy'); }catch(_){}
   if(navigator.clipboard){ try{ navigator.clipboard.writeText(el.value); }catch(_){} }
   var btn=(typeof event!=='undefined')&&event&&event.target;
   if(btn){ var t=btn.textContent; btn.textContent='Copiado!'; setTimeout(function(){ btn.textContent=t; },1500); }
 }
-function credPolling(){
+function credPolling(alvo){
+  alvo = alvo || 'ass-buy-pix';
   if(CRED_POLL){ clearInterval(CRED_POLL); }
   var n=0;
   CRED_POLL=setInterval(async function(){
@@ -3062,12 +3122,19 @@ function credPolling(){
     try{
       var res=await pixEdge({ acao:'consultar_sessao', token:TOKEN, pagamento_id:CRED_PAG.pagamento_id, mp_order_id:CRED_PAG.mp_order_id });
       var st=res.body && res.body.status;
-      var s=document.getElementById('cred-status');
+      var s=document.getElementById(alvo+'-st');
       if(st==='pago'){
         clearInterval(CRED_POLL); CRED_POLL=null;
         if(s){ s.style.color='var(--ok)'; s.innerHTML='✅ Pago! Créditos adicionados.'; }
         try{ toast('Créditos adicionados ao seu saldo.','ok'); }catch(_){}
         try{ carregarAssinaturas(); }catch(_){}
+        /* [v1.8.169] Pagou dentro do modal da IA: o rodapé vira "Continuar".
+           NÃO reenvio a IA sozinho — ele gastaria 2 ou 6 créditos sem ter clicado
+           em nada. O clique tem que ser dele. */
+        if(alvo==='iac-pix'){
+          var f=document.getElementById('iac-foot');
+          if(f) f.innerHTML='<button class="btn btn-primary btn-sm" onclick="fecharModal(\'modal-ia-cred\')">Continuar</button>';
+        }
       }else if(st==='cancelado'||st==='expirado'){
         clearInterval(CRED_POLL); CRED_POLL=null;
         if(s){ s.style.color='var(--danger)'; s.innerHTML='✕ '+st; }
@@ -3083,6 +3150,93 @@ function irComprarCreditos(){
   }, 280);
 }
 function avisoSemCreditos(){ var m=document.getElementById('modal-sem-cred'); if(m) m.classList.add('open'); }
+
+/* ==========================================================================
+   [v1.8.169] MODAL DE BLOQUEIO DA IA — resposta HTTP 402 da Edge ia-juridica.
+   A cancela mora no banco (sp_pode_usar_ia, v1.8.93). Ela barra ANTES do Haiku:
+   quando este modal abre, nós NÃO pagamos a Anthropic. Aqui é só a tradução
+   humana disso — e, no caso do saldo, a caixa registradora no lugar certo.
+   ========================================================================== */
+var IAC_QTD=CRED_MIN;
+function iacTotal(){
+  var e=document.getElementById('iac-total-val');
+  if(e) e.textContent=credBRL(IAC_QTD*CRED_PRECO);
+}
+function iacAjustar(d){
+  IAC_QTD=Math.max(CRED_MIN,(Number(IAC_QTD)||CRED_MIN)+d);
+  var i=document.getElementById('iac-qtd'); if(i) i.value=IAC_QTD;
+  iacTotal();
+}
+function iacDigitou(){
+  var i=document.getElementById('iac-qtd'); if(!i) return;
+  var v=parseInt(String(i.value).replace(/\D+/g,''),10);
+  IAC_QTD=(isFinite(v)&&v>=CRED_MIN)?v:CRED_MIN;
+  iacTotal();
+}
+function iacCorrige(){
+  var i=document.getElementById('iac-qtd'); if(!i) return;
+  var v=parseInt(String(i.value).replace(/\D+/g,''),10);
+  if(!isFinite(v)||v<CRED_MIN){ IAC_QTD=CRED_MIN; i.value=CRED_MIN; iacTotal(); }
+}
+function iacPagar(){ credComprar('iac-pix', IAC_QTD, 'iac-pagar'); }
+
+function avisoIABloqueio(cod){
+  var t=document.getElementById('iac-title'),  s=document.getElementById('iac-sub'),
+      buy=document.getElementById('iac-buy'),  pix=document.getElementById('iac-pix'),
+      foot=document.getElementById('iac-foot'), m=document.getElementById('modal-ia-cred');
+  if(!t||!s||!buy||!pix||!foot||!m) return;
+
+  if(CRED_POLL){ clearInterval(CRED_POLL); CRED_POLL=null; }
+  CRED_PAG=null;
+  pix.innerHTML='';
+  buy.classList.add('hidden');
+
+  /* Só o master enxerga a aba Assinatura. Oferecer Pix a quem não tem essa porta
+     é empurrar o advogado auxiliar contra uma parede sem maçaneta. */
+  var master = !!(PERM && PERM.perfil==='master');
+  var agoraNao = '<button class="btn btn-ghost btn-sm" onclick="fecharModal(\'modal-ia-cred\')">Agora não</button>';
+  var verPl    = '<button class="btn btn-primary btn-sm" onclick="fecharModal(\'modal-ia-cred\');verPlanos()">Ver planos</button>';
+  var entendi  = '<button class="btn btn-primary btn-sm" onclick="fecharModal(\'modal-ia-cred\')">Entendi</button>';
+
+  if(cod==='PLANO_BLOQUEADO'){
+    /* Dia 31+. A PRIMEIRA linha tem que dizer que os dados estão lá. Advogado que vê
+       tela vazia liga no WhatsApp achando que perdeu o acervo; quem vê a fatura, paga.
+       (A tela cheia do dia 31, com a contagem real de processos, é a pendência 64.) */
+    t.textContent='Seus processos estão aqui, intactos';
+    s.textContent='Nada foi apagado. O plano está vencido há mais de 30 dias e o sistema entrou em pausa. Assim que o pagamento cair, tudo volta no mesmo instante — exatamente como você deixou.';
+    foot.innerHTML = master ? (agoraNao+verPl) : entendi;
+    if(!master) s.textContent += ' Fale com o responsável pelo escritório para regularizar o plano.';
+
+  }else if(cod==='PLANO_RESTRITO'){
+    /* Dia 8 a 30: a torneira. Lê tudo, vê tudo, não gasta nada nosso.
+       Comprar crédito NÃO resolve isto — o que venceu foi o plano. */
+    t.textContent='Seu plano venceu';
+    s.textContent='Você continua vendo tudo: processos, prazos, documentos, agenda e financeiro. Só a IA jurídica e as atualizações no tribunal ficam pausadas até o pagamento.';
+    foot.innerHTML = master ? (agoraNao+verPl) : entendi;
+    if(!master) s.textContent += ' Fale com o responsável pelo escritório para regularizar o plano.';
+
+  }else{ /* SALDO_INSUFICIENTE */
+    t.textContent='Seus créditos acabaram';
+    if(master){
+      s.textContent='Compre créditos aqui mesmo, sem sair de onde você está.';
+      IAC_QTD=CRED_MIN;
+      var i=document.getElementById('iac-qtd'); if(i) i.value=IAC_QTD;
+      iacTotal();
+      buy.classList.remove('hidden');
+      foot.innerHTML=agoraNao;
+    }else{
+      s.textContent='O escritório está sem créditos. Fale com o responsável para comprar mais — o crédito serve tanto para a IA quanto para as atualizações no tribunal.';
+      foot.innerHTML=entendi;
+    }
+  }
+  m.classList.add('open');
+}
+/* true = era um 402 e o modal assumiu; o chamador só precisa dar return. */
+function ehBloqueioIA(cod){
+  if(cod!=='SALDO_INSUFICIENTE' && cod!=='PLANO_RESTRITO' && cod!=='PLANO_BLOQUEADO') return false;
+  avisoIABloqueio(cod);
+  return true;
+}
 
 function setPainelTab(t){
   PAINEL_TAB=t;
@@ -3918,6 +4072,8 @@ async function enviarChatIA(){
       const cod=data&&data.erro;
       if(cod==='SESSAO_INVALIDA') return sessaoExpirou();
       if(cod==='LIMITE_IA_ATINGIDO'){ CHAT_MSGS.push({role:'assistant',content:'🚦 Limite de IA do mês atingido. Ele renova no início do próximo mês.'}); renderChat(); return; }
+      /* [v1.8.169] 402 (saldo/plano): deixa o recado no chat e abre o modal com a compra. */
+      if(ehBloqueioIA(cod)){ CHAT_MSGS.push({role:'assistant',content:'⏸️ '+traduzErro({message:cod})}); renderChat(); return; }
       throw new Error((data&&(data.detalhe||data.erro))||('Falha na IA ('+r.status+')'));
     }
     CHAT_MSGS.push({role:'assistant',content:data.texto||'(sem resposta)'});
@@ -4196,6 +4352,9 @@ async function gerarResumoIA(documentoId){
       if(cod==='LIMITE_IA_ATINGIDO'){ document.getElementById('mia-body').innerHTML='<div class="empty"><div class="em-ic">🚦</div><h3>Limite de IA do mês atingido</h3><p>O limite renova no início do próximo mês.</p></div>'; return; }
       if(cod==='TIPO_NAO_SUPORTADO'){ document.getElementById('mia-body').innerHTML='<div class="empty"><div class="em-ic">📄</div><h3>Tipo de arquivo não suportado</h3><p>A IA lê PDF, imagens e Word (.docx).</p></div>'; return; }
       if(cod==='DOCX_SEM_TEXTO'){ document.getElementById('mia-body').innerHTML='<div class="empty"><div class="em-ic">📄</div><h3>Word sem texto</h3><p>Não consegui extrair texto deste arquivo — ele pode estar vazio ou conter só imagens.</p></div>'; return; }
+      /* [v1.8.169] 402 (saldo/plano): fecha ESTE modal e abre o do bloqueio — não empilha dois.
+         fecharModal direto, não fecharModalIA(): a IA nem rodou, não há nada a salvar. */
+      if(ehBloqueioIA(cod)){ fecharModal('modal-ia'); return; }
       if(cod==='DOCUMENTO_NAO_ENCONTRADO'){ document.getElementById('mia-body').innerHTML='<div class="empty"><div class="em-ic">⚠️</div><h3>Documento não encontrado</h3><p>Tente recarregar a página.</p></div>'; return; }
       throw new Error((data&&(data.detalhe||data.erro))||('Falha na IA ('+r.status+')'));
     }
@@ -4293,6 +4452,9 @@ async function gerarAnaliseIA(feature, documentoId, estiloTexto){
       if(cod==='LIMITE_IA_ATINGIDO'){ document.getElementById('mia-body').innerHTML='<div class="empty"><div class="em-ic">🚦</div><h3>Limite de IA do mês atingido</h3><p>O limite renova no início do próximo mês.</p></div>'; return; }
       if(cod==='TIPO_NAO_SUPORTADO'){ document.getElementById('mia-body').innerHTML='<div class="empty"><div class="em-ic">📄</div><h3>Tipo de arquivo não suportado</h3><p>A IA lê PDF, imagens e Word (.docx).</p></div>'; return; }
       if(cod==='DOCX_SEM_TEXTO'){ document.getElementById('mia-body').innerHTML='<div class="empty"><div class="em-ic">📄</div><h3>Word sem texto</h3><p>Não consegui extrair texto deste arquivo.</p></div>'; return; }
+      /* [v1.8.169] 402 (saldo/plano): era AQUI que o Edgard viu "SALDO_INSUFICIENTE" cru
+         no modal de Petição inicial. Fecha este modal e abre o do bloqueio. */
+      if(ehBloqueioIA(cod)){ fecharModal('modal-ia'); return; }
       if(cod==='DOCUMENTO_NAO_ENCONTRADO'){ document.getElementById('mia-body').innerHTML='<div class="empty"><div class="em-ic">⚠️</div><h3>Documento não encontrado</h3><p>Tente recarregar a página.</p></div>'; return; }
       throw new Error((data&&(data.detalhe||data.erro))||('Falha na IA ('+r.status+')'));
     }
