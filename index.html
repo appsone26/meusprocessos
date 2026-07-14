@@ -571,6 +571,19 @@
   @keyframes sinal{0%,100%{opacity:.3}45%{opacity:1}}
   .nov-sino{display:inline-flex;align-items:center;color:#059669;flex-shrink:0;vertical-align:middle;animation:pulse-mon 1.8s infinite}
   @keyframes pulse-mon{0%,100%{opacity:1}50%{opacity:.5}}
+  /* v1.8.170 — os 3 estados do monitor.
+     PENDENTE: arco GIRANDO (o tribunal ainda está procurando).
+     NAO_ENCONTRADO: triângulo âmbar PARADO — se piscasse, competiria com o
+     verde do andamento novo, e o advogado olharia pro aviso errado. */
+  .mon-ic.mon-busca{color:var(--muted)}
+  .mon-ic.mon-busca svg{animation:spin 1.15s linear infinite;transform-origin:50% 50%}
+  .mon-ic.mon-nf{color:#f59e0b}
+  /* A PLACA: não clica, não desliga. É lâmpada, não interruptor. */
+  .placa{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-size:.8rem;
+         border:1px solid var(--linha);border-radius:9px;cursor:default;user-select:none;white-space:nowrap}
+  .placa.mon{color:#059669;border-color:#059669;background:rgba(5,150,105,.07)}
+  .placa.busca{color:var(--muted);border-color:var(--linha);background:transparent}
+  .placa.nf{color:#b45309;border-color:#f59e0b;background:rgba(245,158,11,.08)}
   .dtj-preview-item:last-child{border-bottom:none}
   .dtj-preview-date{color:var(--muted-2);min-width:80px;flex-shrink:0;font-size:.8rem}
   .field-cnj-row{display:flex;gap:8px;align-items:flex-end}
@@ -2234,7 +2247,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.169';
+const APP_VERSAO = 'v1.8.170';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -4835,14 +4848,78 @@ async function abrirProcessosDoCliente(id){
     document.getElementById('mcp-list').innerHTML='<div class="empty" style="padding:14px 6px"><div class="em-ic">⚠️</div><h3>Não consegui carregar</h3></div>';
   }
 }
+/* ==========================================================================
+   v1.8.170 — A ANTENA PARA DE MENTIR (Peça 45.3)
+   --------------------------------------------------------------------------
+   Antes: TODO processo com escavador_mon_id mostrava antena de "monitorado".
+   Só que ter mon_id significa APENAS que a gente assinou no tribunal — NÃO
+   significa que o tribunal ACHOU o processo. Na base real havia 10 processos
+   PENDENTE mostrando antena de monitorado. A tela afirmava o que não sabia.
+
+   Agora quem manda é escavador_mon_status (banco v1.8.95/96/97):
+     ENCONTRADO      -> antena (verde pulsando se tem novidade)
+     PENDENTE        -> arco GIRANDO   — está procurando, NÃO está monitorado
+     NAO_ENCONTRADO  -> triângulo âmbar PARADO — não achou, NÃO está monitorado
+     sem status      -> trata como PENDENTE (não sei ≠ está tudo bem)
+     sem mon_id      -> nada na lista
+
+   🔴 LÁ FORA (lista): SÓ O ÍCONE. Zero texto, zero faixa, zero etiqueta.
+      O aviso vive no balãozinho (title). Foi decisão explícita.
+   ========================================================================== */
+const SVG_ANTENA = '<svg viewBox="0 0 24 24" width="W" height="W" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path class="a4" d="M3.5 9.5c4.7 -4.7 12.3 -4.7 17 0"/><path class="a3" d="M6.3 12.3a8 8 0 0 1 11.4 0"/><path class="a2" d="M9.2 15.2a4 4 0 0 1 5.6 0"/><circle class="a1" cx="12" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>';
+const SVG_ARCO   = '<svg viewBox="0 0 24 24" width="W" height="W" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9" opacity=".22"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>';
+const SVG_ALERTA = '<svg viewBox="0 0 24 24" width="W" height="W" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5 21 19.5H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/></svg>';
+
+/* O status do monitor, normalizado. Sem mon_id = null (não monitorado). */
+function monEstado(p){
+  if(!p || !p.escavador_mon_id) return null;
+  const s = (p.escavador_mon_status||'').toUpperCase();
+  if(s==='ENCONTRADO') return 'ENCONTRADO';
+  if(s==='NAO_ENCONTRADO') return 'NAO_ENCONTRADO';
+  return 'PENDENTE';   /* inclusive o vazio: "não sei" NUNCA vira "monitorado" */
+}
+
+/* O ícone da LISTA. Só ícone. O texto mora no balãozinho. */
+function monIcone(p, tam){
+  const w = tam||18;
+  const est = monEstado(p);
+  const nov = !!(p && p.esc_novidade_em);
+
+  if(est==='ENCONTRADO'){
+    return `<span class="mon-ic${nov?' mon-novo':''}" title="${nov?'Monitorado — novo andamento!':'Monitorado — os andamentos entram toda semana'}">${SVG_ANTENA.replace(/W/g,w)}</span>`;
+  }
+  if(est==='PENDENTE'){
+    return `<span class="mon-ic mon-busca" title="Buscando no tribunal — ainda NÃO está monitorado">${SVG_ARCO.replace(/W/g,w)}</span>`;
+  }
+  if(est==='NAO_ENCONTRADO'){
+    return `<span class="mon-ic mon-nf" title="O tribunal não encontrou este processo — NÃO está monitorado">${SVG_ALERTA.replace(/W/g,w)}</span>`;
+  }
+  /* Sem monitoramento: nada na lista. Se tem novidade avulsa, o sininho. */
+  return nov
+    ? `<span class="nov-sino" title="Novo andamento recebido"><svg viewBox="0 0 24 24" width="${w-2}" height="${w-2}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3H4a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg></span>`
+    : '';
+}
+
+/* A PLACA, dentro do processo. NÃO é botão: não clica, não desliga.
+   🔴 Ninguém desliga o monitoramento pela tela. Só finalizando o processo. */
+function monPlaca(p){
+  const est = monEstado(p);
+  const nov = !!(p && p.esc_novidade_em);
+  if(est==='ENCONTRADO')
+    return `<span class="placa mon"><span class="mon-ic${nov?' mon-novo':''}" style="color:inherit">${SVG_ANTENA.replace(/W/g,16)}</span>Monitorando</span>`;
+  if(est==='PENDENTE')
+    return `<span class="placa busca"><span class="mon-ic mon-busca" style="color:inherit">${SVG_ARCO.replace(/W/g,16)}</span>Procurando no tribunal</span>`;
+  if(est==='NAO_ENCONTRADO')
+    return `<span class="placa nf"><span class="mon-ic mon-nf" style="color:inherit">${SVG_ALERTA.replace(/W/g,16)}</span>Não encontrado no tribunal</span>`;
+  return `<span class="placa busca" style="opacity:.55">— sem monitoramento —</span>`;
+}
+
 function renderProcessosDoCliente(lista){
   const box=document.getElementById('mcp-list'); if(!box) return;
   if(!lista.length){ box.innerHTML='<div class="empty" style="padding:14px 6px"><div class="em-ic">⚖️</div><h3>Nenhum processo ativo</h3><p>Este cliente não tem processos ativos no momento.</p></div>'; return; }
   box.innerHTML='<div class="list">'+lista.map(p=>{
     const novidade=p.esc_novidade_em;
-    const ind = p.escavador_mon_id
-      ? `<span class="mon-ic${novidade?' mon-novo':''}" title="${novidade?'Monitorado — novo andamento!':'Monitoramento diário ativo'}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path class="a4" d="M3.5 9.5c4.7 -4.7 12.3 -4.7 17 0"/><path class="a3" d="M6.3 12.3a8 8 0 0 1 11.4 0"/><path class="a2" d="M9.2 15.2a4 4 0 0 1 5.6 0"/><circle class="a1" cx="12" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg></span>`
-      : (novidade ? `<span class="nov-sino" title="Novo andamento recebido"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3H4a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg></span>` : '');
+    const ind = monIcone(p, 18);   /* v1.8.170 — 3 estados. Só o ícone. */
     const sub=[p.numero, p.assunto, p.tipo==='extrajudicial'?'Caso':'Processo'].filter(Boolean).map(esc).join(' · ');
     return `<div class="list-item" style="cursor:pointer" onclick='fecharModal("modal-cli-procs");abrirDetalhe(${JSON.stringify(p.id)})'>
       <div class="li-main"><div class="li-title">${esc(p.nome_parte||'(sem título)')}</div><div class="li-sub">${sub||'—'}</div></div>
@@ -4940,11 +5017,7 @@ function renderProcessos(){
     return `<div class="list-item" onclick='abrirDetalhe(${JSON.stringify(p.id)})'>
       <div class="li-main"><div class="li-title">${esc(p.nome_parte||'(sem título)')}</div><div class="li-sub">${sub||'—'}</div></div>
       <div class="li-tags">
-        ${p.escavador_mon_id
-          ? `<span class="mon-ic${novidade?' mon-novo':''}" title="${novidade?'Monitorado — novo andamento!':'Monitoramento diário ativo'}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path class="a4" d="M3.5 9.5c4.7 -4.7 12.3 -4.7 17 0"/><path class="a3" d="M6.3 12.3a8 8 0 0 1 11.4 0"/><path class="a2" d="M9.2 15.2a4 4 0 0 1 5.6 0"/><circle class="a1" cx="12" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg></span>`
-          : (novidade
-              ? `<span class="nov-sino" title="Novo andamento recebido"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3H4a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg></span>`
-              : '')}
+        ${monIcone(p, 20)}
         ${p.sistema&&p.tipo!=='extrajudicial'?`<span class="tagx">${esc(sisNome(p.sistema))}</span>`:''}
         ${alerta?`<span class="tagx ${venc?'al':'cy'}">📅 ${fmtData(p.data_alerta)}</span>`:''}
         ${statusProc==='finalizado'&&p.motivo_finalizacao?`<span class="tagx">${esc(p.motivo_finalizacao)}</span>`:''}
@@ -5078,21 +5151,42 @@ async function salvarProcesso(){
     ESC_BUSCOU=false;
     fecharModal('modal-processo'); toast(id?'Processo atualizado.':'Processo cadastrado.','ok');
     statusProc='ativo'; setStatusProc('ativo');
+    await carregarProcessos();
+
+    // Localiza o processo salvo: pelo id (edição) ou pelo CNJ (cadastro novo).
+    const numLimpo = (numParaImportar||'').replace(/\D/g,'');
+    const procSalvo = id
+      ? PROCESSOS.find(p=>p.id===id)
+      : (numLimpo ? PROCESSOS.find(p=>p.numero&&p.numero.replace(/\D/g,'')===numLimpo) : null);
+
     // Se veio andamentos do Escavador pendentes e é processo novo, importa agora
     if(andsParaImportar.length){
-      await carregarProcessos();
-      const numLimpo=numParaImportar.replace(/\D/g,'');
-      const procNovo=PROCESSOS.find(p=>p.numero&&p.numero.replace(/\D/g,'')===numLimpo);
-      if(procNovo){
+      if(procSalvo){
         try{
-          const imp=await efEscavador({action:'importar',processo_id:procNovo.id,andamentos:andsParaImportar});
+          const imp=await efEscavador({action:'importar',processo_id:procSalvo.id,andamentos:andsParaImportar});
           if(imp&&imp.importados>0) toast(`⚖️ ${imp.importados} andamento${imp.importados>1?'s':''} importado${imp.importados>1?'s':''}.`,'ok');
         }catch(e){ toast('Aviso: andamentos não importados — '+( e.message||'tente manualmente.'),'err'); }
       }else{
         toast('Aviso: processo não localizado para importar andamentos.','err');
       }
-    }else{
-      carregarProcessos();
+    }
+
+    /* ====================================================================
+       v1.8.170 — SALVAR = MONITORAR
+       Tudo que nasce, nasce monitorado. Não existe botão "Monitorar":
+       o monitoramento entra junto com o processo, sozinho.
+
+       🔴 A TRAVA QUE NÃO PODE SUMIR: só assina se NÃO houver mon_id.
+          Assinar de novo um processo que já tem monitor = gasto em dobro
+          no tribunal. É o mesmo bug que a v1.8.96 acabou de estancar.
+
+       E é também a REPESCAGEM: processo que nasceu sem CNJ (ou cuja
+       assinatura falhou) ganha monitor na próxima vez que for salvo com
+       número — sem botão nenhum na tela.
+       ==================================================================== */
+    if(procSalvo && procSalvo.numero && procSalvo.tipo!=='extrajudicial'
+       && !procSalvo.escavador_mon_id && isCNJValido(procSalvo.numero)){
+      monitorarProcesso(procSalvo.id, procSalvo.numero);   // sem await: não trava a tela
     }
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); erro(traduzErro(e)); }
   finally{ setLoading(btn,false,'Salvar'); }
@@ -5156,13 +5250,17 @@ function renderDetalheHead(){
         ${(PERM&&PERM.pode_ia)?`<button class="btn btn-ghost btn-sm" onclick="resumirProcessoIA()">${fin?'📄 Ver resumos':'✨ Resumir com IA'}</button>`:''}
         ${(fin||!(PERM&&PERM.pode_processos))?'':`<button class="btn btn-ghost btn-sm" onclick="abrirGerarDocumento()">📄 Gerar documento</button>`}
         ${(si&&si.u&&p.tipo!=='extrajudicial')?`<button class="btn btn-ghost btn-sm" onclick="abrirNoSistema()" title="Abrir ${esc(si.n)} e copiar o número">⚖️ Abrir no sistema</button>`:''}
-        ${(!fin && p.numero && p.tipo!=='extrajudicial')
-          ? (p.esc_pedido_id
-              ? `<button class="btn btn-ghost btn-sm" disabled style="opacity:.7;cursor:default" title="Pedido enviado ao tribunal — aguardando a resposta">⏳ Buscando…</button>`
-              : (p.escavador_mon_id
-                  ? `<button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" style="color:#059669;border-color:#059669" onclick="escPararMonitorar()" title="Monitoramento diário ativo — clique para desligar">📡 Monitorando</button>`
-                  : `<button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos no tribunal">⟳ Atualizar</button>
-                     <button class="btn btn-ghost btn-sm" id="btn-monitorar-escavador" onclick="escMonitorar()" title="Acompanhar este processo automaticamente, todo dia">📡 Monitorar</button>`))
+        ${/* v1.8.170 — o botão trabalha, a placa fala.
+              🔴 "Atualizar" agora aparece em TODOS os estados (antes sumia quando
+                 o processo estava monitorado — e era justamente quem estava
+                 PENDENTE que mais precisava dele pra buscar o andamento AGORA).
+              🔴 O monitoramento virou PLACA: não clica, não desliga. Ninguém
+                 desliga monitoramento pela tela — só finalizando o processo. */
+          (!fin && p.numero && p.tipo!=='extrajudicial')
+          ? `${p.esc_pedido_id
+                ? `<button class="btn btn-ghost btn-sm" disabled style="opacity:.7;cursor:default" title="Pedido enviado ao tribunal — aguardando a resposta">⏳ Buscando…</button>`
+                : `<button class="btn btn-ghost btn-sm" id="btn-atualizar-escavador" onclick="escAtualizarProcesso()" title="Buscar andamentos novos no tribunal agora — custa 1 crédito">⟳ Atualizar</button>`}
+             ${monPlaca(p)}`
           : ''}
         ${(fin||p.tipo!=='extrajudicial')?'':`<button class="btn btn-ghost btn-sm" onclick='transformarEmProcesso(${JSON.stringify(p.id)})'>⤴ Transformar em processo</button>`}
         ${fin?'':`<button class="btn btn-ghost btn-sm" onclick='abrirModalProcesso(${JSON.stringify(p.id)})'>Editar dados</button>`}
@@ -6005,49 +6103,37 @@ function efEscavador(payload){
   }).then(async r=>{ const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error((d&&(d.erro||d.detalhe))||('Falha ('+r.status+')')); return d; });
 }
 
-async function escMonitorar(){
-  if(!procAtual||!procAtual.numero){ toast('Processo sem número.','err'); return; }
-  if(!isCNJValido(procAtual.numero)){ toast('Número do processo não está no formato válido.','err'); return; }
-  const btn=document.getElementById('btn-monitorar-escavador');
-  if(btn){ btn.disabled=true; btn.textContent='Ativando…'; }
+/* ==========================================================================
+   v1.8.170 — MONITORAR virou consequência de SALVAR, não um botão.
+   Não existe mais escMonitorar() (botão) nem escPararMonitorar():
+   🔴 NINGUÉM DESLIGA O MONITORAMENTO PELA TELA. Só finalizando o processo
+      (abrirFinalizar já chama parar_monitorar e devolve o proporcional).
+   Chamada por salvarProcesso(), em silêncio. Se falhar, NÃO estraga o
+   "Processo cadastrado" — o processo foi salvo, isso é verdade. O aviso
+   sai separado, e o próximo salvar tenta de novo (repescagem).
+   ========================================================================== */
+async function monitorarProcesso(procId, numeroCNJ){
+  if(!procId || !numeroCNJ || !isCNJValido(numeroCNJ)) return;
   try{
-    const r=await efEscavador({action:'monitorar',processo_id:procAtual.id,numero_cnj:procAtual.numero});
-    if(r&&r.ok){
-      toast('📡 Monitoramento ativado! Você é avisado automaticamente a cada novo andamento.','ok',5600);
-      procAtual.escavador_mon_id=r.escavador_mon_id||'ativo';
-      const idx=PROCESSOS.findIndex(x=>x.id===procAtual.id);
-      if(idx>=0) PROCESSOS[idx].escavador_mon_id=procAtual.escavador_mon_id;
-      renderDetalheHead();
+    const r = await efEscavador({action:'monitorar', processo_id:procId, numero_cnj:numeroCNJ});
+    if(r && r.ok){
+      const idx = PROCESSOS.findIndex(x=>x.id===procId);
+      if(idx>=0){
+        PROCESSOS[idx].escavador_mon_id     = r.escavador_mon_id || 'ativo';
+        PROCESSOS[idx].escavador_mon_status = 'PENDENTE';  /* nasce PENDENTE: o robô do tribunal ainda não passou */
+      }
+      if(procAtual && procAtual.id===procId){
+        procAtual.escavador_mon_id     = r.escavador_mon_id || 'ativo';
+        procAtual.escavador_mon_status = 'PENDENTE';
+        renderDetalheHead();
+      }
+      renderProcessos();
+      toast('📡 Monitoramento ativado. O tribunal está procurando o processo — assim que achar, os andamentos entram sozinhos.','ok',6000);
     }else{
-      toast((r&&r.erro)||'Não foi possível ativar o monitoramento.','err');
-      if(btn){ btn.disabled=false; btn.textContent='📡 Monitorar'; }
+      toast('Processo salvo, mas o monitoramento não foi ativado: '+((r&&r.erro)||'tente salvar novamente.'),'err',6000);
     }
   }catch(e){
-    toast('Erro ao ativar o monitoramento: '+(e.message||'tente novamente.'),'err');
-    if(btn){ btn.disabled=false; btn.textContent='📡 Monitorar'; }
-  }
-}
-
-async function escPararMonitorar(){
-  if(!procAtual) return;
-  if(!confirm('Parar de monitorar este processo?\n\nVocê deixa de receber os andamentos automaticamente.')) return;
-  const btn=document.getElementById('btn-monitorar-escavador');
-  if(btn){ btn.disabled=true; btn.textContent='Parando…'; }
-  try{
-    const r=await efEscavador({action:'parar_monitorar',processo_id:procAtual.id,escavador_mon_id:procAtual.escavador_mon_id});
-    if(r&&r.ok){
-      toast('Monitoramento desligado.','ok',5600);
-      procAtual.escavador_mon_id=null;
-      const idx=PROCESSOS.findIndex(x=>x.id===procAtual.id);
-      if(idx>=0) PROCESSOS[idx].escavador_mon_id=null;
-      renderDetalheHead();
-    }else{
-      toast((r&&r.erro)||'Não foi possível parar o monitoramento.','err');
-      if(btn){ btn.disabled=false; btn.textContent='📡 Monitorando'; }
-    }
-  }catch(e){
-    toast('Erro ao parar o monitoramento: '+(e.message||'tente novamente.'),'err');
-    if(btn){ btn.disabled=false; btn.textContent='📡 Monitorando'; }
+    toast('Processo salvo, mas o monitoramento não foi ativado: '+(e.message||'tente salvar novamente.'),'err',6000);
   }
 }
 /* ======== FIM ESCAVADOR ======== */
