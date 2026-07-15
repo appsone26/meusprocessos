@@ -554,9 +554,12 @@
   .tl-item{position:relative;padding:0 0 16px 22px;border-left:2px solid var(--line)}
   .tl-item:last-child{border-left-color:transparent;padding-bottom:0}
   .tl-item::before{content:"";position:absolute;left:-6px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--cyan)}
-  .tl-item.datajud::before{background:#f59e0b}
-  .tl-badge-trib{display:inline-flex;align-items:center;gap:3px;font-size:.7rem;font-weight:600;color:#92400e;background:#fef3c7;border:1px solid #f59e0b;border-radius:4px;padding:1px 5px;margin-bottom:3px}
-  html.tema-claro .tl-badge-trib{color:#78350f;background:#fef9c3}
+  /* [v1.8.171 / P5] origem do andamento: AZUL = tribunal · AMARELO = escritório (humano) */
+  .tl-item.trib::before{background:var(--blue)}
+  .tl-item.hum::before{background:#f59e0b}
+  .tl-badge-trib{display:inline-flex;align-items:center;gap:3px;font-size:.7rem;font-weight:600;color:#fff;background:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 5px;margin-bottom:3px}
+  .tl-badge-esc{display:inline-flex;align-items:center;gap:3px;font-size:.7rem;font-weight:600;color:#92400e;background:#fef3c7;border:1px solid #f59e0b;border-radius:4px;padding:1px 5px;margin-bottom:3px}
+  html.tema-claro .tl-badge-esc{color:#78350f;background:#fef9c3}
   .btn-buscar-trib{display:inline-flex;align-items:center;gap:5px;font-size:.8rem;font-weight:600;color:var(--cyan);background:none;border:1px solid var(--cyan);border-radius:7px;padding:5px 11px;cursor:pointer;transition:all .18s}
   .btn-buscar-trib:hover{background:rgba(6,182,212,.08)}
   .btn-buscar-trib:disabled{opacity:.5;cursor:not-allowed}
@@ -2247,7 +2250,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.170';
+const APP_VERSAO = 'v1.8.171';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5352,10 +5355,12 @@ function renderMovs(){
   const prov=MOVS.filter(m=>m.tipo==='providencia');
   const aArea=document.getElementById('det-andamentos');
   aArea.innerHTML = and.length ? '<div class="timeline">'+and.map(m=>{
-    const isTrib = m.origem==='datajud';
-    const badge  = isTrib ? '<div><span class="tl-badge-trib">⚖️ Tribunal</span></div>' : '';
+    const isTrib = m.origem==='escavador';
+    const badge  = isTrib
+      ? '<div><span class="tl-badge-trib">⚖️ Tribunal</span></div>'
+      : '<div><span class="tl-badge-esc">✍️ Escritório</span></div>';
     const quem   = (!isTrib && m.criado_por_nome) ? ('por '+esc(m.criado_por_nome)) : '';
-    return `<div class="tl-item${isTrib?' datajud':''}">
+    return `<div class="tl-item ${isTrib?'trib':'hum'}">
       <div class="tl-date">${fmtData(m.data_mov)}${quem?' · '+quem:''}</div>
       ${badge}<div class="tl-desc">${esc(m.descricao)}</div>
     </div>`;
@@ -6156,6 +6161,9 @@ async function escAtualizarProcesso(){
       // Tribunal já consultado hoje (já atualizado) — não fica "buscando"
       toast(r.msg||'Esse processo já foi atualizado hoje.','ok',5600);
       if(btn){ btn.disabled=false; btn.textContent='⟳ Atualizar'; }
+      // [v1.8.171 / P6] Se a Edge copiou andamentos grátis no 422, recarrega a
+      // timeline pra eles aparecerem na hora (o sino verde vem no próximo load da lista).
+      if(r.copiados>0) carregarMovs();
     }else if(r&&r.motivo==='SEM_CREDITOS'){
       avisoSemCreditos();
       if(btn){ btn.disabled=false; btn.textContent='⟳ Atualizar'; }
