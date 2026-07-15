@@ -2250,7 +2250,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.173';
+const APP_VERSAO = 'v1.8.174';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3520,7 +3520,24 @@ async function pacToggleStatus(){
     }
     const {data,error}=await db.rpc('sp_admin_desativar',{p_token:TOKEN, p_escritorio_id:id, p_ativo:novoAtivo});
     if(error) throw error;
-    pacMsg((novoAtivo?'Escritório reativado!':'Escritório desativado.'+paradosMsg),'ok');
+    // v1.8.174 — BUG 2 · Peça 3: ao REATIVAR, religar o monitoramento em lote
+    // (só nos elegíveis, respeitando o teto do plano pago). BEST-EFFORT: o
+    // escritório JÁ foi reativado; se o religar falhar, NÃO desfaz a reativação.
+    let religadosMsg='';
+    if(novoAtivo){
+      try{
+        const rr = await efEscavador({action:'religar_monitoramento_escritorio', escritorio_id:id});
+        if(rr && rr.ok){
+          religadosMsg=' Monitoramentos religados: '+(rr.religados||0)+'.';
+          if(rr.pulados>0) religadosMsg+=' ('+rr.pulados+' sem vaga no plano.)';
+        }else{
+          religadosMsg=' (Não foi possível religar o monitoramento agora — refaça pelo painel.)';
+        }
+      }catch(e2){
+        religadosMsg=' (Não foi possível religar o monitoramento agora — refaça pelo painel.)';
+      }
+    }
+    pacMsg((novoAtivo?('Escritório reativado!'+religadosMsg):('Escritório desativado.'+paradosMsg)),'ok');
     document.getElementById('pac-ativo').value=novoAtivo?'1':'0';
     // atualiza UI do modal
     document.getElementById('pac-status-title').textContent=novoAtivo?'🔴 Desativar escritório':'🟢 Reativar escritório';
