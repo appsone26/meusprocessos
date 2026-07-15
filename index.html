@@ -2250,7 +2250,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.172';
+const APP_VERSAO = 'v1.8.173';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3510,9 +3510,17 @@ async function pacToggleStatus(){
   if(!confirm((novoAtivo?'Reativar':'Desativar')+' este escritório?')) return;
   pacMsg(''); setLoading(btn,true,ativo?'Desativar':'Reativar');
   try{
+    // v1.8.173 — BUG 2 · Peça 1: ao DESATIVAR, parar TODOS os monitoramentos em lote
+    // (pool: DELETE no tribunal só no último a usar o mon_id). Se falhar, NÃO desativa.
+    let paradosMsg='';
+    if(!novoAtivo){
+      const rp = await efEscavador({action:'parar_monitoramento_escritorio', escritorio_id:id});
+      if(!rp || !rp.ok) throw new Error('Não foi possível parar o monitoramento do escritório. Nada foi alterado.');
+      paradosMsg=' Monitoramentos parados: '+(rp.parados||0)+'.';
+    }
     const {data,error}=await db.rpc('sp_admin_desativar',{p_token:TOKEN, p_escritorio_id:id, p_ativo:novoAtivo});
     if(error) throw error;
-    pacMsg((novoAtivo?'Escritório reativado!':'Escritório desativado.'),'ok');
+    pacMsg((novoAtivo?'Escritório reativado!':'Escritório desativado.'+paradosMsg),'ok');
     document.getElementById('pac-ativo').value=novoAtivo?'1':'0';
     // atualiza UI do modal
     document.getElementById('pac-status-title').textContent=novoAtivo?'🔴 Desativar escritório':'🟢 Reativar escritório';
