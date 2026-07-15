@@ -2250,7 +2250,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.171';
+const APP_VERSAO = 'v1.8.172';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5215,7 +5215,17 @@ async function confirmarFinalizar(){
 }
 async function restaurarProcesso(id){
   try{ const {error}=await db.rpc('sp_restaurar_processo',{p_token:TOKEN,p_id:id}); if(error) throw error;
-    toast('Processo restaurado.','ok'); carregarProcessos();
+    toast('Processo restaurado.','ok');
+    // v1.8.172 — não existe mais botão "Monitorar": ao restaurar, o monitoramento
+    // volta sozinho. O finalizar limpou o escavador_mon_id, então a trava
+    // !escavador_mon_id impede assinar em dobro. Passa pelo mesmo porteiro
+    // sp_pode_monitorar (respeita o teto do plano) e pelo pool (não recobra).
+    const proc = PROCESSOS.find(x=>x.id===id);
+    if(proc && proc.numero && proc.tipo!=='extrajudicial'
+       && !proc.escavador_mon_id && isCNJValido(proc.numero)){
+      await monitorarProcesso(id, proc.numero);
+    }
+    carregarProcessos();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); toast(traduzErro(e),'err'); }
 }
 
