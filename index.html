@@ -2217,7 +2217,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.177';
+const APP_VERSAO = 'v1.8.178';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5240,7 +5240,14 @@ async function restaurarProcesso(id){
 
 /* ============ DETALHE DO PROCESSO (andamentos + providências) ============ */
 let MOVS = [];
-function voltarDaLista(){ irPara('processos'); }
+// v1.8.178 — voltar do processo tem que RECARREGAR do banco, nao so redesenhar.
+// irPara() sozinho chama renderProcessos(), que repinta o que ja esta na MEMORIA;
+// novidade que chegou do tribunal enquanto o advogado estava DENTRO de um processo
+// (ou seja, em outro processo da lista) nunca aparecia sem F5.
+// Mesma receita ja aprovada no P14 (logoInicio): irPara() e DEPOIS carregarProcessos(),
+// com a view ja visivel, porque carregarProcessos escreve em #proc-area.
+// Mantem o filtro atual (statusProc) — recarrega a lista que o usuario esta vendo.
+function voltarDaLista(){ irPara('processos'); carregarProcessos(); }
 function abrirNoSistema(){
   const p=procAtual; if(!p) return;
   const si=sistemaInfo(p.sistema);
