@@ -594,6 +594,14 @@
   .field-cnj-row .field{flex:1;margin:0}
   .tl-date{font-size:.74rem;color:var(--cyan);font-weight:600}
   .tl-desc{color:#fff;font-size:.92rem;margin:2px 0}
+  /* [v1.8.179] atraso na entrega do tribunal, costurado na linha da data.
+     ÂMBAR ESTÁ FORA DE PROPÓSITO: nesta tela âmbar já é o ESCRITÓRIO (selo
+     ✍️ e bolinha da timeline — regra do P5, não encostar). Pintar o atraso
+     de âmbar faria a mesma cor significar duas coisas no mesmo item.
+     Acima de 7 dias vai --danger: é a promessa comercial estourando.
+     Não acusa o escritório — acusa o tribunal, que foi quem atrasou. */
+  .tl-sla-in{color:var(--muted-2);font-weight:400}
+  .tl-sla-in.late{color:var(--danger);font-weight:600}
   .tl-by{font-size:.74rem;color:var(--muted-2)}
   .perm-check{display:flex;align-items:center;gap:9px;padding:8px 2px;font-size:.9rem;color:var(--text);cursor:pointer}
   .perm-check input{width:16px;height:16px;accent-color:var(--cyan);cursor:pointer}
@@ -2217,7 +2225,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.178';
+const APP_VERSAO = 'v1.8.179';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5375,6 +5383,31 @@ async function carregarMovs(){
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
     if(procAtual && procAtual.id===_pid) document.getElementById('det-andamentos').innerHTML='<div class="det-empty">'+esc(traduzErro(e))+'</div>'; }
 }
+/* [v1.8.179] Atraso na entrega do andamento — "recebido em 24/07 (4 dias)".
+   A CONTA VEM PRONTA DO BANCO (sp_listar_movimentacoes v1.8.108 devolve
+   entregue_em DATE + atraso_dias INTEGER). Aqui não se faz aritmética de
+   data: se o atraso fosse calculado no navegador, um movimento entregue às
+   21h cairia no dia anterior conforme o fuso e a tela discordaria do banco.
+   Só existe quando veio do MONITOR. Histórico importado, atualização
+   pontual paga e todo andamento do escritório vêm com entregue_em NULL —
+   e aí esta função devolve string vazia e a linha fica como sempre foi. */
+function slaAndamento(m){
+  if(!m || !m.entregue_em) return '';
+  const d = Number(m.atraso_dias);
+  if(!isFinite(d) || d < 0) return '';   // data torta: melhor calar do que mentir
+  let txt;
+  if(d === 0){ txt = 'recebido no mesmo dia'; }
+  else{
+    let quando = fmtData(m.entregue_em);
+    const mv = fmtData(m.data_mov);
+    // mesmo ano: tira o ano do "recebido em" — a linha já começa com ele.
+    // Guardado por regex: se o formato surpreender, cai na data inteira.
+    const ok = /^\d{2}\/\d{2}\/\d{4}$/;
+    if(ok.test(quando) && ok.test(mv) && quando.slice(6) === mv.slice(6)) quando = quando.slice(0,5);
+    txt = 'recebido em ' + quando + ' (' + d + (d === 1 ? ' dia' : ' dias') + ')';
+  }
+  return ' <span class="tl-sla-in' + (d > 7 ? ' late' : '') + '">· ' + esc(txt) + '</span>';
+}
 function renderMovs(){
   const ro = procAtual && procAtual.status==='finalizado';
   const and=MOVS.filter(m=>m.tipo==='andamento');
@@ -5387,7 +5420,7 @@ function renderMovs(){
       : '<div><span class="tl-badge-esc">✍️ Escritório</span></div>';
     const quem   = (!isTrib && m.criado_por_nome) ? ('por '+esc(m.criado_por_nome)) : '';
     return `<div class="tl-item ${isTrib?'trib':'hum'}">
-      <div class="tl-date">${fmtData(m.data_mov)}${quem?' · '+quem:''}</div>
+      <div class="tl-date">${fmtData(m.data_mov)}${quem?' · '+quem:''}${isTrib?slaAndamento(m):''}</div>
       ${badge}<div class="tl-desc">${esc(m.descricao)}</div>
     </div>`;
   }).join('')+'</div>' : '<div class="det-empty">Nenhum andamento ainda.</div>';
