@@ -885,7 +885,38 @@
   @media(max-width:640px){ .pf-grid{grid-template-columns:1fr} }
   @media(max-width:760px){ .ajuda-list{grid-template-columns:1fr} }
   /* ---- Painel do Gestor (super-admin) ---- */
-  .pnl-cap-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  /* ===== [v1.8.183 · peca 11c] Banner do ciclo no painel master =====
+   Regra de UI da S69: a cor mora na barra de acento, no icone e no numero.
+   O fundo e sempre var(--bg-2), entao o tema claro e herdado sem uma linha a mais. */
+.cic-banner{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:0;overflow:hidden;display:flex;margin-bottom:16px}
+.cic-acc{flex:0 0 3px;background:var(--danger)}
+.cic-acc.warn{background:var(--warn)}
+.cic-body{flex:1;padding:14px 16px;min-width:0}
+.cic-h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.cic-ic{font-size:.95rem;line-height:1}
+.cic-n{font-family:'Space Grotesk',ui-monospace,monospace;font-size:1.35rem;font-weight:700;color:var(--danger);line-height:1}
+.cic-n.warn{color:var(--warn)}
+.cic-t{font-size:.92rem;font-weight:600;color:var(--text)}
+.cic-sub{font-size:.76rem;color:var(--muted);margin-top:5px;line-height:1.5}
+.cic-lista{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.cic-row{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cic-row-esq{flex:1 1 240px;min-width:0}
+.cic-row-nome{font-size:.86rem;font-weight:600;color:var(--text)}
+.cic-row-mail{font-size:.73rem;color:var(--muted-2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cic-row-dir{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.cic-dado{text-align:right;line-height:1.25}
+.cic-dado .v{font-family:'Space Grotesk',ui-monospace,monospace;font-size:.92rem;font-weight:700;color:var(--text)}
+.cic-dado .v.dng{color:var(--danger)}
+.cic-dado .l{font-size:.66rem;color:var(--muted-2);display:block;margin-top:1px}
+.cic-btn{background:none;border:1px solid var(--line);color:var(--muted);font-family:inherit;font-size:.76rem;font-weight:600;padding:6px 11px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.cic-btn:hover{border-color:var(--danger);color:var(--danger)}
+.cic-btn.solto{border-color:rgba(251,191,36,.45);color:var(--warn)}
+.cic-btn.solto:hover{border-color:var(--warn)}
+.cic-nota{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;font-size:.76rem;line-height:1.45;display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--warn)}
+.cic-nota .num{font-family:'Space Grotesk',ui-monospace,monospace;font-weight:700}
+@media(max-width:700px){.cic-row-dir{width:100%;justify-content:space-between}}
+.cic-banner{background:var(--bg-2)}
+.pnl-cap-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
   .pnl-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
   .pnl-card-h{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text);font-size:.95rem;margin-bottom:10px}
   .pnl-ic{font-size:1.1rem}
@@ -1644,6 +1675,7 @@
           <div style="margin-top:12px"><button class="btn btn-primary btn-sm" id="pix-btn-gerar" type="button" onclick="pixGerarCobranca()">Gerar cobrança Pix</button></div>
           <div id="pix-resultado" style="margin-top:14px"></div>
         </div>
+        <div id="pnl-banner"></div>
         <div id="pnl-cap"><div class="loading">Carregando…</div></div>
         <div class="view-head" style="margin:26px 0 10px"><div><h2 style="font-size:1.05rem">Escritórios</h2><p style="margin:0">Limite e consumo de cada conta.</p></div></div>
         <div class="pnl-tabs">
@@ -1922,6 +1954,23 @@
        SALDO_INSUFICIENTE -> caixa registradora aqui dentro (Pix sem sair da petição)
        PLANO_RESTRITO     -> venceu o PLANO; crédito não resolve. Vai pra Ver planos.
        PLANO_BLOQUEADO    -> dia 31+. A primeira linha DIZ que os dados estão intactos. -->
+<!-- [v1.8.183 · peca 11c] Freio de emergencia do ciclo de vida -->
+<div class="modal" id="modal-freio">
+  <div class="box" style="max-width:480px">
+    <h3 id="frn-title">—</h3>
+    <p class="msub" id="frn-sub">—</p>
+    <div id="frn-campo" style="margin-top:14px">
+      <label style="display:block;font-size:.74rem;color:var(--muted-2);margin-bottom:5px">Por que está segurando?</label>
+      <input id="frn-motivo" maxlength="180" placeholder="Ex.: Pix pago ontem, fatura não baixou"
+             style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.85rem;padding:9px 11px">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:18px">
+      <button class="btn btn-ghost btn-sm" type="button" onclick="freioFechar()">Cancelar</button>
+      <button class="btn btn-ghost btn-sm danger" id="frn-ok" type="button" onclick="freioConfirmar()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modal-ia-cred">
   <div class="box" style="max-width:560px">
     <h3 id="iac-title">—</h3>
@@ -2263,7 +2312,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.182';
+const APP_VERSAO = 'v1.8.183';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3174,7 +3223,7 @@ function pnlNum(v){ return String(Number(v)||0); }
 async function carregarPainelGestor(force){
   const cap=document.getElementById('pnl-cap'); if(!cap) return;
   carregarSuportePainel(); // v1.8.159 — secundário: nunca derruba o painel
-  if(PAINEL_DATA && !force){ renderPainelCap(PAINEL_DATA.cap, PAINEL_DATA.escTot); renderPainelLista(PAINEL_DATA.escs); return; }
+  if(PAINEL_DATA && !force){ renderPainelBanner(PAINEL_DATA.pan); renderPainelCap(PAINEL_DATA.cap, PAINEL_DATA.escTot); renderPainelLista(PAINEL_DATA.escs); return; }
   cap.innerHTML='<div class="loading">Carregando…</div>';
   document.getElementById('pnl-escritorios').innerHTML='';
   try{
@@ -3187,11 +3236,183 @@ async function carregarPainelGestor(force){
     // total de custo no tribunal (card Saldo) — secundário: nunca derruba o painel
     let escTot={};
     try{ const tRes=await db.rpc('sp_admin_escavador_total',{p_token:TOKEN}); if(!tRes.error) escTot=(Array.isArray(tRes.data)?tRes.data[0]:tRes.data)||{}; }catch(_){}
-    PAINEL_DATA={cap:capRow,escs,escTot};
-    renderPainelCap(capRow, escTot); renderPainelLista(escs);
+    // [v1.8.183] panorama do ciclo — secundário: falha aqui nunca derruba o painel
+    let pan=null;
+    try{ const pRes=await db.rpc('sp_admin_ciclo_panorama',{p_token:TOKEN, p_dias:7});
+         if(!pRes.error) pan=(Array.isArray(pRes.data)?pRes.data[0]:pRes.data)||null; }catch(_){}
+    PAINEL_DATA={cap:capRow,escs,escTot,pan};
+    renderPainelBanner(pan); renderPainelCap(capRow, escTot); renderPainelLista(escs);
   }catch(err){
     cap.innerHTML='<div class="rel-card">Não consegui carregar o painel. <b>'+esc((err&&(err.message||err.hint||JSON.stringify(err)))||'erro desconhecido')+'</b></div>';
   }
+}
+
+/* ===== [v1.8.183 · peca 11c] BANNER DO CICLO DE VIDA — painel master =====
+   Fonte unica: sp_admin_ciclo_panorama (banco v1.8.126), que repete o FILTRO do
+   robo mas nunca a matematica das datas — quem diz o dia e a fn_conta_prazo_exclusao.
+   So desenha quando ha o que dizer. Dia sem parede, sem freio e sem divergencia
+   nao mostra nada: banner que aparece todo dia e banner que ninguem le. */
+let PANORAMA=null, FREIO_ALVO=null;
+
+function cicDia(d){
+  if(!d) return '—';
+  const p=String(d).slice(0,10).split('-');
+  return p.length===3 ? (p[2]+'/'+p[1]) : String(d);
+}
+function cicPlural(n,um,varios){ return Number(n)===1?um:varios; }
+function cicQuando(d){
+  const n=Number(d);
+  if(!isFinite(n) || n<=0) return 'hoje';
+  return n===1 ? 'amanhã' : (n+' dias');
+}
+function cicFat(it){
+  const q=Number(it.qtd_abertas||0);
+  return '<div class="cic-dado"><span class="v">'+escFmtCent(it.total_aberto_centavos||0)+'</span>'+
+         '<span class="l">'+q+' '+cicPlural(q,'fatura','faturas')+'</span></div>';
+}
+function cicIdent(it){
+  return '<div class="cic-row-esq"><div class="cic-row-nome">'+esc(it.nome||'—')+'</div>'+
+         '<div class="cic-row-mail">'+esc(it.email||'')+'</div></div>';
+}
+
+function cicRowParede(it,i){
+  return '<div class="cic-row">'+cicIdent(it)+'<div class="cic-row-dir">'+
+    '<div class="cic-dado"><span class="v dng">'+cicQuando(it.dias_para_desativar)+'</span>'+
+    '<span class="l">desativa em '+cicDia(it.desativa_em)+'</span></div>'+
+    cicFat(it)+
+    '<button class="cic-btn" type="button" onclick="freioAbrir(\'parede\','+i+')">Puxar freio</button>'+
+  '</div></div>';
+}
+function cicRowFreio(it,i){
+  const d=Number(it.freio_dias||0);
+  return '<div class="cic-row">'+cicIdent(it)+'<div class="cic-row-dir">'+
+    '<div class="cic-dado"><span class="v">'+d+' '+cicPlural(d,'dia','dias')+'</span>'+
+    '<span class="l">puxado em '+cicDia(it.freio_puxado_em)+'</span></div>'+
+    cicFat(it)+
+    '<button class="cic-btn solto" type="button" onclick="freioAbrir(\'freio\','+i+')">Soltar freio</button>'+
+  '</div></div>';
+}
+function cicRowDiverg(it,i){
+  return '<div class="cic-row">'+cicIdent(it)+'<div class="cic-row-dir">'+
+    '<div class="cic-dado"><span class="v">'+cicQuando(it.dias_para_desativar)+'</span>'+
+    '<span class="l">parede em '+cicDia(it.desativa_em)+'</span></div>'+
+    '<div class="cic-dado"><span class="v">—</span><span class="l">sem fatura aberta</span></div>'+
+  '</div></div>';
+}
+
+function renderPainelBanner(pan){
+  const box=document.getElementById('pnl-banner'); if(!box) return;
+  PANORAMA = pan || null;
+  box.innerHTML='';
+  if(!pan || pan.ok!==true) return;
+
+  const parede = Array.isArray(pan.parede)      ? pan.parede      : [];
+  const freio  = Array.isArray(pan.freio)       ? pan.freio       : [];
+  const diverg = Array.isArray(pan.divergentes) ? pan.divergentes : [];
+  if(!parede.length && !freio.length && !diverg.length) return;
+
+  const urgente = parede.length>0;
+  let n, titulo, sub, lista;
+
+  if(urgente){
+    n = parede.length;
+    titulo = cicPlural(n,'escritório será desativado nos próximos dias',
+                         'escritórios serão desativados nos próximos dias');
+    sub = 'Depois da desativação a conta para de faturar, o monitoramento cai e o titular tem 60 dias para baixar os dados. Puxe o freio apenas se a cobrança estiver errada.';
+    lista = parede.map(cicRowParede).join('');
+  } else if(freio.length){
+    n = freio.length;
+    titulo = cicPlural(n,'escritório com freio de emergência puxado',
+                         'escritórios com freio de emergência puxado');
+    sub = 'O robô não vai desativar enquanto o freio estiver puxado. As faturas continuam nascendo e o monitoramento continua sendo cobrado de você.';
+    lista = freio.map(cicRowFreio).join('');
+  } else {
+    n = diverg.length;
+    titulo = cicPlural(n,'escritório na parede sem fatura em aberto',
+                         'escritórios na parede sem fatura em aberto');
+    sub = 'O robô não vai desativar (o cinto de segurança barra), mas a data e o pagamento estão desencontrados. Vale conferir.';
+    lista = diverg.map(cicRowDiverg).join('');
+  }
+
+  // notas: o que existe mas nao e a lista principal
+  let notas='';
+  if(urgente && freio.length){
+    const f=freio[0];
+    notas += '<div class="cic-nota"><span>⚠️</span><span>'+
+      (freio.length===1
+        ? '<b>'+esc(f.nome||'—')+'</b> está com o freio puxado há <span class="num">'+Number(f.freio_dias||0)+'</span> '+cicPlural(Number(f.freio_dias||0),'dia','dias')+' — acumulou <span class="num">'+escFmtCent(f.total_aberto_centavos||0)+'</span> e o monitoramento segue rodando.'
+        : '<span class="num">'+freio.length+'</span> escritórios com o freio puxado. As faturas deles continuam nascendo.')+
+      '</span></div>';
+  }
+  if(diverg.length && !(!urgente && !freio.length)){
+    notas += '<div class="cic-nota"><span>⚠️</span><span><span class="num">'+diverg.length+'</span> '+
+      cicPlural(diverg.length,'escritório está','escritórios estão')+
+      ' na parede pela data mas sem fatura em aberto. O robô não desativa — mas data e pagamento se desencontraram.</span></div>';
+  }
+
+  box.innerHTML =
+    '<div class="cic-banner">'+
+      '<div class="cic-acc'+(urgente?'':' warn')+'"></div>'+
+      '<div class="cic-body">'+
+        '<div class="cic-h"><span class="cic-ic">'+(urgente?'🔴':'⚠️')+'</span>'+
+          '<span class="cic-n'+(urgente?'':' warn')+'">'+n+'</span>'+
+          '<span class="cic-t">'+titulo+'</span></div>'+
+        '<div class="cic-sub">'+sub+'</div>'+
+        '<div class="cic-lista">'+lista+'</div>'+
+        notas+
+      '</div>'+
+    '</div>';
+}
+
+/* ---- o freio de emergencia ----
+   🔴 O botao escreve em protegido_exclusao, que os robos JA obedecem. As colunas
+   freio_puxado_em/freio_motivo sao so procedencia — nenhum robo as le. E o banco
+   se defende sozinho: sp_admin_freio_soltar levanta NAO_E_FREIO se a imunidade
+   nao tiver sido puxada aqui (protege o Soares e a conta do sistema). */
+function freioAbrir(lista, idx){
+  if(!PANORAMA) return;
+  const arr=Array.isArray(PANORAMA[lista])?PANORAMA[lista]:[];
+  const it=arr[idx]; if(!it) return;
+  const soltar=(lista==='freio');
+  FREIO_ALVO={id:it.escritorio_id, nome:it.nome||'', soltar};
+
+  document.getElementById('frn-title').textContent=(soltar?'Soltar o freio — ':'Puxar o freio — ')+(it.nome||'—');
+  document.getElementById('frn-sub').textContent = soltar
+    ? 'O escritório volta para a régua normal. Se ele já estiver além do 7º dia, será desativado na próxima rodada, às 09:10.'
+    : 'O robô não vai desativar este escritório enquanto o freio estiver puxado, e os e-mails de cobrança param. As faturas continuam nascendo e o monitoramento continua sendo cobrado de você.';
+  document.getElementById('frn-campo').classList.toggle('hidden', soltar);
+  document.getElementById('frn-motivo').value = soltar ? '' : '';
+  document.getElementById('frn-ok').textContent = soltar ? 'Soltar freio' : 'Puxar freio';
+  document.getElementById('modal-freio').classList.add('open');
+  if(!soltar) setTimeout(function(){ document.getElementById('frn-motivo')?.focus(); },80);
+}
+
+function freioFechar(){
+  document.getElementById('modal-freio')?.classList.remove('open');
+  FREIO_ALVO=null;
+}
+
+async function freioConfirmar(){
+  const a=FREIO_ALVO; if(!a) return;
+  const btn=document.getElementById('frn-ok');
+  try{
+    if(a.soltar){
+      btn.disabled=true;
+      const {error}=await db.rpc('sp_admin_freio_soltar',{p_token:TOKEN, p_escritorio_id:a.id});
+      if(error) throw error;
+      toast('Freio solto em '+(a.nome||'escritório')+'.','ok');
+    }else{
+      const motivo=(document.getElementById('frn-motivo')?.value||'').trim();
+      if(!motivo){ toast('Escreva o motivo — é ele que explica o freio daqui a três meses.','err'); return; }
+      btn.disabled=true;
+      const {error}=await db.rpc('sp_admin_freio_puxar',{p_token:TOKEN, p_escritorio_id:a.id, p_motivo:motivo});
+      if(error) throw error;
+      toast('Freio puxado em '+(a.nome||'escritório')+'.','ok');
+    }
+    freioFechar();
+    PAINEL_DATA=null; carregarPainelGestor(true);
+  }catch(e){ toast(traduzErro(e),'err'); }
+  finally{ btn.disabled=false; }
 }
 
 function renderPainelCap(c, escTot){
