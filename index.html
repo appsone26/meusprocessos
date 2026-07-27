@@ -963,6 +963,25 @@
   .mpl-preco{color:var(--muted);font-size:.9rem}
   .mpl-badge{font-size:.72rem;color:var(--cyan);border:1px solid rgba(34,211,238,.4);background:rgba(34,211,238,.12);padding:2px 8px;border-radius:20px;white-space:nowrap}
   .mpl-desc{font-size:.82rem;color:var(--muted);margin:7px 0 9px}
+
+  /* ===== [v1.8.180 · peca 6b] Banner do ciclo de vida (REGRA v3) =====
+     Anatomia de card da casa: fundo --bg-2 + 1px --line, raio externo 12px.
+     Cor SO onde significa: barra de acento, icone e numero.
+     Fase 1 = --warn (pendencia). Fase 2 = --danger (mesmo dono do
+     "atraso acima de 7 dias"). Tema claro herdado pelas variaveis:
+     --warn vira ambar escuro e --danger vermelho fechado, sem regra extra. */
+  .ciclo-banner{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    background:var(--bg-2);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;position:relative;overflow:hidden;margin:0 0 16px}
+  .ciclo-banner::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--warn)}
+  .ciclo-banner.fase2::before{background:var(--danger)}
+  .cb-ico{font-size:1.35rem;line-height:1;flex:0 0 auto}
+  .cb-txt{flex:1 1 260px;min-width:220px}
+  .cb-tit{font-weight:700;font-size:.95rem;margin:0 0 2px}
+  .cb-tit .n{color:var(--warn)}
+  .ciclo-banner.fase2 .cb-tit .n{color:var(--danger)}
+  .cb-det{font-size:.8rem;color:var(--muted);margin:0}
+  .cb-det b{color:var(--text);font-weight:600}
 </style>
 <script>
   /* Anti-piscada no F5: roda ANTES de a página pintar. Se já existe sessão
@@ -1155,6 +1174,11 @@
       </div>
     </aside>
     <main class="content">
+      <!-- CICLO DE VIDA DA CONTA (REGRA v3) - v1.8.180, peca 6b.
+           Acima do conteudo de qualquer aba, em todo login, para todos os
+           usuarios do escritorio. Vazio quando a conta esta em dia. -->
+      <div id="ciclo-banner-host"></div>
+
       <!-- BARRA DE ALERTAS — cartão grande (desktop oculta sempre; celular oculto desde v1.8.76) -->
       <div id="alert-bar"></div>
 
@@ -2225,7 +2249,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.179';
+const APP_VERSAO = 'v1.8.180';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2634,6 +2658,97 @@ function abrirApp(s){
   verificarDono();
   iniciarPollingAviso();
   carregarClientes(); carregarProcessos(); carregarAlertas();
+  carregarCicloVida();
+}
+
+/* ---------- ciclo de vida da conta (REGRA v3) - v1.8.180, peca 6b ----------
+   Estreia no front a sp_plano_atual (v1.8.116) e a sp_fatura_em_aberto
+   (v1.8.110): nenhuma das duas tinha chamador ate aqui. As duas validam
+   sessao por dentro e estao concedidas ao anon.
+
+   FASE  = datas. Vem de ciclos_abertos, calculado pela fn_plano_ciclo sobre
+           plano_contratado_em x plano_valido_ate. Pagou, o vencimento anda um
+           aniversario, ciclos_abertos cai e o banner some sozinho.
+   NUMERO = tabela. Vem da fn_fatura_em_aberto, que devolve a fatura ABERTA
+           mais velha - que e exatamente a do FIFO, a que se quita.
+
+   Sem botao de pagar: hoje nada em producao baixa uma fatura (a Edge
+   pagamentos nao toca na tabela `faturas`), entao um botao "Pagar" prometeria
+   quitacao que so a peca 8 entrega. O aviso basta, e diz o que importa: da
+   para pagar uma so.
+
+   Conta desativada fica muda ate a peca 6c existir. A primeira desativacao
+   automatica e 03/10, entao nao ha corrida. */
+var CICLO = null;
+
+async function carregarCicloVida(){
+  if(!document.getElementById('ciclo-banner-host')) return;
+  try{
+    var r = await Promise.all([
+      db.rpc('sp_plano_atual',      {p_token:TOKEN}),
+      db.rpc('sp_fatura_em_aberto', {p_token:TOKEN})
+    ]);
+    if(r[0].error) throw r[0].error;
+    if(r[1].error) throw r[1].error;
+    var plano = (Array.isArray(r[0].data)?r[0].data[0]:r[0].data)||{};
+    var fat   = (Array.isArray(r[1].data)?r[1].data[0]:r[1].data)||{};
+    if(plano.ok!==true) return;   // SESSAO_INVALIDA quem trata e o resto do app
+    CICLO = { plano:plano, fatura:(fat.ok===true?fat:null) };
+    renderCicloBanner();
+  }catch(e){
+    /* silencioso de proposito: o banner e aviso, nao funcao. Se a leitura
+       falhar o app abre igual - isto nunca pode segurar o login. */
+    CICLO = null;
+  }
+}
+
+function renderCicloBanner(){
+  var host = document.getElementById('ciclo-banner-host'); if(!host) return;
+  host.innerHTML = '';
+  if(!CICLO || !CICLO.plano) return;
+  var p = CICLO.plano, f = CICLO.fatura;
+
+  /* conta desativada: a tela cheia e a peca 6c. Ate la nao desenha fase
+     nenhuma - meio-feito confunde mais do que nada. */
+  if(p.desativado_em) return;
+
+  var ciclos = Number(p.ciclos_abertos||0);
+  if(ciclos < 1) return;
+  if(!f || f.tem_aberta !== true) return;
+
+  var valor  = fmtBRL(Number(f.valor_centavos||0)/100);
+  var total  = fmtBRL(Number(f.total_aberto_centavos||0)/100);
+  var atraso = Number(f.dias_atraso||0);
+  var qtd    = Number(f.qtd_abertas||0);
+  var html;
+
+  if(ciclos >= 2){
+    var dias = Number(p.dias_para_desativar||0);
+    html =
+      '<div class="cb-ico">&#9203;</div>'+
+      '<div class="cb-txt">'+
+        '<p class="cb-tit">Sua conta ser\u00e1 desativada em <span class="n">'+
+          dias+' '+(dias===1?'dia':'dias')+'</span></p>'+
+        '<p class="cb-det">Voc\u00ea tem <b>'+qtd+' mensalidades em aberto</b>, '+
+          'somando <b>'+total+'</b>. Pagar a mais antiga, de <b>'+valor+
+          '</b>, j\u00e1 zera o prazo.</p>'+
+      '</div>';
+  } else {
+    var tit = (atraso>0)
+      ? 'Sua mensalidade venceu h\u00e1 <span class="n">'+atraso+' '+(atraso===1?'dia':'dias')+'</span>'
+      : 'Sua mensalidade <span class="n">vence hoje</span>';
+    html =
+      '<div class="cb-ico">&#9888;&#65039;</div>'+
+      '<div class="cb-txt">'+
+        '<p class="cb-tit">'+tit+'</p>'+
+        '<p class="cb-det">Fatura de <b>'+valor+'</b> \u00b7 compet\u00eancia <b>'+
+          fmtData(f.competencia_inicio)+' \u2013 '+fmtData(f.competencia_fim)+
+          '</b> \u00b7 vencimento <b>'+fmtData(f.vencimento)+'</b>. '+
+          'Com duas faturas em aberto, a conta entra em prazo de desativa\u00e7\u00e3o.</p>'+
+      '</div>';
+  }
+
+  host.innerHTML = '<div class="ciclo-banner'+(ciclos>=2?' fase2':'')+'">'+html+'</div>';
 }
 /* esconde as abas que o usuário não pode ver e abre na 1ª permitida */
 async function aplicarPermissoes(){
