@@ -2263,7 +2263,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.181';
+const APP_VERSAO = 'v1.8.182';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3155,6 +3155,9 @@ async function limparAvisoGestor(){
 
 /* ============ PAINEL DO GESTOR (dono) ============ */
 let PAINEL_DATA=null, PAINEL_TAB='ativos';
+// [v1.8.182] Fonte unica da lista de escritorios DESENHADA na tela.
+// Quem clica em "Acoes" le daqui, nunca refaz o filtro por conta propria.
+let PAINEL_ROWS=[];
 
 async function verificarDono(){
   try{
@@ -3615,11 +3618,13 @@ function pnlCardEscritorio(e, idx){
 }
 
 function abrirAcaoEscritorioIdx(idx){
-  if(!PAINEL_DATA||!PAINEL_DATA.escs) return;
-  // idx é relativo à lista filtrada atual — precisamos buscar pelo índice da lista renderizada
-  const want=(PAINEL_TAB==='ativos');
-  const rows=PAINEL_DATA.escs.filter(e=>!!e.ativo===want);
-  const e=rows[idx]; if(!e) return;
+  // 🔴 [v1.8.182] CONSERTO. O idx vem do map() da lista JA RENDERIZADA, que passa
+  // por DOIS filtros: a aba (ativos/desativados) E a busca. Aqui se refazia so o
+  // filtro da aba — entao, com a busca preenchida, os indices desencontravam e o
+  // modal abria em OUTRO escritorio. Esse modal tem "Desativar", que e um clique
+  // so (o "Purgar" se protege pedindo o nome digitado; o Desativar nao).
+  // Agora le exatamente a lista que foi desenhada.
+  const e=PAINEL_ROWS[idx]; if(!e) return;
   abrirAcaoEscritorio(e);
 }
 
@@ -3632,6 +3637,7 @@ function renderPainelLista(escs){
   const q=(document.getElementById('pnl-busca-esc')?.value||'').toLowerCase().trim();
   let rows=escs.filter(e=>!!e.ativo===want);
   if(q) rows=rows.filter(e=>(e.nome||'').toLowerCase().includes(q)||(e.email||'').toLowerCase().includes(q));
+  PAINEL_ROWS=rows;   // [v1.8.182] o que a tela mostra e o que o clique le
   box.innerHTML = rows.length ? rows.map((e,i)=>pnlCardEscritorio(e,i)).join('')
     : '<div class="rel-card">'+(q?'Nenhum escritório encontrado para "'+esc(q)+'"':'Nenhum escritório nesta aba.')+'</div>';
 }
