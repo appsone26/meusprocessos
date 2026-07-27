@@ -982,6 +982,20 @@
   .ciclo-banner.fase2 .cb-tit .n{color:var(--danger)}
   .cb-det{font-size:.8rem;color:var(--muted);margin:0}
   .cb-det b{color:var(--text);font-weight:600}
+
+  /* ===== [v1.8.181 · peca 6c] Conta desativada - tela unica =====
+     Substitui o app inteiro. Mesma anatomia de card, acento em --danger,
+     que e o dono da gravidade (mesmo do "atraso acima de 7 dias"). */
+  .td-wrap{max-width:640px;margin:48px auto;padding:0 16px}
+  .tela-desativada{background:var(--bg-2);border:1px solid var(--line);
+    border-radius:12px;padding:40px 24px;text-align:center;position:relative;overflow:hidden}
+  .tela-desativada::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--danger)}
+  .td-ico{font-size:2rem;margin-bottom:10px}
+  .td-tit{font-size:1.05rem;font-weight:700;margin:0 0 8px}
+  .td-txt{font-size:.85rem;color:var(--muted);max-width:520px;margin:0 auto 18px;line-height:1.55}
+  .td-txt b{color:var(--text)}
+  .td-acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .td-prog{font-size:.78rem;color:var(--muted-2);margin-top:14px;min-height:1.2em}
 </style>
 <script>
   /* Anti-piscada no F5: roda ANTES de a página pintar. Se já existe sessão
@@ -2249,7 +2263,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.180';
+const APP_VERSAO = 'v1.8.181';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2708,9 +2722,8 @@ function renderCicloBanner(){
   if(!CICLO || !CICLO.plano) return;
   var p = CICLO.plano, f = CICLO.fatura;
 
-  /* conta desativada: a tela cheia e a peca 6c. Ate la nao desenha fase
-     nenhuma - meio-feito confunde mais do que nada. */
-  if(p.desativado_em) return;
+  /* conta desativada: nao ha banner, ha tela unica no lugar do app. */
+  if(p.desativado_em){ montarTelaDesativada(p); return; }
 
   var ciclos = Number(p.ciclos_abertos||0);
   if(ciclos < 1) return;
@@ -2749,6 +2762,197 @@ function renderCicloBanner(){
   }
 
   host.innerHTML = '<div class="ciclo-banner'+(ciclos>=2?' fase2':'')+'">'+html+'</div>';
+}
+
+/* ---------- conta desativada: tela unica - v1.8.181, peca 6c ----------
+   Substitui o app inteiro. Nenhuma outra funcao fica acessivel: a topbar, a
+   faixa de menu do celular e o applayout saem juntos. Ficam duas saidas na
+   propria tela - baixar o acervo e sair - porque o menu lateral que tinha o
+   "Sair" some com o resto.
+   Sem lista parcial no texto (achado 6 da S68): "todos os seus dados". */
+function montarTelaDesativada(p){
+  var app = document.getElementById('app'); if(!app) return;
+  if(document.getElementById('conta-desativada')) return;   // idempotente
+
+  ['.topbar','.mob-menu','.applayout','.menu-backdrop'].forEach(function(sel){
+    var el = document.querySelector(sel); if(el) el.style.display='none';
+  });
+
+  var guarda = '';
+  try{
+    var d = new Date(p.desativado_em);
+    d.setDate(d.getDate()+60);
+    guarda = d.toLocaleDateString('pt-BR');
+  }catch(e){}
+
+  var box = document.createElement('div');
+  box.id = 'conta-desativada';
+  box.className = 'td-wrap';
+  box.innerHTML =
+    '<div class="tela-desativada">'+
+      '<div class="td-ico">&#128452;</div>'+
+      '<p class="td-tit">Sua conta est\u00e1 desativada</p>'+
+      '<p class="td-txt">Nada foi apagado. Seus processos, clientes, documentos e '+
+        'todos os seus dados est\u00e3o <b>guardados'+(guarda?(' at\u00e9 '+guarda):'')+'</b>. '+
+        'Neste per\u00edodo a conta abre apenas para voc\u00ea retirar o que \u00e9 seu. '+
+        'As mensalidades em aberto continuam devidas \u2014 para reativar, fale com o suporte.</p>'+
+      '<div class="td-acts">'+
+        '<button class="btn btn-primary" id="td-baixar" onclick="baixarTudo(this)">&#11015; Baixar tudo</button>'+
+        '<button class="btn btn-ghost" onclick="doLogout()">Sair</button>'+
+      '</div>'+
+      '<div class="td-prog" id="td-progresso"></div>'+
+    '</div>';
+  app.appendChild(box);
+}
+
+/* ---------- "Baixar tudo" - v1.8.181, peca 6d ----------
+   ESCOPO, decidido pelo Edgard: vai o que e DELE - os cadastros que digitou e
+   os arquivos que subiu ou pagou credito para gerar (o resumo de IA e gravado
+   como .docx no acervo pelo salvarResumoComoDocx, entao entra junto sem regra
+   extra). NAO vao os andamentos: aquilo e o servico de monitoramento prestado,
+   e o historico esta no proprio tribunal.
+
+   Entrega: um .zip com uma planilha de todas as abas + os arquivos, achatados
+   na raiz. Sem pastas, sem curadoria - "devolveu tudo".
+   Front puro: reusa a mesma injecao de CDN que ja serve jsPDF e SheetJS. */
+var _BT_RODANDO = false;
+
+function _btNomeBase(){
+  var e = (SESS && SESS.escritorio_nome) ? SESS.escritorio_nome : 'Meus Processos';
+  return (typeof expSanitizeNome==='function' ? expSanitizeNome(e) : e.replace(/[\\/:*?"<>|]/g,'-'));
+}
+
+function _btPlanilha(abas){
+  var wb = XLSX.utils.book_new();
+  (abas||[]).forEach(function(ab, idx){
+    var aoa = [ab.colunas||[]].concat(ab.linhas||[]);
+    var ws  = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = (ab.colunas||[]).map(function(c,i){
+      var w = String(c==null?'':c).length;
+      (ab.linhas||[]).forEach(function(l){
+        var v = l[i]==null?'':String(l[i]); if(v.length>w) w=v.length;
+      });
+      return {wch: Math.max(10, Math.min(46, w+2))};
+    });
+    XLSX.utils.book_append_sheet(wb, ws, (ab.nome||('Aba'+(idx+1))).slice(0,31));
+  });
+  return XLSX.write(wb, {bookType:'xlsx', type:'array'});
+}
+
+async function baixarTudo(btn){
+  if(_BT_RODANDO) return;
+  _BT_RODANDO = true;
+  if(btn) btn.disabled = true;
+  var alvo = document.getElementById('td-progresso');
+  function passo(t){ if(alvo) alvo.textContent = t; }
+
+  try{
+    passo('Reunindo seus cadastros\u2026');
+    var r = await Promise.all([
+      db.rpc('sp_listar_clientes',   {p_token:TOKEN}),
+      db.rpc('sp_listar_processos',  {p_token:TOKEN, p_status:'ativo'}),
+      db.rpc('sp_listar_processos',  {p_token:TOKEN, p_status:'finalizado'}),
+      db.rpc('sp_listar_alertas',    {p_token:TOKEN}),
+      db.rpc('sp_listar_usuarios',   {p_token:TOKEN}),
+      db.rpc('sp_listar_documentos', {p_token:TOKEN, p_processo_id:null})
+    ]);
+    for(var i=0;i<r.length;i++){ if(r[i].error) throw r[i].error; }
+
+    var cli  = r[0].data||[], pAt = r[1].data||[], pFi = r[2].data||[],
+        ale  = r[3].data||[], usr = r[4].data||[], docs = r[5].data||[];
+
+    var linhaProc = function(p){
+      return [p.nome_parte||'', (p.tipo==='extrajudicial'?'Caso':'Processo'), p.numero||'',
+              p.cliente_nome||'', (typeof sisNome==='function'?sisNome(p.sistema):(p.sistema||'')),
+              p.vara||'', p.comarca||'', p.fase||'',
+              p.data_alerta?fmtData(p.data_alerta):'', p.motivo_finalizacao||'', p.assunto||''];
+    };
+    var colProc = ['Parte','Tipo','N\u00ba','Cliente','Sistema','Vara','Comarca','Fase',
+                   'Alerta','Motivo finaliza\u00e7\u00e3o','Descri\u00e7\u00e3o'];
+
+    var abas = [
+      {nome:'Clientes', colunas:['Nome','E-mail','Telefone','CPF','Nascimento','Processos'],
+       linhas:cli.map(function(c){ return [c.nome||'', c.email||'', c.telefone||'', c.cpf||'',
+         c.data_nascimento?fmtData(c.data_nascimento):'', Number(c.total_processos)||0]; })},
+      {nome:'Processos ativos',      colunas:colProc, linhas:pAt.map(linhaProc)},
+      {nome:'Processos finalizados', colunas:colProc, linhas:pFi.map(linhaProc)},
+      {nome:'Agenda', colunas:['Descri\u00e7\u00e3o','Data','Processo'],
+       linhas:ale.map(function(a){ return [a.descricao||'',
+         a.data_alerta?fmtData(a.data_alerta):'', a.processo_nome||'']; })},
+      {nome:'Documentos', colunas:['Arquivo','Tamanho','Processo','Parte','Cliente','Data'],
+       linhas:docs.map(function(d){ return [d.nome_arquivo||'', fmtBytes(d.tamanho_bytes),
+         d.processo_numero||'', d.processo_titulo||'', d.cliente_nome||'',
+         d.criado_em?fmtData(d.criado_em):'']; })},
+      /* Resumos de IA: o texto mora no banco, ligado ao documento de origem.
+         Só vira .docx se o usuário clicar em salvar - então quem não clicou
+         perderia o que pagou crédito para gerar. Vai na planilha sempre. */
+      {nome:'Resumos de IA', colunas:['Documento de origem','Processo','Resumo'],
+       linhas:docs.filter(function(d){ return d.resumo_texto; })
+                  .map(function(d){ return [d.nome_arquivo||'',
+                    d.processo_numero||d.processo_titulo||'', d.resumo_texto||'']; })},
+      {nome:'Usu\u00e1rios', colunas:['Nome','E-mail','Perfil','Ativo'],
+       linhas:usr.map(function(u){ return [u.nome||'', u.email||'', u.perfil||'',
+         (u.ativo===false?'N\u00e3o':'Sim')]; })}
+    ];
+
+    passo('Montando a planilha\u2026');
+    await carregarSheetJS();
+    var xlsxBytes = _btPlanilha(abas);
+    var base = _btNomeBase();
+
+    var totalBytes = docs.reduce(function(a,d){ return a + (Number(d.tamanho_bytes)||0); }, 0);
+    if(totalBytes > 500*1048576){
+      if(!confirm('Seus arquivos somam '+fmtBytes(totalBytes)+'.\n\n'+
+                  'Montar um pacote deste tamanho pode demorar e exige mem\u00f3ria do '+
+                  'navegador. Continuar?')){
+        _BT_RODANDO=false; if(btn) btn.disabled=false; passo(''); return;
+      }
+    }
+
+    passo('Preparando o pacote\u2026');
+    if(!window.JSZip){
+      await _injetarScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+    }
+    if(!window.JSZip) throw new Error('N\u00e3o foi poss\u00edvel preparar o pacote. Verifique a conex\u00e3o.');
+
+    var zip = new JSZip();
+    zip.file(base+' - dados.xlsx', xlsxBytes);
+
+    var usados = {}, falhas = 0;
+    for(var k=0; k<docs.length; k++){
+      var d = docs[k];
+      passo('Baixando arquivo '+(k+1)+' de '+docs.length+'\u2026');
+      try{
+        var info = await efDocumentos({acao:'download-url', id:d.id});
+        if(!info || !info.url) throw new Error('sem url');
+        var blob = await fetch(info.url).then(function(x){
+          if(!x.ok) throw new Error('HTTP '+x.status); return x.blob();
+        });
+        var nome = d.nome_arquivo || ('arquivo-'+(k+1));
+        if(usados[nome]){ usados[nome]++; nome = '('+usados[nome]+') '+nome; }
+        else usados[nome] = 1;
+        zip.file(nome, blob);
+      }catch(e){ falhas++; }
+    }
+
+    passo('Fechando o pacote\u2026');
+    var pacote = await zip.generateAsync({type:'blob'});
+    var url = URL.createObjectURL(pacote);
+    var a = document.createElement('a');
+    a.href = url; a.download = base+' - acervo.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 30000);
+
+    passo(falhas
+      ? ('Pacote gerado. '+falhas+' arquivo(s) n\u00e3o vieram \u2014 tente de novo para peg\u00e1-los.')
+      : 'Pacote gerado. Se o download n\u00e3o come\u00e7ou, verifique o bloqueio de pop-ups.');
+  }catch(e){
+    passo('');
+    try{ toast((e && e.message) ? e.message : 'N\u00e3o foi poss\u00edvel gerar o pacote.','err'); }catch(_){}
+  }finally{
+    _BT_RODANDO = false;
+    if(btn) btn.disabled = false;
+  }
 }
 /* esconde as abas que o usuário não pode ver e abre na 1ª permitida */
 async function aplicarPermissoes(){
