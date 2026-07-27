@@ -916,6 +916,16 @@
 .cic-nota .num{font-family:'Space Grotesk',ui-monospace,monospace;font-weight:700}
 @media(max-width:700px){.cic-row-dir{width:100%;justify-content:space-between}}
 .cic-banner{background:var(--bg-2)}
+/* [v1.8.184 · 11c-2] risco no card do escritorio */
+.pnl-esc.tem-risco{position:relative;overflow:hidden}
+.pnl-esc-risco{position:absolute;left:0;top:0;bottom:0;width:3px}
+.pnl-esc-risco.dng{background:var(--danger)}
+.pnl-esc-risco.wrn{background:var(--warn)}
+.pnl-esc-risco.mut{background:var(--muted-2)}
+.pnl-selo-risco{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;font-weight:600;padding:3px 9px;border-radius:20px;margin-top:7px}
+.pnl-selo-risco.dng{background:rgba(248,113,113,.13);color:var(--danger)}
+.pnl-selo-risco.wrn{background:rgba(251,191,36,.13);color:var(--warn)}
+.pnl-selo-risco.mut{background:rgba(148,163,184,.12);color:var(--muted)}
 .pnl-cap-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
   .pnl-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
   .pnl-card-h{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text);font-size:.95rem;margin-bottom:10px}
@@ -1626,6 +1636,9 @@
           <div><h2>Painel do Gestor</h2><p>Capacidade da operação e escritórios.</p></div>
           <button class="btn btn-ghost btn-sm" type="button" onclick="carregarPainelGestor(true)">↻ Atualizar</button>
         </div>
+        <!-- [v1.8.184] O ciclo vem antes de tudo. Quem esta prestes a ser
+             desativado nao pode estar embaixo de tres cards de configuracao. -->
+        <div id="pnl-banner"></div>
         <!-- Card: Aviso em destaque -->
         <div class="card" style="margin-bottom:18px;border-color:var(--cyan)">
           <div class="view-head" style="margin-bottom:10px"><div><h2 style="font-size:1.05rem">📢 Aviso em destaque</h2><p style="margin:0;font-size:.8rem">Mensagem exibida como popup para todos os escritórios logados. Só uma ativa por vez.</p></div></div>
@@ -1675,7 +1688,6 @@
           <div style="margin-top:12px"><button class="btn btn-primary btn-sm" id="pix-btn-gerar" type="button" onclick="pixGerarCobranca()">Gerar cobrança Pix</button></div>
           <div id="pix-resultado" style="margin-top:14px"></div>
         </div>
-        <div id="pnl-banner"></div>
         <div id="pnl-cap"><div class="loading">Carregando…</div></div>
         <div class="view-head" style="margin:26px 0 10px"><div><h2 style="font-size:1.05rem">Escritórios</h2><p style="margin:0">Limite e consumo de cada conta.</p></div></div>
         <div class="pnl-tabs">
@@ -2312,7 +2324,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.183';
+const APP_VERSAO = 'v1.8.184';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3252,7 +3264,47 @@ async function carregarPainelGestor(force){
    robo mas nunca a matematica das datas — quem diz o dia e a fn_conta_prazo_exclusao.
    So desenha quando ha o que dizer. Dia sem parede, sem freio e sem divergencia
    nao mostra nada: banner que aparece todo dia e banner que ninguem le. */
-let PANORAMA=null, FREIO_ALVO=null;
+let PANORAMA=null, FREIO_ALVO=null, PANORAMA_MAP={};
+
+/* [v1.8.184 · 11c-2] mapa id -> risco. Alimenta o selo e a barra de acento do
+   card, e é o que ensina a aba "Desativados" a enxergar a desativação do CICLO
+   (plano_desativado_em) e não só a do admin (escritorios.ativo). */
+function cicMapear(pan){
+  PANORAMA_MAP={};
+  if(!pan) return;
+  const por=function(arr,tipo){ (Array.isArray(arr)?arr:[]).forEach(function(it){
+    if(it && it.escritorio_id) PANORAMA_MAP[it.escritorio_id]={tipo:tipo, it:it};
+  }); };
+  por(pan.desativados,'desativado');
+  por(pan.divergentes,'divergente');
+  por(pan.freio,'freio');
+  por(pan.parede,'parede');   // por último: é o mais grave, ganha o card
+}
+function cicQuandoFrase(d){
+  const n=Number(d);
+  if(!isFinite(n) || n<=0) return 'hoje';
+  return n===1 ? 'amanhã' : ('em '+n+' dias');
+}
+function cicEhDesativado(id){ const r=PANORAMA_MAP[id]; return !!r && r.tipo==='desativado'; }
+function cicBarraCard(id){
+  const r=PANORAMA_MAP[id]; if(!r) return '';
+  const c = r.tipo==='parede' ? 'dng' : (r.tipo==='desativado' ? 'mut' : 'wrn');
+  return '<div class="pnl-esc-risco '+c+'"></div>';
+}
+function cicSeloCard(id){
+  const r=PANORAMA_MAP[id]; if(!r) return '';
+  const it=r.it||{};
+  if(r.tipo==='parede')
+    return '<span class="pnl-selo-risco dng">🔴 desativa '+cicQuandoFrase(it.dias_para_desativar)+
+           ' · '+escFmtCent(it.total_aberto_centavos||0)+' em aberto</span>';
+  if(r.tipo==='freio')
+    return '<span class="pnl-selo-risco wrn" title="'+esc(it.freio_motivo||'')+
+           '">⚠️ freio puxado '+cicDesde(it.freio_dias)+'</span>';
+  if(r.tipo==='desativado')
+    return '<span class="pnl-selo-risco mut">⏸ desativada em '+cicDia(it.desativado_em)+
+           ' · expurgo em '+cicDia(it.expurgo_em)+'</span>';
+  return '<span class="pnl-selo-risco wrn">⚠️ na parede sem fatura aberta</span>';
+}
 
 function cicDia(d){
   if(!d) return '—';
@@ -3267,6 +3319,9 @@ function cicQuando(d){
 }
 function cicFat(it){
   const q=Number(it.qtd_abertas||0);
+  // 🔴 zero nao e numero para mostrar: "R$ 0,00 / 0 faturas" e ruido. Some
+  // sozinho quando a fatura existir de verdade.
+  if(!q) return '<div class="cic-dado"><span class="v">—</span><span class="l">sem fatura aberta</span></div>';
   return '<div class="cic-dado"><span class="v">'+escFmtCent(it.total_aberto_centavos||0)+'</span>'+
          '<span class="l">'+q+' '+cicPlural(q,'fatura','faturas')+'</span></div>';
 }
@@ -3283,10 +3338,15 @@ function cicRowParede(it,i){
     '<button class="cic-btn" type="button" onclick="freioAbrir(\'parede\','+i+')">Puxar freio</button>'+
   '</div></div>';
 }
+function cicDesde(d){
+  const n=Number(d);
+  if(!isFinite(n) || n<=0) return 'hoje';
+  return n===1 ? 'ontem' : ('há '+n+' dias');
+}
 function cicRowFreio(it,i){
   const d=Number(it.freio_dias||0);
   return '<div class="cic-row">'+cicIdent(it)+'<div class="cic-row-dir">'+
-    '<div class="cic-dado"><span class="v">'+d+' '+cicPlural(d,'dia','dias')+'</span>'+
+    '<div class="cic-dado"><span class="v">'+cicDesde(d)+'</span>'+
     '<span class="l">puxado em '+cicDia(it.freio_puxado_em)+'</span></div>'+
     cicFat(it)+
     '<button class="cic-btn solto" type="button" onclick="freioAbrir(\'freio\','+i+')">Soltar freio</button>'+
@@ -3301,8 +3361,9 @@ function cicRowDiverg(it,i){
 }
 
 function renderPainelBanner(pan){
-  const box=document.getElementById('pnl-banner'); if(!box) return;
   PANORAMA = pan || null;
+  cicMapear(PANORAMA);   // [v1.8.184] o mapa vale mesmo em dia sem banner
+  const box=document.getElementById('pnl-banner'); if(!box) return;
   box.innerHTML='';
   if(!pan || pan.ok!==true) return;
 
@@ -3340,7 +3401,7 @@ function renderPainelBanner(pan){
     const f=freio[0];
     notas += '<div class="cic-nota"><span>⚠️</span><span>'+
       (freio.length===1
-        ? '<b>'+esc(f.nome||'—')+'</b> está com o freio puxado há <span class="num">'+Number(f.freio_dias||0)+'</span> '+cicPlural(Number(f.freio_dias||0),'dia','dias')+' — acumulou <span class="num">'+escFmtCent(f.total_aberto_centavos||0)+'</span> e o monitoramento segue rodando.'
+        ? '<b>'+esc(f.nome||'—')+'</b> está com o freio puxado <span class="num">'+cicDesde(Number(f.freio_dias||0))+'</span> — acumulou <span class="num">'+escFmtCent(f.total_aberto_centavos||0)+'</span> e o monitoramento segue rodando.'
         : '<span class="num">'+freio.length+'</span> escritórios com o freio puxado. As faturas deles continuam nascendo.')+
       '</span></div>';
   }
@@ -3818,11 +3879,12 @@ function pnlLeverCredito(e){
 }
 
 function pnlCardEscritorio(e, idx){
-  return '<div class="pnl-esc'+(e.ativo?'':' off')+'">'+
+  const barra=cicBarraCard(e.id), selo=cicSeloCard(e.id);   // [v1.8.184]
+  return '<div class="pnl-esc'+(e.ativo?'':' off')+(barra?' tem-risco':'')+'">'+barra+
     '<div class="pnl-esc-h">'+
       '<div><div class="pnl-esc-nome">'+esc(e.nome||'—')+pnlSeloPlano(e)+'</div>'+
       '<div class="pnl-esc-mail">'+esc(e.email||'')+'</div>'+
-      '<div class="pnl-esc-id" title="ID do escritório (clique para selecionar)">'+esc(e.id||'—')+'</div></div>'+
+      '<div class="pnl-esc-id" title="ID do escritório (clique para selecionar)">'+esc(e.id||'—')+'</div>'+selo+'</div>'+
       '<div class="pnl-esc-acc">último acesso<br><b>'+(e.ultimo_acesso?esc(fmtData(e.ultimo_acesso)):'—')+'</b></div>'+
     '</div>'+
     '<div class="pnl-esc-levs">'+
@@ -3851,12 +3913,17 @@ function abrirAcaoEscritorioIdx(idx){
 
 function renderPainelLista(escs){
   const box=document.getElementById('pnl-escritorios'); if(!box) return;
-  const nA=escs.filter(e=>!!e.ativo).length, nI=escs.length-nA;
+  // 🔴 [v1.8.184 · 11d] CONSERTO. A aba filtrava so por escritorios.ativo, que e
+  // a desativacao do ADMIN. A do CICLO mora em plano_desativado_em e nao vem
+  // nesta lista — vem pelo panorama. Sem isto, conta desativada pelo robo
+  // continuava aparecendo em "Ativos".
+  const pnlDesat=function(e){ return (!e.ativo) || cicEhDesativado(e.id); };
+  const nA=escs.filter(function(e){ return !pnlDesat(e); }).length, nI=escs.length-nA;
   document.getElementById('pnl-tab-ativos').textContent='Ativos ('+nA+')';
   document.getElementById('pnl-tab-inativos').textContent='Desativados ('+nI+')';
   const want=(PAINEL_TAB==='ativos');
   const q=(document.getElementById('pnl-busca-esc')?.value||'').toLowerCase().trim();
-  let rows=escs.filter(e=>!!e.ativo===want);
+  let rows=escs.filter(function(e){ return (!pnlDesat(e))===want; });
   if(q) rows=rows.filter(e=>(e.nome||'').toLowerCase().includes(q)||(e.email||'').toLowerCase().includes(q));
   PAINEL_ROWS=rows;   // [v1.8.182] o que a tela mostra e o que o clique le
   box.innerHTML = rows.length ? rows.map((e,i)=>pnlCardEscritorio(e,i)).join('')
