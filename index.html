@@ -707,7 +707,14 @@
   .iac-buy-p{font-size:.74rem;color:var(--muted-2);margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
   #iac-pagar{width:100%;margin-top:12px;justify-content:center}
   .iac-tot-v{font-size:1.3rem;font-weight:700;font-family:'Space Grotesk',inherit;line-height:1;white-space:nowrap}
-  /* ===== Faturas (Fatia 5c — visual, mock fixo, ainda não conectado) ===== */
+  /* ===== Faturas =====
+     [v1.8.185] O comentário que estava aqui descrevia um mock com valores
+     fictícios. Esse HTML saiu na v1.8.177 (opção B do MOCKUP_S54: bloco
+     vazio, sem R$) e o comentário ficou para trás — custou uma sessão
+     inteira de pendência falsa na S72.
+     .fat-open / .fat-hist / .fat-det / .fat-chev / .fat-card.aberta seguem
+     SEM USO de propósito: são o esqueleto do render real da peça 8.
+     🔴 Não apagar antes da peça 8. ===== */
   .fat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:8px}
   .fat-card{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:15px}
   .fat-card.aberta{border-color:rgba(251,191,36,.3)}
@@ -1674,7 +1681,7 @@
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;max-width:640px">
             <div style="flex:1 1 240px">
               <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Escritório</label>
-              <div style="background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:.88rem;color:var(--text)">Edgard Investimentos<br><span style="font-size:.72rem;color:var(--muted-2)">640162a3-2f0a-4bae-b885-d242e0d28ec2</span></div>
+              <div style="background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:.88rem;color:var(--text)">EDGARD ADM<br><span style="font-size:.72rem;color:var(--muted-2)">0887e2c5-592a-432d-a488-15a4de5b3c95</span></div>
             </div>
             <div style="flex:0 0 120px">
               <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Valor (R$)</label>
@@ -2324,7 +2331,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.184';
+const APP_VERSAO = 'v1.8.185';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3542,8 +3549,17 @@ async function atualizarSaldoTribunal(){
 // Teste de cobrança Pix (Mercado Pago) — só master. Muleta de polling.
 // (O webhook empurrado é o caminho definitivo; ver Edge "pagamentos".)
 // ===================================================================
-const PIX_ESC_ID   = '640162a3-2f0a-4bae-b885-d242e0d28ec2';
-const PIX_ESC_MAIL = 'edgardinvestimentos@gmail.com';
+// [v1.8.185] A conta que ficava chumbada aqui foi apagada numa limpeza e
+// passou a derrubar o teste com pagamentos_escritorio_id_fkey. Esta e o ADM,
+// conta_sistema = true. A fn_freio_puxar RECUSA por na conta_sistema com
+// CONTA_DA_CASA: "conta do sistema nao precisa de freio, ja e isenta na
+// origem". Por isso este id nao leva protegido_exclusao — seria redundante e
+// o caminho sancionado nem deixa.
+// 🔴 Quando a peca 9 (expurgo) for escrita, ela PRECISA respeitar
+// conta_sistema. Se nao respeitar, este id apodrece igual ao anterior.
+// Nao repetir o id antigo em comentario: grep de id morto vira falso positivo.
+const PIX_ESC_ID   = '0887e2c5-592a-432d-a488-15a4de5b3c95';
+const PIX_ESC_MAIL = 'contato@appsone.com.br';
 let PIX_POLL = null;
 let PIX_PAG  = null;
 
