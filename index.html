@@ -2365,7 +2365,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.188';
+const APP_VERSAO = 'v1.8.189';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5128,7 +5128,15 @@ function montarContextoProcesso(){
   if(p.assunto) L.push('Assunto: '+p.assunto);
   if(p.observacoes) L.push('Observações: '+p.observacoes);
   L.push('Situação: '+(p.status==='finalizado'?'Finalizado':'Em andamento'));
-  const and=(MOVS||[]).filter(m=>m.tipo==='andamento');
+  /* [v1.8.189] Os 30 que vao para a IA sao os 30 MAIS RECENTES.
+     A sp_listar_movimentacoes hoje ordena por data_mov DESC e esta certa;
+     isto e' cinto de seguranca: se um dia o banco mudar de ordem, o
+     resumo nao envelhece calado. .slice() antes do sort porque MOVS e'
+     o mesmo array que a renderMovs desenha — ordenar no lugar mexeria na tela. */
+  const and=(MOVS||[]).filter(m=>m.tipo==='andamento')
+    .slice().sort(function(a,b){
+      return String(b.data_mov||'').localeCompare(String(a.data_mov||''));
+    });
   const prov=(MOVS||[]).filter(m=>m.tipo==='providencia');
   if(and.length){ L.push(''); L.push('Andamentos:'); and.slice(0,30).forEach(m=>L.push('- '+(m.data_mov?fmtData(m.data_mov)+': ':'')+(m.descricao||''))); }
   if(prov.length){ L.push(''); L.push('Providências:'); prov.slice(0,30).forEach(m=>L.push('- ['+(m.concluida?'concluída':'pendente')+'] '+(m.descricao||'')+(m.data_mov?(' (prazo: '+fmtData(m.data_mov)+')'):''))); }
@@ -5549,7 +5557,7 @@ function editarPeticao(id){
   PETICAO_EDIT_FONTE = d.peticao_fonte_doc_id||null;
   document.getElementById('mia-title').textContent='Editar petição';
   document.getElementById('mia-sub').textContent='Preencha as lacunas [PREENCHER] e ajuste o texto. Salvar não gasta IA.';
-  document.getElementById('mia-body').innerHTML='<textarea id="pet-edit" style="width:100%;min-height:340px;background:var(--card,#111);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;line-height:1.5;resize:vertical"></textarea>';
+  document.getElementById('mia-body').innerHTML='<textarea id="pet-edit" style="width:100%;min-height:340px;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;line-height:1.5;resize:vertical"></textarea>';
   const ta=document.getElementById('pet-edit'); if(ta) ta.value=d.peticao_texto||'';
   document.getElementById('mia-acts').innerHTML=
     '<button class="btn btn-ghost btn-sm" onclick=\'visualizarPeticao('+JSON.stringify(id)+')\'>← Cancelar</button>'+
@@ -5577,7 +5585,7 @@ function mostrarPeticaoResultado(){
 function editarPeticaoGerada(){
   document.getElementById('mia-title').textContent='Editar petição';
   document.getElementById('mia-sub').textContent='Preencha as lacunas [PREENCHER] e ajuste. Depois é só salvar — não gasta IA.';
-  document.getElementById('mia-body').innerHTML='<textarea id="pet-edit" style="width:100%;min-height:340px;background:var(--card,#111);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;line-height:1.5;resize:vertical"></textarea>';
+  document.getElementById('mia-body').innerHTML='<textarea id="pet-edit" style="width:100%;min-height:340px;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;line-height:1.5;resize:vertical"></textarea>';
   const ta=document.getElementById('pet-edit'); if(ta) ta.value=IA_TEXTO_ATUAL||'';
   document.getElementById('mia-acts').innerHTML=
     '<button class="btn btn-ghost btn-sm" onclick="mostrarPeticaoResultado()">← Cancelar</button>'+
@@ -6921,7 +6929,7 @@ function renderPreviewGerDoc(){
 function editarGerDoc(){
   document.getElementById('mia-title').textContent='Editar documento';
   document.getElementById('mia-sub').textContent='Ajuste o texto livremente. Salvar não gasta IA.';
-  document.getElementById('mia-body').innerHTML='<textarea id="gerdoc-edit" style="width:100%;min-height:340px;background:var(--card,#111);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;line-height:1.5;resize:vertical"></textarea>';
+  document.getElementById('mia-body').innerHTML='<textarea id="gerdoc-edit" style="width:100%;min-height:340px;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;line-height:1.5;resize:vertical"></textarea>';
   const ta=document.getElementById('gerdoc-edit'); if(ta) ta.value=GERDOC_TEXTO||'';
   document.getElementById('mia-acts').innerHTML=
     '<button class="btn btn-ghost btn-sm" onclick="renderPreviewGerDoc()">← Cancelar</button>'+
@@ -6965,7 +6973,7 @@ function editarDocTexto(id){
   limparIANaoSalvo(); // editar um doc já salvo não é "resultado gerado não salvo"
   document.getElementById('mia-title').textContent='Editar documento';
   document.getElementById('mia-sub').textContent=esc(d.nome_arquivo||'')+' · ajuste o texto e salve. Não gasta IA.';
-  document.getElementById('mia-body').innerHTML='<textarea id="doctxt-edit" style="width:100%;min-height:340px;background:var(--card,#111);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;line-height:1.5;resize:vertical"></textarea>';
+  document.getElementById('mia-body').innerHTML='<textarea id="doctxt-edit" style="width:100%;min-height:340px;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;line-height:1.5;resize:vertical"></textarea>';
   const ta=document.getElementById('doctxt-edit'); if(ta) ta.value=d.doc_texto||'';
   document.getElementById('mia-acts').innerHTML=
     '<button class="btn btn-ghost btn-sm" onclick="fecharModal(\'modal-ia\')">Cancelar</button>'+
