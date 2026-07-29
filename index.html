@@ -763,7 +763,6 @@
   .f8b-pixbox{margin-top:14px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px}
   .f8b-pixbox b{font-size:.86rem}
   .f8b-pixv{font-size:.74rem;color:var(--muted-2);margin-top:4px;line-height:1.5}
-  .f8b-off{position:absolute;left:-9999px;top:0;opacity:0;width:1px;height:1px}
   .f8b-msg{font-size:.85rem;color:var(--muted);margin-top:10px}
   .f8b-err{color:var(--danger)}
   .fat-vazio{color:var(--muted-2);font-size:.78rem;line-height:1.55;text-align:center;padding:22px 10px}
@@ -2366,7 +2365,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.187';
+const APP_VERSAO = 'v1.8.188';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -4756,6 +4755,54 @@ function f8bPend(){
   return null;
 }
 
+
+function f8bCopiarOk(btn){
+  if(!btn) return;
+  var t = btn.textContent;
+  btn.textContent = "Copiado!";
+  setTimeout(function(){ btn.textContent = t; }, 1600);
+}
+
+function f8bCopiarFallback(txt, btn){
+  /* 🔴 position:fixed, NAO absolute com left:-9999px. Focar um elemento
+     fora da tela faz o navegador rolar ate ele — foi o que jogava a
+     pagina para o topo. Fixed no canto do viewport nao rola nada. */
+  var ta = document.createElement("textarea");
+  ta.value = txt;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.top = "0"; ta.style.left = "0";
+  ta.style.width = "1px"; ta.style.height = "1px";
+  ta.style.padding = "0"; ta.style.border = "none"; ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  var deu = false;
+  try{
+    ta.select(); ta.setSelectionRange(0, 999999);
+    deu = document.execCommand("copy");
+  }catch(_){}
+  try{ document.body.removeChild(ta); }catch(_){}
+  if(deu) f8bCopiarOk(btn);
+  else if(typeof toast === "function") toast("Não consegui copiar. Selecione o código manualmente.", "err");
+}
+
+function f8bCopiar(btn){
+  /* o valor sai do FAT, nao do DOM: nao ha input escondido para focar. */
+  var p = f8bPend(); if(!p) return;
+  var txt = String(p.pix_copia_cola || "");
+  if(!txt){
+    if(typeof toast === "function") toast("Este Pix não tem código copia-e-cola.", "err");
+    return;
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(
+      function(){ f8bCopiarOk(btn); },
+      function(){ f8bCopiarFallback(txt, btn); }
+    );
+  }else{
+    f8bCopiarFallback(txt, btn);
+  }
+}
+
 function f8bAcoes(f, qtd, saldo){
   var minimo = Number(f.minimo_centavos||0);
   var p = f8bPend();
@@ -4767,10 +4814,9 @@ function f8bAcoes(f, qtd, saldo){
         "<b>Você já tem um Pix aberto de "+escFmtCent(p.valor_centavos)+"</b>"+
         '<div class="f8b-pixv">Vale até '+esc(fmtDataHora(p.pix_expira_em))+
           ". Pagando por ele, esta cobrança fica quitada.</div>"+
-        '<input id="f8b-cc" class="f8b-off" readonly value="'+esc(String(p.pix_copia_cola||""))+'">'+
       "</div>"+
       '<div class="f8b-acts">'+
-        '<button class="btn btn-primary" type="button" onclick="credCopiar(\'f8b-cc\')">Copiar código Pix</button>'+
+        '<button class="btn btn-primary" type="button" onclick="f8bCopiar(this)">Copiar código Pix</button>'+
         '<button class="btn btn-ghost" id="f8b-b2" type="button" onclick="f8bPagar(\'total\')">Gerar um novo Pix</button>'+
       "</div>"+
       '<div id="f8b-pix"></div>';
