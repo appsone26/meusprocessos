@@ -542,11 +542,12 @@
   #det-providencias{max-height:300px;overflow-y:auto;padding-right:4px}
   .doc-store-sub{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;color:var(--muted)}
   .doc-list{display:flex;flex-direction:column;gap:8px}
-  .doc-row{display:flex;align-items:center;gap:11px;padding:10px 12px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px}
+  /* [v1.8.190] N14: flex-wrap para os botões descerem em vez de esmagar o nome. */
+  .doc-row{display:flex;flex-wrap:wrap;align-items:center;gap:11px;padding:10px 12px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px}
   .doc-row .doc-ic{font-size:1.25rem;flex:0 0 auto;line-height:1}
-  .doc-row .doc-main{flex:1;min-width:0}
+  .doc-row .doc-main{flex:1 1 170px;min-width:0}
   .doc-row .doc-name{color:#fff;font-size:.92rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .doc-row .doc-meta{font-size:.74rem;color:var(--muted-2);margin-top:1px}
+  .doc-row .doc-meta{font-size:.74rem;color:var(--muted-2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .doc-row .doc-acts{display:flex;gap:6px;flex:0 0 auto}
   .ia-opt{display:flex;align-items:center;gap:9px;padding:10px 4px;font-size:.9rem;color:var(--text);cursor:pointer;border-bottom:1px solid var(--line)}
   .ia-opt:last-of-type{border-bottom:none}
@@ -2365,7 +2366,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.189';
+const APP_VERSAO = 'v1.8.190';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5180,10 +5181,12 @@ function mostrarHubResumos(){
     '<div style="flex-shrink:0"><button class="btn btn-primary btn-sm" onclick="verSnapshotDados()">Ver</button></div></div>';
   if(!fin) html+='<div style="border:1px solid var(--line);border-radius:10px;padding:10px">'+
     '<div style="font-weight:600;color:var(--text);margin-bottom:8px">✨ Ferramentas de IA</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-      // P7 (S54) — "Opinião" saiu de vez. "Próximos passos" mantem o rótulo,
-      // mas agora abre o chat do processo em vez do seletor de análise.
-      '<button class="btn btn-ghost btn-sm" onclick="carregarProcessoNoChat()">🧭 Próximos passos</button>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+      // [v1.8.190] "Próximos passos" saiu daqui. Desde a S54 ele já não
+      // chamava a IA — só abria o chat — e agora vive na aba IA como texto
+      // pronto. "Gerar resumo" subiu do rodapé para cá e faz par com a petição:
+      // dois botões, grade de duas colunas, alturas iguais.
+      '<button class="btn btn-primary btn-sm" onclick="abrirSeletorResumo()">➕ Gerar resumo</button>'+
       '<button class="btn btn-ghost btn-sm" onclick="abrirSeletorAnalise(\'peticao\')">📝 Petição inicial</button>'+
     '</div></div>';
   html+=resumos.map(d=>{
@@ -5222,9 +5225,10 @@ function mostrarHubResumos(){
   document.getElementById('mia-body').innerHTML=html;
   document.getElementById('mia-acts').innerHTML = fin
     ? '<span style="font-size:.78rem;color:var(--muted-2)">🔒 Processo finalizado — somente leitura.</span>'
-    : (docsResumiveis().length
-        ? '<button class="btn btn-primary btn-sm" onclick="abrirSeletorResumo()">➕ Gerar resumo de documento</button>'
-        : '<span style="font-size:.78rem;color:var(--muted-2)">Anexe um documento (PDF/imagem/Word) para gerar um resumo dele.</span>');
+    /* [v1.8.190] O botão de resumir saiu do rodapé — subiu para o bloco
+       Ferramentas de IA. E o aviso "anexe um documento" saiu de vez: agora
+       sempre há o que resumir, porque os andamentos são uma opção. */
+    : '';
   document.getElementById('modal-ia').classList.add('open');
 }
 function montarSnapshotDados(){
@@ -5282,11 +5286,16 @@ function debaterResumo(id){
 function abrirSeletorResumo(){
   if(procAtual&&procAtual.status==='finalizado'){ toast('Processo finalizado — somente leitura.','err'); return; }
   const docs=docsResumiveis();
-  if(!docs.length){ toast('Anexe um documento (PDF, imagem ou Word) para resumir.','err'); return; }
-  document.getElementById('mia-title').textContent='Resumir documento com IA';
-  document.getElementById('mia-sub').textContent='Escolha o documento — o resumo dele é imutável.';
+  /* [v1.8.190] Aqui havia um return que trancava a tela sem documento.
+     Saiu: os dados e andamentos do processo sempre podem ser resumidos. */
+  document.getElementById('mia-title').textContent='Resumir com IA';
+  document.getElementById('mia-sub').textContent='Escolha o que resumir. O resumo de um documento é imutável.';
   let html='<p style="font-size:.86rem;color:var(--muted);margin-bottom:8px">A IA lê o documento junto com os dados do processo. O resumo de um documento é imutável (não refaz).</p>';
-  html+=docs.map((d,i)=>`<label class="ia-opt"><input type="radio" name="ia-doc" value="${esc(d.id)}"${i===0?' checked':''}> ${docIcone(d.nome_arquivo,d.mime_type)} ${esc(d.nome_arquivo)} <span style="color:var(--muted-2);margin-left:auto;font-size:.78rem">${fmtBytes(d.tamanho_bytes)}</span></label>`).join('');
+  /* [v1.8.190] Primeira opção, já marcada: o processo em si. O motor
+     sempre soube — gerarResumoIA(null) — a tela é que não oferecia. Vão o
+     cadastro inteiro e os 30 andamentos mais recentes. */
+  html+='<label class="ia-opt"><input type="radio" name="ia-doc" value="__PROCESSO__" checked> 📋 Dados e andamentos do processo <span style="color:var(--muted-2);margin-left:auto;font-size:.78rem">cadastro + andamentos</span></label>';
+  html+=docs.map((d,i)=>`<label class="ia-opt"><input type="radio" name="ia-doc" value="${esc(d.id)}"> ${docIcone(d.nome_arquivo,d.mime_type)} ${esc(d.nome_arquivo)} <span style="color:var(--muted-2);margin-left:auto;font-size:.78rem">${fmtBytes(d.tamanho_bytes)}</span></label>`).join('');
   html+='<p style="font-size:.72rem;color:var(--muted-2);margin-top:10px">Documentos grandes consomem mais créditos.</p>';
   document.getElementById('mia-body').innerHTML=html;
   document.getElementById('mia-acts').innerHTML=
@@ -5296,7 +5305,10 @@ function abrirSeletorResumo(){
 }
 function confirmarResumoIA(){
   const sel=document.querySelector('input[name="ia-doc"]:checked');
-  if(!sel||!sel.value){ toast('Selecione um documento.','err'); return; }
+  if(!sel||!sel.value){ toast('Escolha uma opção.','err'); return; }
+  /* [v1.8.190] Resumo do processo sem documento. Sai ANTES da dica de
+     PDF, que aqui não faz sentido — não há arquivo para converter. */
+  if(sel.value==='__PROCESSO__'){ gerarResumoIA(null); return; }
   const docId=sel.value;
   const doc=(DOCS_PROC||[]).find(d=>d.id===docId);
   if(doc){
