@@ -754,6 +754,18 @@
   .f8-hdata{font-size:.72rem;color:var(--muted-2)}
   .f8-hval{font-size:.88rem;white-space:nowrap}
   .f8-detl{font-size:.74rem;color:var(--muted-2);margin:3px 0}
+  /* ===== [v1.8.187 · peca 8-Front B] Faturas — os botoes de pagar =====
+     Tudo em var(--...): a peca A funcionou no tema claro sem ajuste
+     porque nao tem uma cor literal. Aqui vale o mesmo. */
+  .f8b-acts{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .f8b-acts .btn{width:100%;justify-content:center;text-align:center}
+  .f8b-freio{font-size:.74rem;color:var(--muted-2);line-height:1.5;margin-top:9px}
+  .f8b-pixbox{margin-top:14px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px}
+  .f8b-pixbox b{font-size:.86rem}
+  .f8b-pixv{font-size:.74rem;color:var(--muted-2);margin-top:4px;line-height:1.5}
+  .f8b-off{position:absolute;left:-9999px;top:0;opacity:0;width:1px;height:1px}
+  .f8b-msg{font-size:.85rem;color:var(--muted);margin-top:10px}
+  .f8b-err{color:var(--danger)}
   .fat-vazio{color:var(--muted-2);font-size:.78rem;line-height:1.55;text-align:center;padding:22px 10px}
   .fat-vazio .fv-ic{font-size:1.5rem;display:block;margin-bottom:8px;opacity:.55}
   .fat-notabtn{display:inline-flex;align-items:center;gap:5px;background:rgba(34,211,238,.06);color:var(--muted-2);font-size:.7rem;border:1px solid var(--line);padding:5px 10px;border-radius:8px;margin-top:10px}
@@ -2354,7 +2366,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.186';
+const APP_VERSAO = 'v1.8.187';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3725,7 +3737,7 @@ async function credComprar(alvo, qtd, btnId){
   }
   if(btn){ btn.disabled=false; btn.textContent='Pagar com Pix'; }
 }
-function credRenderPix(b, alvo, qtd){
+function credRenderPix(b, alvo, qtd, rotulo, rodape){
   alvo = alvo || 'ass-buy-pix';
   qtd  = Number(qtd) || CRED_QTD;
   var area=document.getElementById(alvo); if(!area) return;
@@ -3738,13 +3750,13 @@ function credRenderPix(b, alvo, qtd){
     '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px">'+
       '<div>'+qr+'</div>'+
       '<div style="flex:1 1 240px;min-width:220px">'+
-        '<label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Pix copia-e-cola — '+qtd+' créditos ('+credBRL(qtd*CRED_PRECO)+')</label>'+
+        '<label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Pix copia-e-cola — '+(rotulo||(qtd+' créditos ('+credBRL(qtd*CRED_PRECO)+')'))+'</label>'+
         '<div style="display:flex;gap:6px">'+
           '<input id="'+idCC+'" readonly value="'+esc(cc)+'" style="flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.8rem;padding:8px 10px">'+
           '<button class="btn btn-ghost btn-sm" type="button" onclick="credCopiar(\''+idCC+'\')">Copiar</button>'+
         '</div>'+
         '<div id="'+idST+'" style="margin-top:12px;font-size:.9rem;font-weight:600;color:var(--muted)">⏳ Aguardando pagamento…</div>'+
-        '<div style="margin-top:4px;font-size:.72rem;color:var(--muted-2)">A cobrança expira em ~30 min. O saldo sobe sozinho ao pagar.</div>'+
+        '<div style="margin-top:4px;font-size:.72rem;color:var(--muted-2)">'+(rodape||'A cobrança expira em ~30 min. O saldo sobe sozinho ao pagar.')+'</div>'+
       '</div>'+
     '</div>';
 }
@@ -3756,7 +3768,7 @@ function credCopiar(id){
   var btn=(typeof event!=='undefined')&&event&&event.target;
   if(btn){ var t=btn.textContent; btn.textContent='Copiado!'; setTimeout(function(){ btn.textContent=t; },1500); }
 }
-function credPolling(alvo){
+function credPolling(alvo, fim){
   alvo = alvo || 'ass-buy-pix';
   if(CRED_POLL){ clearInterval(CRED_POLL); }
   var n=0;
@@ -3769,9 +3781,9 @@ function credPolling(alvo){
       var s=document.getElementById(alvo+'-st');
       if(st==='pago'){
         clearInterval(CRED_POLL); CRED_POLL=null;
-        if(s){ s.style.color='var(--ok)'; s.innerHTML='✅ Pago! Créditos adicionados.'; }
-        try{ toast('Créditos adicionados ao seu saldo.','ok'); }catch(_){}
-        try{ carregarAssinaturas(); }catch(_){}
+        if(s){ s.style.color='var(--ok)'; s.innerHTML=(fim&&fim.txt)||'✅ Pago! Créditos adicionados.'; }
+        try{ toast((fim&&fim.toast)||'Créditos adicionados ao seu saldo.','ok'); }catch(_){}
+        try{ if(fim&&fim.apos){ fim.apos(); } else { carregarAssinaturas(); } }catch(_){}
         /* [v1.8.169] Pagou dentro do modal da IA: o rodapé vira "Continuar".
            NÃO reenvio a IA sozinho — ele gastaria 2 ou 6 créditos sem ter clicado
            em nada. O clique tem que ser dele. */
@@ -4655,6 +4667,7 @@ function fatCardFatura(){
     "</div>"+
     '<div class="f8-big fat-num">'+escFmtCent(saldo)+"<span>em aberto</span></div>"+
     quebra+
+    f8bAcoes(f, qtd, saldo)+
   "</div>";
 }
 
@@ -4690,6 +4703,137 @@ function fatCardHist(){
 function renderFaturas(){
   var host = document.getElementById("fat-host"); if(!host) return;
   host.innerHTML = fatCardFatura() + fatCardHist();
+  f8bRetomar();
+}
+
+/* ===== [v1.8.187 · peca 8-Front B] Faturas — os botoes de pagar =====
+
+   O motor e o MESMO da compra de credito. Nada duplicado: credRenderPix
+   e credPolling ganharam parametros OPCIONAIS. Chamados sem eles,
+   seguem byte a byte os de antes (precedente da v1.8.169).
+
+   A Edge ja sabe pagar fatura desde a Fatia 7:
+     pixEdge({acao:"pagar_fatura", token:TOKEN, modo:"total"|"minimo"})
+
+   🔴 modo "total" paga saldo_centavos — o saldo da fatura MAIS VELHA
+      (FIFO), NAO a soma das abertas. O nome do campo engana; o
+      comentario da Fatia 7 avisa em letras garrafais.
+   🔴 Por isso NAO existe "Pagar tudo" aqui: nao ha modo na Edge que
+      valorize total_aberto_centavos. E a Fatia 8.
+   🔴 O minimo some quando e 0 (a Edge devolve NADA_A_PAGAR) e tambem
+      quando empata com o saldo — dois botoes cobrando o mesmo valor
+      nao sao uma escolha.
+   🔴 Sem juros, o minimo nao doi. O texto do freio e o unico freio.
+
+   O Pix ja aberto sai do HISTORICO que a carregarFaturas ja trouxe
+   (v1.8.135 passou a devolver pix_expira_em / mp_order_id /
+   pix_copia_cola). Sem segunda leitura. E tem que ser produto
+   "fatura": um Pix de CREDITO aberto nao pode se passar por fatura. */
+
+var F8B_FIM = {
+  txt:   "✅ Pago! Atualizando…",
+  toast: "Pagamento confirmado.",
+  /* a quitacao pode devolver a conta ao normal — o card do plano esta
+     na mesma tela e precisa acompanhar. */
+  apos: function(){
+    try{ carregarFaturas(); }catch(_){}
+    try{ carregarAssinaturas(); }catch(_){}
+  }
+};
+
+function f8bPend(){
+  /* o Pix de FATURA ainda vivo, se houver. O vencido nem chega: a
+     v1.8.135 carimba "expirado" na leitura, antes de listar. */
+  var h = (FAT && FAT.hist) || [], i, p, t, agora = Date.now();
+  for(i=0; i<h.length; i++){
+    p = h[i] || {};
+    if(p.status !== "pendente") continue;
+    if(String(p.produto||"") !== "fatura") continue;
+    if(!p.pix_expira_em) continue;
+    t = Date.parse(p.pix_expira_em);
+    if(isFinite(t) && t > agora) return p;
+  }
+  return null;
+}
+
+function f8bAcoes(f, qtd, saldo){
+  var minimo = Number(f.minimo_centavos||0);
+  var p = f8bPend();
+
+  if(p){
+    /* Estado D — ja existe um Pix vivo. O botao cheio COPIA o que ja
+       existe; gerar outro e o caminho secundario. */
+    return '<div class="f8b-pixbox">'+
+        "<b>Você já tem um Pix aberto de "+escFmtCent(p.valor_centavos)+"</b>"+
+        '<div class="f8b-pixv">Vale até '+esc(fmtDataHora(p.pix_expira_em))+
+          ". Pagando por ele, esta cobrança fica quitada.</div>"+
+        '<input id="f8b-cc" class="f8b-off" readonly value="'+esc(String(p.pix_copia_cola||""))+'">'+
+      "</div>"+
+      '<div class="f8b-acts">'+
+        '<button class="btn btn-primary" type="button" onclick="credCopiar(\'f8b-cc\')">Copiar código Pix</button>'+
+        '<button class="btn btn-ghost" id="f8b-b2" type="button" onclick="f8bPagar(\'total\')">Gerar um novo Pix</button>'+
+      "</div>"+
+      '<div id="f8b-pix"></div>';
+  }
+
+  var botoes, freio = "";
+
+  if(qtd >= 2){
+    /* Estado E — a hierarquia se inverte: o botao cheio e o pagamento
+       MENOR, porque e ele que cancela a desativacao. */
+    botoes = '<button class="btn btn-primary" id="f8b-b1" type="button" onclick="f8bPagar(\'total\')">Pagar a mais antiga · '+escFmtCent(saldo)+"</button>";
+    freio  = '<div class="f8b-freio">Quitar a mais antiga já cancela a desativação. As outras continuam em aberto até serem pagas.</div>';
+  }else{
+    botoes = '<button class="btn btn-primary" id="f8b-b1" type="button" onclick="f8bPagar(\'total\')">Pagar '+escFmtCent(saldo)+" e ficar em dia</button>";
+    if(minimo > 0 && minimo < saldo){
+      botoes += '<button class="btn btn-ghost" id="f8b-b2" type="button" onclick="f8bPagar(\'minimo\')">Pagar o mínimo · '+escFmtCent(minimo)+"</button>";
+      freio   = '<div class="f8b-freio">O mínimo cobre só os dias que você já usou. O restante continua em aberto, e o prazo de desativação continua correndo.</div>';
+    }
+  }
+  return '<div class="f8b-acts">'+botoes+"</div>"+freio+'<div id="f8b-pix"></div>';
+}
+
+async function f8bPagar(modo){
+  var area = document.getElementById("f8b-pix");
+  var b1 = document.getElementById("f8b-b1"), b2 = document.getElementById("f8b-b2");
+  var btn = (modo === "minimo") ? b2 : (b1 || b2);
+  var rot = btn ? btn.textContent : "";
+  if(CRED_POLL){ clearInterval(CRED_POLL); CRED_POLL = null; }
+  if(b1) b1.disabled = true;
+  if(b2) b2.disabled = true;
+  if(btn) btn.textContent = "Gerando…";
+  if(area) area.innerHTML = '<div class="f8b-msg">Gerando cobrança…</div>';
+  try{
+    var res = await pixEdge({ acao:"pagar_fatura", token:TOKEN, modo:modo });
+    if(!res.ok || !res.body || !res.body.ok || res.body.erro){
+      var m = (res.body && (res.body.mensagem || res.body.erro)) || ("Erro "+res.status);
+      if(area) area.innerHTML = '<div class="f8b-msg f8b-err">'+esc(m)+"</div>";
+    }else{
+      CRED_PAG = { pagamento_id:res.body.pagamento_id, mp_order_id:res.body.mp_order_id };
+      credRenderPix(res.body, "f8b-pix", 0,
+        escFmtCent(res.body.valor_centavos)+" · "+(modo === "minimo" ? "pagamento mínimo" : "pagamento total"),
+        "A cobrança expira em ~30 min. A tela atualiza sozinha ao pagar.");
+      credPolling("f8b-pix", F8B_FIM);
+    }
+  }catch(e){
+    if(area) area.innerHTML = '<div class="f8b-msg f8b-err">Falha de conexão: '+esc(e&&e.message||e)+"</div>";
+  }
+  if(b1) b1.disabled = false;
+  if(b2) b2.disabled = false;
+  if(btn) btn.textContent = rot;
+}
+
+function f8bRetomar(){
+  /* Religa o polling de um Pix que ja estava aberto, sem redesenhar
+     nada. O credPolling escreve em alvo+"-st" sob if(s) — como esse
+     elemento nao existe no estado D, ele nao escreve e so observa.
+     Pagou pelo Pix antigo, a tela vira "em dia" sozinha.
+     A guarda do CRED_POLL protege o Pix de credito que possa estar
+     rodando na mesma tela: quem chegou primeiro fica. */
+  if(CRED_POLL) return;
+  var p = f8bPend(); if(!p || !p.id) return;
+  CRED_PAG = { pagamento_id:p.id, mp_order_id:p.mp_order_id };
+  credPolling("f8b-pix", F8B_FIM);
 }
 
 async function carregarAssinaturas(){
