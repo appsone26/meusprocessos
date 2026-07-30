@@ -2393,7 +2393,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.193';
+const APP_VERSAO = 'v1.8.194';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5239,6 +5239,45 @@ async function iaMsgSalvar(i){
     toast(traduzDoc(e.message)||'Não consegui salvar.','err');
   }
 }
+/* ============ [v1.8.194] N16 peca B2 — PDF nas telas do modal ============
+   Tres telas, e so tres: resumo gerado, analise e resumo salvo.
+   🔴 A PETICAO ficou de fora por decisao do Edgard: ela e' para trabalhar
+   no Word e protocolar, nao e' parecer, e ja tem "Baixar".
+   Todos reusam o iaTextoLimpo() e o {semLogo:true} da peca B1.        */
+function iaExportarPDF(texto, titulo, sub, nomeBase){
+  const t=iaTextoLimpo(texto);
+  if(!t){ toast('Nada para exportar.','err'); return; }
+  gerarPDF(nomeBase||titulo, titulo, sub||'', [{texto:t}], {semLogo:true});
+}
+function iaPDFHoje(){
+  return new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+}
+function iaPDFSubProcesso(){
+  return (procAtual&&procAtual.nome_parte)?('Processo: '+procAtual.nome_parte):'';
+}
+/* resumo recem-gerado — o texto vive em IA_TEXTO_ATUAL e a fonte em
+   IA_FONTE_ATUAL (null = dados do processo), igual ao salvarResumoComoDocx. */
+function iaPDFResumoGerado(){
+  const fonte = IA_FONTE_ATUAL ? fonteNomePeticao(IA_FONTE_ATUAL) : 'dados do processo';
+  iaExportarPDF(IA_TEXTO_ATUAL, 'Resumo — '+fonte, iaPDFSubProcesso(),
+                'Resumo IA — '+fonte+' — '+iaPDFHoje());
+}
+/* analise/opiniao — o titulo e o subtitulo saem do proprio metaAnalise,
+   que e' quem a tela ja usa. A feature nunca e' peticao aqui: o
+   gerarAnaliseIA desvia para mostrarPeticaoResultado antes de chegar. */
+function iaPDFAnalise(){
+  const meta=metaAnalise(IA_ANALISE_FEATURE||'opiniao');
+  iaExportarPDF(IA_TEXTO_ATUAL, meta.t, meta.s, meta.t+' — '+iaPDFHoje());
+}
+/* resumo ja salvo — o texto vem do documento, nao do IA_TEXTO_ATUAL. */
+function iaPDFResumoSalvo(id){
+  const d=(DOCS_PROC||[]).find(x=>x.id===id);
+  if(!d||!d.resumo_texto){ toast('Este resumo nao tem texto guardado.','err'); return; }
+  const base=String(d.nome_arquivo||'Resumo').replace(/\.[a-z0-9]+$/i,'');
+  iaExportarPDF(d.resumo_texto, 'Resumo de documento', fonteLabelResumo(d), base);
+}
+/* ==================== fim do N16 (peca B2) ==================== */
+
 function iaMsgPDF(i){
   const m=CHAT_MSGS[i]; if(!m||m.role!=='assistant') return;
   const texto=iaTextoLimpo(m.content);
@@ -5493,6 +5532,7 @@ function visualizarResumo(id){
   document.getElementById('mia-acts').innerHTML=
     '<button class="btn btn-ghost btn-sm" onclick="mostrarHubResumos()">← Voltar</button>'+
     '<button class="btn btn-ghost btn-sm" onclick=\'baixarDocumento('+JSON.stringify(id)+')\'>Baixar</button>'+
+    '<button class="btn btn-ghost btn-sm" onclick=\'iaPDFResumoSalvo('+JSON.stringify(id)+')\'>📄 Exportar PDF</button>'+
     (fin?'':'<button class="btn btn-primary btn-sm" onclick=\'debaterResumo('+JSON.stringify(id)+')\'>💬 Debater</button>');
 }
 function debaterResumo(id){
@@ -5596,7 +5636,7 @@ async function gerarResumoIA(documentoId){
     }
     IA_TEXTO_ATUAL=data.texto||''; IA_TEXTO_PROC=procAtual.id;
     document.getElementById('mia-body').innerHTML=(mdLite(IA_TEXTO_ATUAL)||'<div class="det-empty">A IA não retornou texto.</div>');
-    document.getElementById('mia-acts').innerHTML='<button class="btn btn-ghost btn-sm" onclick="copiarIA()">Copiar texto</button><button class="btn btn-primary btn-sm" onclick="carregarProcessoNoChat()">💬 Debater na IA</button>';
+    document.getElementById('mia-acts').innerHTML='<button class="btn btn-ghost btn-sm" onclick="copiarIA()">Copiar texto</button><button class="btn btn-ghost btn-sm" onclick="iaPDFResumoGerado()">📄 Exportar PDF</button><button class="btn btn-primary btn-sm" onclick="carregarProcessoNoChat()">💬 Debater na IA</button>';
     if(data.painel) atualizarBarraIA(data.painel);
     if(IA_TEXTO_ATUAL) salvarResumoComoDocx(IA_TEXTO_ATUAL);
   }catch(e){
@@ -5712,6 +5752,7 @@ function mostrarAnaliseResultado(){
   document.getElementById('mia-acts').innerHTML=
     '<button class="btn btn-ghost btn-sm" onclick="mostrarHubResumos()">← Voltar</button>'+
     '<button class="btn btn-ghost btn-sm" onclick="copiarIAFeito()">Copiar texto</button>'+
+    '<button class="btn btn-ghost btn-sm" onclick="iaPDFAnalise()">📄 Exportar PDF</button>'+
     '<button class="btn btn-primary btn-sm" onclick="carregarProcessoNoChat()">💬 Debater na IA</button>';
   document.getElementById('modal-ia').classList.add('open');
   marcarIACopiaNaoSalva(copiarIA, mostrarAnaliseResultado);
