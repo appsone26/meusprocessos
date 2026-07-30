@@ -2440,7 +2440,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.197';
+const APP_VERSAO = 'v1.8.198';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -7816,18 +7816,46 @@ function abrirModalGrandes(lista){
     'Tente reduzir o tamanho e anexar de novo — se for PDF, dá pra comprimir online no botão abaixo.</div>';
   document.getElementById('modal-grandes').classList.add('open');
 }
+/* [v1.8.198] BAIXAR DOCUMENTO — conserto do nome e da aba em branco.
+   ANTES: jogava a URL assinada do Storage direto num <a> com target=_blank.
+   A URL e de OUTRA ORIGEM (…supabase.co) e o app roda em app.appsone.com.br,
+   e o atributo `download` SO vale para mesma origem (ou blob:/data:). Logo o
+   navegador IGNORAVA o nome e salvava com o caminho aleatorio do Storage — o
+   "nome maluco" no PC — e no celular abria uma aba em branco no dominio do
+   Supabase.
+   AGORA: fetch -> blob -> blob: (mesma origem) -> o `download` vale e o nome
+   sai certo, sem abrir aba nenhuma.
+   🟢 O baixarTudo() ja fazia assim e roda em producao: o CORS do Storage ja
+   libera fetch a partir do app.appsone.com.br. Um arquivo e mais leve que o
+   "Baixar tudo", que puxa todos de uma vez. */
 async function baixarDocumento(id){
+  var urlBlob=null;
   try{
     const r=await efDocumentos({acao:'download-url',id:id});
-    if(r.url){
-      const a=document.createElement('a');
-      a.href=r.url; a.target='_blank'; a.rel='noopener';
-      if(r.nome) a.download=r.nome;
-      document.body.appendChild(a); a.click(); a.remove();
+    if(!r || !r.url) return;
+    var resp;
+    try{
+      resp=await fetch(r.url);
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+    }catch(_){
+      /* Rede de seguranca: se o fetch falhar, cai no jeito antigo em vez de
+         ficar mudo. O arquivo vem com nome feio, mas vem. */
+      window.open(r.url,'_blank','noopener');
+      toast('Baixei pelo caminho antigo — o nome pode sair errado.','err',4000);
+      return;
     }
+    const blob=await resp.blob();
+    urlBlob=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=urlBlob; a.download=(r.nome||'documento');
+    document.body.appendChild(a); a.click(); a.remove();
   }catch(e){
     if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
     toast(traduzDoc(e.message),'err');
+  }finally{
+    /* Solta a memoria do blob. 60s de folga porque em celular antigo o
+       navegador ainda pode estar gravando quando o clique volta. */
+    if(urlBlob) setTimeout(function(){ URL.revokeObjectURL(urlBlob); },60000);
   }
 }
 async function excluirDocumento(id,nome,temResumo){
