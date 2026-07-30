@@ -2440,7 +2440,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.198';
+const APP_VERSAO = 'v1.8.199';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2838,7 +2838,6 @@ function abrirApp(s){
   document.getElementById('app').style.display='block';
   document.body.classList.add('in-app');
   document.body.style.overflow='';
-  renderTopoEscritorio(s);
   sincronizarLogoPos();
   document.getElementById('side-versao').textContent='Meus Processos '+APP_VERSAO;
   // Garante que o botão de tema exiba o ícone correto após login
@@ -3510,9 +3509,14 @@ function cicSeloCard(id){
   if(r.tipo==='parede')
     return '<span class="pnl-selo-risco dng">🔴 desativa '+cicQuandoFrase(it.dias_para_desativar)+
            ' · '+escFmtCent(it.total_aberto_centavos||0)+' em aberto</span>';
+  /* [v1.8.199] O motivo saiu do title e foi para a TELA. No celular nao existe
+     hover, entao o title era invisivel justamente onde mais se olha. Os selos
+     irmaos (parede, desativada) ja mostram tudo na linha; este era o unico que
+     escondia. O title fica, para quando o motivo for comprido e a linha cortar. */
   if(r.tipo==='freio')
     return '<span class="pnl-selo-risco wrn" title="'+esc(it.freio_motivo||'')+
-           '">⚠️ freio puxado '+cicDesde(it.freio_dias)+'</span>';
+           '">⚠️ freio puxado '+cicDesde(it.freio_dias)+
+           (it.freio_motivo ? ' \u00b7 '+esc(it.freio_motivo) : '')+'</span>';
   if(r.tipo==='desativado')
     return '<span class="pnl-selo-risco mut">⏸ desativada em '+cicDia(it.desativado_em)+
            ' · expurgo em '+cicDia(it.expurgo_em)+'</span>';
@@ -6826,15 +6830,13 @@ function iniciaisEscritorio(nome){
   if(ps.length===1) return ps[0].slice(0,2).toUpperCase();
   return (ps[0][0]+ps[ps.length-1][0]).toUpperCase();
 }
-function renderTopoEscritorio(s){
-  const btn=document.getElementById('tb-esc-logo'); if(!btn) return;
-  const nome=(s&&s.escritorio_nome)||'Escritório';
-  btn.title='Perfil — '+nome; btn.setAttribute('aria-label','Perfil do escritório '+nome);
-  const logo=s&&s.logo_url;
-  btn.innerHTML='';
-  if(logo){ const i=document.createElement('img'); i.src=logo; i.alt=''; i.style.objectPosition=(s&&s.logo_pos)||'50% 50%'; btn.appendChild(i); btn.style.background='#fff'; }
-  else { btn.textContent=iniciaisEscritorio(nome); btn.style.background=''; }
-}
+/* [v1.8.199] renderTopoEscritorio() REMOVIDA. Ela pintava o quadrado do logo
+   do escritorio no topo (#tb-esc-logo), que a v1.8.195 apagou. Desde entao a
+   primeira linha dela era getElementById de um elemento inexistente seguido de
+   "if(!btn) return", ou seja: sempre retornava na entrada. Saiu junto com as
+   tres chamadas (abrirApp, sincronizarLogoPos, salvar do Perfil).
+   📌 O logo do escritorio continua cadastrado no Perfil e continua saindo nos
+   DOCUMENTOS — quem cuida disso e o SESS.logo_pos, que segue vivo. */
 function abrirPerfil(){
   /* [v1.8.196] Fecha o menu, como o irPara() faz. Sem isto, no celular a
      tela troca por tras mas o menu fica aberto por cima, e a pessoa tem
@@ -6922,7 +6924,6 @@ function sincronizarLogoPos(){
   db.rpc('sp_logo_pos',{p_token:TOKEN}).then(r=>{
     const pos=(r&&r.data)||'50% 50%';
     if(SESS){ SESS.logo_pos=pos; salvarSessao(SESS); }
-    renderTopoEscritorio(SESS);
   }).catch(()=>{});
   db.rpc('sp_cliente_email_obrig',{p_token:TOKEN}).then(r=>{
     if(SESS){ SESS.cliente_email_obrig=(r&&r.data===false)?false:true; salvarSessao(SESS); }
@@ -6945,7 +6946,6 @@ async function salvarClienteEmailObrig(val){
 function pfLogoAplicarPos(pos){
   PERFIL_LOGO_POS=pos;
   const pi=document.querySelector('#pf-logo-prev img'); if(pi) pi.style.objectPosition=pos;
-  const ti=document.querySelector('#tb-esc-logo img'); if(ti) ti.style.objectPosition=pos;
 }
 function pfLogoDragSetup(box){
   if(box._dragOn) return; box._dragOn=true;
@@ -7076,7 +7076,6 @@ async function salvarPerfil(){
     const posSalvar=PERFIL_LOGO_POS||(SESS&&SESS.logo_pos)||'50% 50%';
     try{ await db.rpc('sp_salvar_logo_pos',{p_token:TOKEN,p_pos:posSalvar}); }catch(_){}
     if(SESS){ SESS.logo_url=p.logo_url||null; SESS.escritorio_nome=p.nome||SESS.escritorio_nome; SESS.logo_pos=posSalvar; salvarSessao(SESS); }
-    renderTopoEscritorio(SESS);
     PERFIL_LOGO=undefined;
     renderPerfilLogo(p.logo_url, p.nome);
     toast('Perfil salvo.','ok');
@@ -8032,7 +8031,7 @@ function quandoTexto(d){ if(d<0) return 'venceu'; if(d===0) return 'vence hoje';
 function quandoCurto(d){ if(d<0) return 'vencido'; if(d===0) return 'hoje'; if(d===1) return 'amanhã'; return 'em '+d+' dias'; }
 /* v1.8.146: sino do topo intermitente — aparece, balança 3× (~4,6s), some, e volta a cada ~2 min. Sem bolinha. */
 let _sinoItens=[], _sinoTimerCiclo=null, _sinoTimerSome=null;
-const SINO_CICLO_MS=300000, SINO_VISIVEL_MS=4600;   /* [v1.8.195] o sino ficou FIXO enquanto houver alerta; o balanco passou de 2 para 5 minutos. SINO_VISIVEL_MS nao e' mais usado. */
+const SINO_CICLO_MS=300000;   /* [v1.8.199] o SINO_VISIVEL_MS saiu: a v1.8.195 deixou o sino fixo enquanto houver alerta e o timer que o apagava deixou de existir. O SINO_CICLO_MS (balanco de 5 min) continua em uso. */
 function _sinoHtml(){
   const n=_sinoItens.length; if(!n) return '';
   const t = n>1 ? n+' alertas' : '1 alerta';
