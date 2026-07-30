@@ -292,7 +292,7 @@
   /* Anti-piscada no F5: se já existe sessão salva, o login não chega a pintar */
   html.has-sess #public{display:none!important}
   .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;height:80px;padding:0 22px 0 0;background:rgba(11,17,32,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-  .topbar .tb-left{display:flex;align-items:center;gap:11px;min-width:0;flex:0 0 auto;padding-left:14px;position:relative}   /* [v1.8.195] era flex:0 0 260px — largura fixa nao cabia a marca escrita */
+  .topbar .tb-left{display:flex;align-items:center;gap:10px;min-width:0;flex:0 0 230px;padding-left:14px;position:relative;overflow:hidden}   /* [v1.8.196] 230px = a coluna do menu (.applayout). A busca comeca exatamente na linha que separa menu e conteudo. */   /* [v1.8.195] era flex:0 0 260px — largura fixa nao cabia a marca escrita */
   .topbar .seal-svg{width:30px;height:30px;flex:0 0 auto}
   .topbar .esc{font-family:'Space Grotesk';font-weight:600;color:#fff;font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .topbar .esc .pill{margin-left:9px;font-family:'Inter';font-size:.68rem;font-weight:600;color:var(--cyan);background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);padding:2px 8px;border-radius:20px;vertical-align:middle}
@@ -362,7 +362,7 @@
   /* barra de alertas */
   #alert-bar{margin:0 0 22px;display:none}
   /* v1.8.104: logo na topbar do app + sino limpo (sem retângulo) */
-  .topbar .tb-applogo{height:56px;width:auto;object-fit:contain;flex:0 0 auto;display:block;cursor:pointer}
+  .topbar .tb-applogo{height:52px;width:auto;object-fit:contain;flex:0 0 auto;display:block;cursor:pointer}   /* [v1.8.196] 56 -> 52px para o conjunto caber nos 230px */
   /* [v1.8.195] Cabecalho novo. O logo do ESCRITORIO saiu do topo (virou o
      item "Conta" do menu); o do APP encolheu de 68 para 56px e ganhou a
      marca escrita ao lado. Duas peles do mesmo desenho porque o logo e'
@@ -371,7 +371,7 @@
   html:not(.tema-claro) .topbar .lg-claro{display:none}
   .topbar .tb-div{width:1px;height:36px;background:var(--line);flex:0 0 auto}
   .topbar .tb-mark{display:flex;flex-direction:column;justify-content:center;flex:0 0 auto}
-  .topbar .tb-mark .mk{font-family:'Space Grotesk';font-weight:600;font-size:1.02rem;line-height:1.06;display:flex;flex-direction:column;white-space:nowrap;color:var(--text)}
+  .topbar .tb-mark .mk{font-family:'Space Grotesk';font-weight:600;font-size:.96rem;line-height:1.06;display:flex;flex-direction:column;white-space:nowrap;color:var(--text)}
   .topbar .tb-mark .mk .l2{color:var(--cyan);font-weight:700}
   .topbar .tb-mark .ouro{display:block;height:3px;margin-top:6px;border-radius:2px;background:linear-gradient(90deg,#c9a227,rgba(201,162,39,0))}
   /* v1.8.167: o sino tem lugar RESERVADO — aparece e some sem empurrar a busca */
@@ -2409,7 +2409,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.195';
+const APP_VERSAO = 'v1.8.196';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6708,6 +6708,11 @@ function renderTopoEscritorio(s){
   else { btn.textContent=iniciaisEscritorio(nome); btn.style.background=''; }
 }
 function abrirPerfil(){
+  /* [v1.8.196] Fecha o menu, como o irPara() faz. Sem isto, no celular a
+     tela troca por tras mas o menu fica aberto por cima, e a pessoa tem
+     que clicar fora para ver. Aqui dentro, e nao no onclick, para valer
+     para qualquer chamador. */
+  toggleMenu(false);
   document.getElementById('view-detalhe').classList.add('hidden');
   ['processos','alertas','clientes','documentos','financeiro','relatorios','usuarios','ia','assinaturas','ajuda','painel'].forEach(v=>{
     const vw=document.getElementById('view-'+v); if(vw) vw.classList.add('hidden');
