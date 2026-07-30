@@ -343,6 +343,34 @@
   .side .sidefoot .pv{font-family:'Space Grotesk';font-weight:600;color:#fff;margin:3px 0 9px}
   .side .sidefoot .up{font-size:.8rem;color:var(--cyan);cursor:pointer}
   .content{padding:28px 30px;overflow:auto}
+  /* ============ [v1.8.197] BLOCO 0-A: puxar para atualizar ============
+     🔴 A LINHA QUE FAZ A PECA EXISTIR e a de baixo. No celular quem rola e o
+     DOCUMENTO (o .content com overflow so vale em @media min-width:901px),
+     entao o puxar-para-atualizar DO NAVEGADOR esta ligado — e o dele recarrega
+     a pagina inteira, 1,1 MB. Sem isto os dois gestos brigam e o nativo ganha.
+     Escopo body.in-app: o site publico continua com o comportamento normal. */
+  body.in-app{overscroll-behavior-y:contain}
+  /* A faixa e SOBREPOSTA, nao empurra a lista: empurrar obriga o navegador a
+     recalcular o layout de um DOM de 1,1 MB a cada frame do arrasto. */
+  #ptr{position:fixed;left:0;right:0;top:80px;z-index:44;display:flex;
+       align-items:center;justify-content:center;gap:8px;height:0;overflow:hidden;
+       font-size:.84rem;color:var(--muted);background:var(--bg);pointer-events:none}
+  #ptr.anim{transition:height .18s ease}
+  #ptr .ptr-seta{display:inline-block;transition:transform .2s ease}
+  #ptr.virou{color:var(--cyan)}
+  #ptr.virou .ptr-seta{transform:rotate(180deg)}
+  #ptr.pronto{color:var(--ok)}
+  #ptr.falhou{color:var(--warn)}
+  /* spinner proprio: o .spinner que ja existe tem borda escura, feita para
+     ficar por cima de botao ciano. O @keyframes spin e reaproveitado. */
+  #ptr .ptr-sp{width:13px;height:13px;border:2px solid rgba(255,255,255,.22);
+               border-top-color:var(--cyan);border-radius:50%;display:inline-block;
+               animation:spin .7s linear infinite}
+  @media (max-width:900px){
+    /* 152px = exatamente o padding-top do .applayout no celular, onde o
+       conteudo comeca por baixo da barra fixa. */
+    #ptr{top:calc(152px + env(safe-area-inset-top))}
+  }
   /* Desktop: barra e conteúdo rolam sozinhos (o mouse sobre o menu não rola a tela).
      Escopo min-width:901px para não tocar no menu mobile (gaveta, ≤900px). */
   @media (min-width:901px){
@@ -1267,6 +1295,9 @@
   </div>
   <div class="menu-backdrop" id="menu-backdrop" onclick="toggleMenu(false)"></div>
   <div id="buscau-drop-mob" class="buscau-drop"></div>
+  <!-- [v1.8.197] Bloco 0-A: a faixa do puxar para atualizar. Nasce com altura 0
+       e fica fixa logo abaixo da barra do topo — parada, nao ocupa pixel nenhum. -->
+  <div id="ptr" aria-live="polite"></div>
   <div class="applayout">
     <aside class="side">
       <button class="navitem" id="nav-tema" type="button" onclick="alternarTema()" title="Alternar tema claro/escuro"><span class="ico" id="nav-tema-ico">🌙</span> Claro / escuro</button>
@@ -2409,7 +2440,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.196';
+const APP_VERSAO = 'v1.8.197';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3165,8 +3196,105 @@ function irPara(view, _fromPop){
 function logoInicio(){
   if(!TOKEN) return;
   irPara('processos');
-  carregarProcessos();
+  /* [v1.8.197] Era so carregarProcessos(). Agora atualiza os quatro, igual ao
+     gesto de puxar. Continua indo para a aba Processos: comportamento
+     inalterado, decisao do Edgard. Vale no celular e no desktop. */
+  atualizarTudo();
 }
+
+/* ================= [v1.8.197] BLOCO 0-A: PUXAR PARA ATUALIZAR =================
+   Atualiza os DADOS. NAO traz versao nova do app — isso e a peca B, separada.
+   Os quatro carregadores batem so em SP (sp_listar_processos, sp_listar_clientes,
+   sp_listar_alertas, sp_providencias_proximas, sp_plano_atual, sp_fatura_em_aberto).
+   Nenhum passa pela Edge nem pelo tribunal: puxar nao custa credito nem consulta.
+
+   🔴 LIMITE CONHECIDO: os quatro carregadores engolem o proprio erro (todos
+   terminam em catch sem relancar), entao Promise.all nunca rejeita. Por isso o
+   estado "sem conexao" olha navigator.onLine, que cobre o caso real (sem sinal).
+   Se a rede cair NO MEIO, a faixa dira "Atualizado" e o erro aparecera dentro da
+   area de cada aba, como ja acontece hoje. Consertar de verdade = fazer os quatro
+   devolverem status, o que mexe em funcao usada pelo app inteiro. Peca propria. */
+var PTR_OCUPADO=false, PTR_Y0=null, PTR_D=0;
+var PTR_LIMIAR=64, PTR_TETO=90, PTR_RESIST=2;
+
+function ptrSet(h,cls,html){
+  var el=document.getElementById('ptr'); if(!el) return;
+  el.className=cls||'';
+  if(html!==undefined) el.innerHTML=html;
+  el.style.height=h+'px';
+}
+
+function ptrRecolhe(){ ptrSet(0,'anim'); PTR_D=0;
+  setTimeout(function(){ var el=document.getElementById('ptr');
+    if(el && el.style.height==='0px') el.innerHTML=''; },200); }
+
+/* Roda os quatro. Chamado pelo gesto E pelo clique no logo. */
+async function atualizarTudo(){
+  if(!TOKEN || PTR_OCUPADO) return;
+  PTR_OCUPADO=true;
+  if(navigator.onLine===false){
+    ptrSet(52,'anim falhou','\u26A0 Sem conex\u00E3o. Tente de novo');
+    setTimeout(function(){ ptrRecolhe(); PTR_OCUPADO=false; },2500);
+    return;
+  }
+  ptrSet(52,'anim','<span class="ptr-sp"></span> Atualizando\u2026');
+  try{
+    await Promise.all([carregarClientes(),carregarProcessos(),
+                       carregarAlertas(),carregarCicloVida()]);
+    ptrSet(52,'anim pronto','\u2713 Atualizado');
+    setTimeout(function(){ ptrRecolhe(); PTR_OCUPADO=false; },1200);
+  }catch(e){
+    ptrSet(52,'anim falhou','\u26A0 N\u00E3o deu para atualizar. Tente de novo');
+    setTimeout(function(){ ptrRecolhe(); PTR_OCUPADO=false; },2500);
+  }
+}
+
+/* O gesto so vale no topo da pagina, com o app aberto, sem modal e sem menu.
+   O laco de cima sobe pelos pais: se o dedo estiver dentro de uma caixa que
+   rola e que NAO esta no topo (chat da IA, lista de documentos, gaveta do
+   menu), o gesto e daquela caixa, nao nosso. */
+function ptrPodeComecar(alvo){
+  if(!TOKEN || PTR_OCUPADO) return false;
+  var app=document.getElementById('app');
+  if(!app || app.style.display==='none') return false;
+  if(app.classList.contains('menu-open')) return false;
+  if((window.pageYOffset||document.documentElement.scrollTop||0)>0) return false;
+  var ms=document.querySelectorAll('.modal');
+  for(var i=0;i<ms.length;i++){
+    if(getComputedStyle(ms[i]).display!=='none') return false; }
+  var n=alvo;
+  while(n && n!==document.body){
+    if(n.scrollHeight-n.clientHeight>2 && n.scrollTop>0) return false;
+    n=n.parentElement;
+  }
+  return true;
+}
+
+function ptrInicio(e){
+  if(!ptrPodeComecar(e.target)){ PTR_Y0=null; return; }
+  PTR_Y0=e.touches[0].clientY; PTR_D=0;
+}
+function ptrMove(e){
+  if(PTR_Y0===null || PTR_OCUPADO) return;
+  var d=(e.touches[0].clientY-PTR_Y0)/PTR_RESIST;
+  if(d<=0){ if(PTR_D>0){ PTR_D=0; ptrSet(0,''); } return; }
+  if(e.cancelable) e.preventDefault();
+  PTR_D=Math.min(PTR_TETO,d);
+  if(PTR_D>=PTR_LIMIAR)
+    ptrSet(PTR_D,'virou','<span class="ptr-seta">\u2193</span> Solte para atualizar');
+  else
+    ptrSet(PTR_D,'','<span class="ptr-seta">\u2193</span> Puxe para atualizar');
+}
+function ptrFim(){
+  if(PTR_Y0===null || PTR_OCUPADO) return;
+  PTR_Y0=null;
+  if(PTR_D>=PTR_LIMIAR) atualizarTudo(); else ptrRecolhe();
+}
+
+document.addEventListener('touchstart',ptrInicio,{passive:true});
+document.addEventListener('touchmove',ptrMove,{passive:false});
+document.addEventListener('touchend',ptrFim);
+document.addEventListener('touchcancel',function(){ PTR_Y0=null; ptrRecolhe(); });
 
 /* ============ AVISO IN-APP (Gestor → todos escritórios) ============ */
 let AVISO_POLL_TIMER=null;
