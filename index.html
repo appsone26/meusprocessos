@@ -787,6 +787,12 @@
   .ia-msg.bot{align-self:flex-start;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-bottom-left-radius:4px}
   .ia-msg-copy{display:inline-flex;align-items:center;gap:5px;margin-top:9px;font-size:.74rem;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:7px;padding:3px 9px;cursor:pointer;font-family:inherit;transition:color .2s,border-color .2s}
   .ia-msg-copy:hover{color:var(--cyan);border-color:var(--cyan)}
+  /* [v1.8.193] N16: a bolha ganhou barra de acoes. O Copiar desceu do
+     canto para dentro dela. Quebra sozinha no celular. */
+  .ia-msg-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+  .ia-msg-acts .ia-msg-copy{margin-top:0}
+  .ia-msg-copy.ok{color:var(--ok);border-color:var(--ok)}
+  .ia-msg-copy[disabled]{opacity:.55;cursor:not-allowed}
   .ia-chat-empty{text-align:center;color:var(--muted-2);padding:40px 16px;font-size:.9rem;line-height:1.6}
   .ia-chat-bar{display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--line);padding-top:12px}
   .ia-chat-bar textarea{flex:1;resize:none;max-height:120px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font:inherit;font-size:.92rem}
@@ -2387,7 +2393,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.192';
+const APP_VERSAO = 'v1.8.193';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5105,6 +5111,9 @@ const IA_PRONTOS = {
 function iaPronto(k){
   const t=IA_PRONTOS[k]; if(!t) return;
   const ta=document.getElementById('ia-chat-text'); if(!ta) return;
+  IA_PRONTO_PEND = IA_ROTULOS[k] || null;   /* [v1.8.193] N16: o nome do
+     arquivo salvo sai daqui — e' o unico ponto que sabe QUAL botao foi
+     clicado. Digitou a pergunta a mao, fica null e vira "Consulta a IA". */
   ta.value=t; enviarChatIA();
 }
 function iaProntosEstado(){
@@ -5147,7 +5156,7 @@ function renderChat(){
   }
   box.innerHTML=CHAT_MSGS.map((m,i)=>m.role==='user'
     ? '<div class="ia-msg user">'+esc(m.content)+'</div>'
-    : '<div class="ia-msg bot">'+mdLite(m.content)+'<button class="ia-msg-copy" title="Copiar resposta" onclick="copiarChatMsg('+i+')">⧉ Copiar</button></div>'
+    : '<div class="ia-msg bot">'+mdLite(m.content)+iaMsgActs(i,m)+'</div>'
   ).join('');
   // v1.8.87 — ancora no TOPO da última pergunta (em vez de cair no fim de uma
   // resposta longa): você vê de onde a resposta começou, sem rolar pra cima.
@@ -5160,6 +5169,85 @@ function renderChat(){
     box.scrollTop = box.scrollHeight;           // fallback (sem pergunta): vai pro fim
   }
 }
+/* ================= [v1.8.193] N16 — guardar a resposta da IA =================
+   Vale para os tres textos prontos E para qualquer pergunta digitada: os
+   dois caminhos passam pelo enviarChatIA(), entao a barra mora na bolha.
+
+   Salvar usa a acao salvar-texto-docx (documento COMUM, excluivel, com o
+   texto guardado). NAO usa salvar-resumo: aquela tem vaga unica por
+   processo e apagaria a resposta salva antes, sem avisar.
+
+   O PDF sai SEM LOGO por decisao do Edgard (S79) e sem emoji por limite
+   do Helvetica, que cobre o Latin-1 mas nao a tabela de emoji.           */
+let IA_PRONTO_PEND = null;   /* rotulo do botao pronto, ate a resposta chegar */
+const IA_ROTULOS = {
+  passos:       'Próximos passos',
+  riscos:       'Riscos e pontos de atenção',
+  alternativas: 'Alternativas e estratégias'
+};
+
+/* tira emoji e marcas de markdown, preservando travessao e reticencias,
+   que o Helvetica desenha sem problema. */
+function iaTextoLimpo(t){
+  return String(t||'')
+    .replace(/(?:[\uD800-\uDBFF][\uDC00-\uDFFF])[\uFE0F]?[ ]?/g, '')
+    .replace(/[\u2190-\u21FF\u2300-\u27BF\u2B00-\u2BFF\u20E3][\uFE0F]?[ ]?/g, '')
+    .replace(/\uFE0F/g, '')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/^\s*[-\u2022]\s+/gm, '— ')
+    .replace(/[ \t]+$/gm, '')
+    .trim();
+}
+function iaMsgRotulo(i){
+  const m=CHAT_MSGS[i]||{};
+  return m.rotulo || 'Consulta à IA';
+}
+function iaMsgNome(i){
+  const hoje=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  return iaMsgRotulo(i)+' — '+hoje;
+}
+/* a barra. Recado de sistema (bloqueio/erro) nao ganha barra: nao ha
+   resposta de IA para guardar. Sem processo carregado, nao ha onde salvar. */
+function iaMsgActs(i,m){
+  if(m&&m.sistema) return '';
+  let h='<div class="ia-msg-acts">';
+  h+='<button class="ia-msg-copy" title="Copiar resposta" onclick="copiarChatMsg('+i+')">⧉ Copiar</button>';
+  if(CHAT_PROC) h+='<button class="ia-msg-copy" id="iamsg-sv-'+i+'" title="Salvar como documento do processo" onclick="iaMsgSalvar('+i+')">💾 Salvar no processo</button>';
+  h+='<button class="ia-msg-copy" title="Baixar em PDF" onclick="iaMsgPDF('+i+')">📄 Exportar PDF</button>';
+  return h+'</div>';
+}
+async function iaMsgSalvar(i){
+  const m=CHAT_MSGS[i]; if(!m||m.role!=='assistant') return;
+  if(!CHAT_PROC){ toast('Carregue um processo para salvar.','err'); return; }
+  const texto=iaTextoLimpo(m.content);
+  if(!texto){ toast('Nada para salvar.','err'); return; }
+  const b=document.getElementById('iamsg-sv-'+i);
+  const antes=b?b.innerHTML:'';
+  if(b){ b.disabled=true; b.innerHTML='Salvando…'; }
+  try{
+    const r=await efDocumentos({acao:'salvar-texto-docx',
+      processo_id:CHAT_PROC.id, cliente_id:(CHAT_PROC.cliente_id||null),
+      texto:texto, nome:iaMsgNome(i)+'.docx'});
+    if(r&&r.uso) atualizarBarraStorage(r.uso);
+    if(b){ b.innerHTML='✓ Salvo nos Documentos'; b.classList.add('ok'); }
+    if(procAtual && CHAT_PROC.id===procAtual.id) carregarDocumentos();
+    toast('Salvo em Documentos do processo.','ok');
+  }catch(e){
+    if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
+    if(b){ b.disabled=false; b.innerHTML=antes; }
+    toast(traduzDoc(e.message)||'Não consegui salvar.','err');
+  }
+}
+function iaMsgPDF(i){
+  const m=CHAT_MSGS[i]; if(!m||m.role!=='assistant') return;
+  const texto=iaTextoLimpo(m.content);
+  if(!texto){ toast('Nada para exportar.','err'); return; }
+  const sub=(CHAT_PROC&&CHAT_PROC.nome)?('Processo: '+CHAT_PROC.nome):'';
+  gerarPDF(iaMsgNome(i), iaMsgRotulo(i), sub, [{texto:texto}], {semLogo:true});
+}
+/* ====================== fim do N16 (peca B1) ====================== */
+
 function copiarChatMsg(i){
   const m=CHAT_MSGS[i]; if(!m||m.role!=='assistant') return;
   navigator.clipboard.writeText(m.content||'').then(()=>toast('Resposta copiada!','ok')).catch(()=>toast('Não consegui copiar.','err'));
@@ -5192,14 +5280,14 @@ async function enviarChatIA(){
       const cod=data&&data.erro;
       if(cod==='SESSAO_INVALIDA') return sessaoExpirou();
       /* [v1.8.169] 402 (saldo/plano): deixa o recado no chat e abre o modal com a compra. */
-      if(ehBloqueioIA(cod)){ CHAT_MSGS.push({role:'assistant',content:'⏸️ '+traduzErro({message:cod})}); renderChat(); return; }
+      if(ehBloqueioIA(cod)){ CHAT_MSGS.push({role:'assistant',content:'⏸️ '+traduzErro({message:cod}),sistema:true}); renderChat(); return; }
       throw new Error((data&&(data.detalhe||data.erro))||('Falha na IA ('+r.status+')'));
     }
-    CHAT_MSGS.push({role:'assistant',content:data.texto||'(sem resposta)'});
+    CHAT_MSGS.push({role:'assistant',content:data.texto||'(sem resposta)',rotulo:(IA_PRONTO_PEND||null)}); IA_PRONTO_PEND=null;
     renderChat();
     if(data.painel) atualizarBarraIA(data.painel);
   }catch(e){
-    CHAT_MSGS.push({role:'assistant',content:'⚠️ Não consegui responder agora: '+(e.message||'tente de novo em instantes.')});
+    CHAT_MSGS.push({role:'assistant',sistema:true,content:'⚠️ Não consegui responder agora: '+(e.message||'tente de novo em instantes.')});
     renderChat();
   }finally{
     CHAT_BUSY=false; const sb=document.getElementById('ia-chat-send'); if(sb) sb.disabled=false;
@@ -5230,7 +5318,7 @@ function carregarProcessoNoChat(resumoTexto){
     : ((IA_TEXTO_ATUAL && IA_TEXTO_PROC===procAtual.id) ? IA_TEXTO_ATUAL : '');
   if(rt){ ctx+='\n\n===== RESUMO JÁ GERADO PELA IA =====\n'+rt; }
   CHAT_CONTEXTO=ctx;
-  CHAT_PROC={ id:procAtual.id, nome:(procAtual.nome_parte||'(sem título)') };
+  CHAT_PROC={ id:procAtual.id, nome:(procAtual.nome_parte||'(sem título)'), cliente_id:(procAtual.cliente_id||null) };   /* [v1.8.193] cliente_id: o salvar-texto-docx pede */
   CHAT_MSGS=[];
   fecharModal('modal-ia');
   irPara('ia');
@@ -8430,7 +8518,7 @@ function carregarJsPDF(){
   return _pdfPromise;
 }
 // secoes = [{titulo, head:[...], body:[[...]], colStyles?:{idx:{halign:'right'}}, vazio?:'msg'}]
-async function gerarPDF(nomeBase, titulo, subtitulo, secoes){
+async function gerarPDF(nomeBase, titulo, subtitulo, secoes, opcoes){   /* [v1.8.193] opcoes e' o 5o argumento, OPCIONAL: as 8 exportacoes que ja existem passam 4 e nao mudam de comportamento. */
   try{
     await carregarJsPDF();
     const { jsPDF }=window.jspdf;
@@ -8440,7 +8528,8 @@ async function gerarPDF(nomeBase, titulo, subtitulo, secoes){
     const margin=40;
     const nome=expNomeEscritorio();
     const logo=(SESS&&SESS.logo_url)||'';
-    if(logo){
+    /* [v1.8.193] {semLogo:true} para o parecer da IA — decisao do Edgard. */
+    if(logo && !(opcoes&&opcoes.semLogo)){
       try{ const pr=doc.getImageProperties(logo); const maxW=110,maxH=46;
         const r=Math.min(maxW/pr.width, maxH/pr.height); const w=pr.width*r, h=pr.height*r;
         doc.addImage(logo, (pr.fileType||'PNG'), pageW-margin-w, 30, w, h); }catch(e){}
@@ -8456,6 +8545,19 @@ async function gerarPDF(nomeBase, titulo, subtitulo, secoes){
     doc.setDrawColor(20,20,20); doc.setLineWidth(1); doc.line(margin, y, pageW-margin, y); y+=16;
     (secoes||[]).forEach(sec=>{
       if(y > pageH-90){ doc.addPage(); y=48; }
+      /* [v1.8.193] N16: ramo NOVO de texto corrido. O gerarPDF so sabia
+         tabela (autoTable). Secao com .texto nao passa pelo caminho antigo. */
+      if(sec.texto){
+        if(sec.titulo){ doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(20,20,20); doc.text(sec.titulo, margin, y); y+=16; }
+        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(35,35,35);
+        const _ls=doc.splitTextToSize(String(sec.texto), pageW-margin*2);
+        for(let _i=0;_i<_ls.length;_i++){
+          if(y > pageH-60){ doc.addPage(); y=48;
+            doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(35,35,35); }
+          doc.text(_ls[_i], margin, y); y+=14;
+        }
+        y+=10; return;
+      }
       doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(20,20,20);
       doc.text(sec.titulo||'', margin, y); y+=6;
       const body=(sec.body&&sec.body.length)?sec.body
