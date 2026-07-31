@@ -2440,7 +2440,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.199';
+const APP_VERSAO = 'v1.8.200';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3697,19 +3697,34 @@ function renderPainelCap(c, escTot){
   const aTot=Number(c.arm_total_mb)||0, aDist=Number(c.arm_distribuido_mb)||0, aRest=Number(c.arm_restante_mb)||0,
         aUso=Number(c.arm_usado_mb)||0, aInat=Number(c.arm_inativo_mb)||0;
   const iTot=Number(c.ia_total_usd)||0, iDist=Number(c.ia_distribuido_usd)||0, iRest=Number(c.ia_restante_usd)||0, iUso=Number(c.ia_usado_usd)||0;
-  const aPct=aTot>0?Math.round(aDist/aTot*100):0, iPct=iTot>0?Math.round(iDist/iTot*100):0;
-  const card=(icon,tit,total,dist,rest,uso,pct,fmt,extra,acoes)=>{
+  // [v1.8.200 / banco v1.8.139] colunas novas do livro-caixa.
+  const iTotAll=Number(c.ia_usado_total_usd)||0, iCham=Number(c.ia_chamadas_mes)||0, iFalhas=Number(c.ia_falhas_mes)||0;
+  // A barra de ARMAZENAMENTO segue medindo distribuicao (cota viva).
+  // A de IA passa a medir CONSUMO: distribuir dolar acabou quando virou credito.
+  const aPct=aTot>0?Math.round(aDist/aTot*100):0, iPct=iTot>0?Math.round(iUso/iTot*100):0;
+  const card=(icon,tit,total,dist,rest,uso,pct,fmt,extra,acoes,ehIA,iaTot)=>{
     const neg=rest<0;
     return '<div class="pnl-card">'+
       '<div class="pnl-card-h"><span class="pnl-ic">'+icon+'</span> '+tit+'</div>'+
-      '<div class="pnl-rest'+(neg?' neg':'')+'">'+fmt(rest)+'<span>restante pra distribuir</span></div>'+
+      '<div class="pnl-rest'+(neg?' neg':'')+'">'+fmt(rest)+'<span>'+(ehIA?'restante do teto do mês':'restante pra distribuir')+'</span></div>'+
       '<div class="pnl-bar"><div class="pnl-bar-fill'+(neg?' neg':'')+'" style="width:'+Math.max(0,Math.min(100,pct))+'%"></div></div>'+
-      '<div class="pnl-meta"><span>Distribuído <b>'+fmt(dist)+'</b> de '+fmt(total)+' ('+pct+'%)</span>'+
-      '<span>Usado real <b>'+fmt(uso)+'</b></span></div>'+
+      '<div class="pnl-meta"><span>'+(ehIA
+          ? 'Usado no mês <b>'+fmt(uso)+'</b> de '+fmt(total)+' ('+pct+'%)'
+          : 'Distribuído <b>'+fmt(dist)+'</b> de '+fmt(total)+' ('+pct+'%)')+'</span>'+
+      '<span>'+(ehIA
+          ? 'Total desde sempre <b>'+fmt(iaTot||0)+'</b>'
+          : 'Usado real <b>'+fmt(uso)+'</b>')+'</span></div>'+
       (extra||'')+
       (acoes?'<div class="pnl-cap-actions">'+acoes+'</div>':'')+
     '</div>';
   };
+  // [v1.8.200] chamadas e falhas do mes. So valem de agosto/2026 em diante:
+  // o livro-caixa nasceu em 31/07/2026, antes disso e' zero por ausencia de
+  // registro, nao por ausencia de chamada.
+  const iExtra = iCham>0
+    ? '<div class="pnl-note">'+iCham+' chamada'+(iCham>1?'s':'')+' no mês'+
+      (iFalhas>0 ? ' · <b>'+iFalhas+' falhou/falharam</b>' : '')+'</div>'
+    : '';
   const aExtra = aInat>0 ? '<div class="pnl-note">↩ '+pnlFmtMB(aInat)+' presos em contas desativadas (recupera purgando)</div>' : '';
   const T=escTot||{}; const tc=k=>Number(T[k]||0);
   const saldoCard =
@@ -3729,8 +3744,9 @@ function renderPainelCap(c, escTot){
     '<div class="pnl-cap-grid">'+
     card('💾','Armazenamento',aTot,aDist,aRest,aUso,aPct,pnlFmtMB,aExtra,
       '<button class="pnl-btn-acao ok" type="button" onclick="abrirIncrArm()">+ Incrementar pool</button>')+
-    card('✨','IA jurídica',iTot,iDist,iRest,iUso,iPct,pnlFmtUSD,'',
-      '<button class="pnl-btn-acao ok" type="button" onclick="abrirIncrIA()">+ Incrementar pool</button>')+
+    card('✨','IA jurídica',iTot,iDist,iRest,iUso,iPct,pnlFmtUSD,iExtra,
+      '<button class="pnl-btn-acao ok" type="button" onclick="abrirIncrIA()">+ Incrementar pool</button>',
+      true, iTotAll)+
     saldoCard+
     '</div>';
   atualizarSaldoTribunal();
