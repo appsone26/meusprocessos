@@ -851,6 +851,10 @@
   .modal .mfoot{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
   .modal-msg{font-size:.84rem;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none}
   .modal-msg.err{display:block;background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.3)}
+  /* [v1.8.201] Aviso amarelo do modal. .modal-msg nasce display:none e so
+     .err reabria — mensagem neutra ficava invisivel. Mesmo rgba do resto
+     do sistema (.tagx.al, .fat-open), var(--warn) existe nos dois temas. */
+  .modal-msg.aviso{display:block;background:rgba(251,191,36,.12);color:var(--warn);border:1px solid rgba(251,191,36,.3)}
   .doc-preview{max-height:230px;overflow-y:auto;overflow-x:hidden;overflow-wrap:anywhere;word-break:break-word;white-space:normal;border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:rgba(255,255,255,.02);line-height:1.6}
   .req{color:var(--cyan)}
   /* ---- Robô de mensagens (v1.8.82) ---- */
@@ -2440,7 +2444,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.200';
+const APP_VERSAO = 'v1.8.201';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2746,6 +2750,9 @@ function traduzErro(e){ const r=(e&&(e.message||e.hint||''))||'';
   if(r.includes('SESSAO_INVALIDA')) return 'Sua sessão expirou. Entre novamente.';
   if(r.includes('PERMISSAO_NEGADA')) return 'Você não tem permissão para isso.';
   if(r.includes('LIMITE_PROCESSOS')) return 'Você atingiu o limite de processos do seu plano. Finalize um processo que já acabou, ou faça upgrade em Assinatura › Ver planos.';
+  /* [v1.8.201] Banco v1.8.141. Cliente NAO se finaliza, entao a unica
+     saida e' o upgrade — por isso o texto difere do LIMITE_PROCESSOS. */
+  if(r.includes('LIMITE_CLIENTES')) return 'Você atingiu o limite de clientes do seu plano. Para cadastrar mais, faça upgrade em Assinatura › Ver planos.';
   /* [v1.8.169] HTTP 402 da Edge ia-juridica (Banco v1.8.92/93). Até aqui estas chaves
      vazavam CRUAS na tela. O caminho bonito é o modal (avisoIABloqueio); estas linhas
      são a rede de segurança para qualquer ponto que só jogue o erro num toast. */
@@ -6236,8 +6243,34 @@ async function preencherResponsavel(curId,curNome){
   preencherSelectResponsaveis(curId,curNome);
   const sel=document.getElementById('mp-responsavel'); if(sel) sel.value=curId||'';
 }
+/* [v1.8.201] Cancela de cadastro de cliente (banco v1.8.141).
+   O teto de clientes e' o mesmo do pacote (escritorios.limite_processos).
+   Isto e' CORTESIA, nao seguranca: quem barra de verdade e' a
+   sp_salvar_cliente. Por isso o catch nao mostra nada ao usuario —
+   cancela fora do ar nao pode impedir cadastro legitimo. Vai para o
+   console para nao virar silencio total (licao da S81). */
+async function checarTetoClientes(){
+  const btn=document.getElementById('mc-save'), msg=document.getElementById('mc-msg');
+  if(!btn||!msg) return;
+  try{
+    const {data,error}=await db.rpc('sp_pode_cadastrar_cliente',{p_token:TOKEN});
+    if(error) throw error;
+    const r=Array.isArray(data)?data[0]:data; if(!r) return;
+    if(r.pode===false){
+      btn.disabled=true;
+      msg.textContent='Você atingiu o limite de clientes do seu plano. Para cadastrar mais, faça upgrade em Assinatura › Ver planos.';
+      msg.className='modal-msg err';
+    }else if(typeof r.restante==='number' && r.restante<=3){
+      msg.textContent='Ainda cabem '+r.restante+(r.restante===1?' cliente':' clientes')+' no seu plano.';
+      msg.className='modal-msg aviso';
+    }
+  }catch(e){ console.warn('[teto-clientes] cancela indisponivel:', e); }
+}
 function abrirModalCliente(id){
   const m=document.getElementById('modal-cliente'); document.getElementById('mc-msg').className='modal-msg';
+  /* [v1.8.201] O disabled do teto persiste entre aberturas do modal.
+     Reabilita SEMPRE na entrada: editar cliente nunca e' barrado. */
+  { const _bs=document.getElementById('mc-save'); if(_bs) _bs.disabled=false; }
   if(id){ const c=CLIENTES.find(x=>x.id===id)||{}; document.getElementById('mc-title').textContent='Editar cliente';
     document.getElementById('mc-id').value=c.id||''; document.getElementById('mc-nome').value=c.nome||'';
     document.getElementById('mc-email').value=c.email||''; document.getElementById('mc-tel').value=c.telefone||'';
@@ -6254,7 +6287,7 @@ function abrirModalCliente(id){
     document.getElementById('mc-cid').value=c.cidade||'';
     document.getElementById('mc-uf').value=c.uf||'';
     carregarEdicoes('clientes', c.id, 'mc-edicoes', 'mc-edicoes-sec');
-  }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); }
+  }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); checarTetoClientes(); }
   const reqEl=document.getElementById('mc-email-req'); if(reqEl) reqEl.style.display=(SESS&&SESS.cliente_email_obrig===false)?'none':'';
   m.classList.add('open');
 }
@@ -6377,6 +6410,9 @@ async function salvarCliente(){
   if(emailObrig && !email) return erro('Informe o e-mail do cliente.');
   if(email && !emailOk(email)) return erro('Digite um e-mail válido.');
   if(!tel)   return erro('Informe o telefone do cliente.');
+  /* [v1.8.201] O campo ja tinha asterisco de obrigatorio no HTML e o banco
+     ja exigia 11 digitos — faltava o front cobrar antes da viagem. */
+  if(cpf.replace(/\D/g,'').length!==11) return erro('Informe o CPF do cliente (11 dígitos).');
   if(!nasc)  return erro('Informe a data de nascimento.');
   if(new Date(nasc) > new Date()) return erro('A data de nascimento não pode ser no futuro.');
   const id=document.getElementById('mc-id').value||null;
