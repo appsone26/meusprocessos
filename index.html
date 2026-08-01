@@ -1166,6 +1166,12 @@
   .mc-faixa.pronta .fx-tx b,
   .mc-faixa.pronta .fx-seta{color:var(--ok)}
   .mc-anx-ler{width:100%;margin-top:11px}
+
+  /* ===== [v1.8.205] O SELO "do documento" (Bloco A1 · 3b-3) ===== */
+  .mc-selo{font-size:.58rem;font-weight:700;color:var(--warn);
+    background:color-mix(in srgb, var(--warn) 12%, transparent);
+    border:1px solid var(--warn);border-radius:20px;padding:1px 6px;margin-left:6px}
+  .mc-lido input,.mc-lido select{border-color:var(--warn)}
 </style>
 <script>
   /* Anti-piscada no F5: roda ANTES de a página pintar. Se já existe sessão
@@ -2515,7 +2521,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.204';
+const APP_VERSAO = 'v1.8.205';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6355,6 +6361,12 @@ const MC_ANX_MAX_TOT = 10 * 1024 * 1024;
 /* 1600 px no lado maior: a API reduz a imagem antes de contar token, então
    acima disso paga-se rede e disco sem ganhar leitura nenhuma. */
 const MC_ANX_LADO    = 1600;
+/* Acima disto a imagem e' recomprimida mesmo se for pequena na tela. */
+const MC_ANX_PESO_OK = 900 * 1024;
+/* Quantas paginas de um PDF vao pra IA. Decisao da S83: a 1 pega a
+   qualificacao, a 2 pega o contrato que virou a folha, e o resto da conta
+   de luz (historico de consumo) fica de fora. */
+const MC_ANX_PAGS    = 2;
 let   MC_ANEXOS      = [];
 let   _mcAnxLigado   = false;
 
@@ -6386,7 +6398,10 @@ function mcAnxEncolher(file){
     const img=new Image();
     img.onload=function(){
       const maior=Math.max(img.width, img.height);
-      if(maior<=MC_ANX_LADO && file.size<=MC_ANX_MAX_ARQ){ URL.revokeObjectURL(url); return res(file); }
+      /* [v1.8.205] passa pelo encolhimento se a IMAGEM for grande OU se o
+         ARQUIVO for pesado. PNG de 800px e 4 MB (escaneado sem compressao)
+         escapava da regra antiga e comia metade do teto do cadastro. */
+      if(maior<=MC_ANX_LADO && file.size<=MC_ANX_PESO_OK){ URL.revokeObjectURL(url); return res(file); }
       const fator=Math.min(1, MC_ANX_LADO/maior);
       const cv=document.createElement('canvas');
       cv.width =Math.max(1, Math.round(img.width *fator));
@@ -6424,6 +6439,151 @@ async function mcAnxAdicionar(lista){
     MC_ANEXOS.push({ file:pronto, nome:f.name, bytes:pronto.size, tipo:mcAnxTipo(pronto.name, pronto.type) });
   }
   mcAnxRender();
+}
+
+/* =============== [v1.8.205] A LEITURA (Bloco A1 · peça 3b-3) ================
+   pdf.js entra sob demanda, igual ao xlsx e ao jspdf: so' baixa quando
+   alguem anexa um PDF de verdade. Quem cadastra so' com foto nunca paga
+   os 350 KB da biblioteca.
+============================================================================ */
+const MC_PDFJS_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+const MC_PDFJS_WRK = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+async function mcPdfPronto(){
+  if(window.pdfjsLib) return window.pdfjsLib;
+  await _injetarScript(MC_PDFJS_URL);
+  if(!window.pdfjsLib) throw new Error('Não foi possível carregar o leitor de PDF.');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = MC_PDFJS_WRK;
+  return window.pdfjsLib;
+}
+
+/* Vira as N primeiras paginas em JPEG. Escala 1.6 e' o que mantem texto de
+   documento legivel sem inflar o arquivo. */
+async function mcPdfEmImagens(file, maxPags){
+  const lib = await mcPdfPronto();
+  const buf = await file.arrayBuffer();
+  const doc = await lib.getDocument({ data: buf }).promise;
+  const n   = Math.min(doc.numPages, maxPags);
+  const out = [];
+  for(let p=1; p<=n; p++){
+    const pag = await doc.getPage(p);
+    const vp  = pag.getViewport({ scale: 1.6 });
+    const cv  = document.createElement('canvas');
+    cv.width  = Math.round(vp.width);
+    cv.height = Math.round(vp.height);
+    await pag.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    const b64 = cv.toDataURL('image/jpeg', 0.75).split(',')[1];
+    out.push({ nome:(file.name||'documento')+' (pág. '+p+')', mime:'image/jpeg', dados:b64 });
+  }
+  return out;
+}
+
+function mcArqParaB64(file){
+  return new Promise(function(res, rej){
+    const r=new FileReader();
+    r.onload=function(){ res(String(r.result).split(',')[1]); };
+    r.onerror=function(){ rej(new Error('Não consegui ler o arquivo '+(file.name||''))); };
+    r.readAsDataURL(file);
+  });
+}
+
+/* 🔴 So' preenche o que esta VAZIO. O que o advogado digitou fica.
+   Devolve true se preencheu, false se respeitou o que ja estava la'. */
+function mcPreencher(id, valor){
+  const el=document.getElementById(id);
+  if(!el || !valor) return false;
+  if(String(el.value||'').trim()) return false;
+  el.value=valor;
+  const campo=el.closest('.field');
+  if(campo && !campo.querySelector('.mc-selo')){
+    campo.classList.add('mc-lido');
+    const lb=campo.querySelector('label');
+    if(lb){ const t=document.createElement('span'); t.className='mc-selo'; t.textContent='do documento'; lb.appendChild(t); }
+  }
+  return true;
+}
+
+function mcLimparSelos(){
+  document.querySelectorAll('#modal-cliente .mc-selo').forEach(function(e){ e.remove(); });
+  document.querySelectorAll('#modal-cliente .mc-lido').forEach(function(e){ e.classList.remove('mc-lido'); });
+}
+
+async function mcAnxLer(){
+  if(!MC_ANEXOS.length) return;
+  const bt=document.getElementById('mc-anx-ler');
+  const fx=document.getElementById('mc-faixa');
+  const ic=document.getElementById('mc-faixa-ic');
+  const ti=document.getElementById('mc-faixa-tit');
+  const sb=document.getElementById('mc-faixa-sub');
+  const rotulo = bt ? bt.textContent : '';
+  if(bt){ bt.disabled=true; bt.textContent='Lendo os documentos…'; }
+  mcAnxErro('');
+  try{
+    /* monta o pacote: PDF vira imagem das 2 primeiras paginas, o resto vai
+       como esta'. Uma chamada so' com tudo — a IA cruza os documentos e
+       decide qual vale quando eles discordam. */
+    const arquivos=[];
+    for(const a of MC_ANEXOS){
+      const ehPdf = a.tipo==='PDF';
+      if(ehPdf){
+        const pgs=await mcPdfEmImagens(a.file, MC_ANX_PAGS);
+        pgs.forEach(function(p){ arquivos.push(p); });
+      }else{
+        arquivos.push({ nome:a.nome, mime:(a.file.type||'application/octet-stream'), dados:await mcArqParaB64(a.file) });
+      }
+    }
+    const r=await fetch(SUPABASE_URL+'/functions/v1/ia-juridica',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify({token:TOKEN,feature:'cadastro',arquivos:arquivos})
+    });
+    const data=await r.json().catch(function(){ return {}; });
+    if(!r.ok){
+      const cod=data&&data.erro;
+      if(cod==='SESSAO_INVALIDA') return sessaoExpirou();
+      if(ehBloqueioIA(cod)) return;
+      throw new Error(traduzErro({message:(data&&(data.detalhe||data.erro))||('Falha na leitura ('+r.status+')')}));
+    }
+    const c=data.campos||{};
+    let n=0;
+    /* CPF e CEP voltam so' com digitos; as mascaras do app deixam
+       apresentavel, igual ao que sai da digitacao a mao. */
+    const cpf=document.getElementById('mc-cpf');
+    const cep=document.getElementById('mc-cep');
+    if(mcPreencher('mc-nome' , c.nome))            n++;
+    if(mcPreencher('mc-email', c.email))           n++;
+    if(mcPreencher('mc-tel'  , c.telefone))        n++;
+    if(mcPreencher('mc-cpf'  , c.cpf))           { n++; if(cpf) maskCpf(cpf); }
+    if(mcPreencher('mc-rg'   , c.rg))              n++;
+    if(mcPreencher('mc-nasc' , c.data_nascimento)) n++;
+    if(mcPreencher('mc-nac'  , c.nacionalidade))   n++;
+    if(mcPreencher('mc-ec'   , c.estado_civil))    n++;
+    if(mcPreencher('mc-prof' , c.profissao))       n++;
+    if(mcPreencher('mc-cep'  , c.cep))           { n++; if(cep) maskCep(cep); }
+    if(mcPreencher('mc-log'  , c.logradouro))      n++;
+    if(mcPreencher('mc-num'  , c.numero))          n++;
+    if(mcPreencher('mc-comp' , c.complemento))     n++;
+    if(mcPreencher('mc-bai'  , c.bairro))          n++;
+    if(mcPreencher('mc-cid'  , c.cidade))          n++;
+    if(mcPreencher('mc-uf'   , c.uf))              n++;
+
+    if(data.painel) atualizarBarraIA(data.painel);
+
+    /* A faixa vira recibo e se recolhe: ela ja' fez o trabalho dela, e o que
+       sobrou pro advogado e' conferir. */
+    if(fx) fx.classList.add('pronta');
+    if(ic) ic.textContent='✓';
+    if(ti) ti.textContent = n ? (n===1 ? '1 campo preenchido pelos documentos'
+                                       : n+' campos preenchidos pelos documentos')
+                              : 'Não achei dados nestes documentos';
+    if(sb) sb.textContent = n ? 'Confira antes de salvar — a leitura pode errar'
+                              : 'Preencha à mão ou anexe outro documento';
+    mcFaixaAbrir(false);
+    if(bt){ bt.textContent='Ler de novo'; bt.disabled=false; }
+  }catch(e){
+    mcAnxErro((e && e.message) || 'Não consegui ler os documentos. Tente de novo ou preencha à mão.');
+    if(bt){ bt.textContent=rotulo||'Ler os documentos e preencher'; bt.disabled=false; }
+  }
 }
 
 function mcAnxTirar(i){ MC_ANEXOS.splice(i,1); mcAnxErro(''); mcAnxRender(); }
@@ -6495,6 +6655,8 @@ function mcAnxLigar(){
   });
   const cab=document.getElementById('mc-faixa-cab');
   if(cab) cab.addEventListener('click', function(){ mcFaixaAbrir(); });
+  const ler=document.getElementById('mc-anx-ler');
+  if(ler) ler.addEventListener('click', mcAnxLer);
   _mcAnxLigado=true;
 }
 
@@ -6509,8 +6671,11 @@ function mcAnxModo(mostrar){
   }
   const ic=document.getElementById('mc-faixa-ic');
   const ti=document.getElementById('mc-faixa-tit');
+  const bt=document.getElementById('mc-anx-ler');
   if(ic) ic.textContent='📎';
   if(ti) ti.textContent='Cadastre pelos documentos';
+  if(bt){ bt.textContent='Ler os documentos e preencher'; bt.disabled=true; }
+  mcLimparSelos();
   mcFaixaAbrir(false);              // sempre recolhida ao abrir o modal
   mcAnxErro('');
   mcAnxRender();
