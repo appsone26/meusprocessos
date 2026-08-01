@@ -1146,6 +1146,10 @@
   .mc-anx-nome{flex:1;min-width:0;font-size:.8rem;overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap}
   .mc-anx-peso{font-size:.72rem;color:var(--muted-2);flex:none}
+  /* [v1.8.207] miniatura: o advogado ve o que a IA vai ver */
+  .mc-anx-mini{width:38px;height:38px;flex:none;border-radius:5px;object-fit:cover;
+    border:1px solid var(--line);background:var(--bg-2)}
+  .mc-anx-girar{flex:none;padding:4px 8px;font-size:.9rem;line-height:1}
   .mc-anx-nota{font-size:.72rem;color:var(--muted-2);line-height:1.5;margin-top:10px}
   .mc-anx-erro{font-size:.75rem;color:var(--danger);line-height:1.5;margin-top:10px}
 
@@ -1918,7 +1922,7 @@
           </div>
           <div id="mc-anx-lista"></div>
           <div class="mc-anx-erro hidden" id="mc-anx-erro"></div>
-          <div class="mc-anx-nota">Até 4 documentos da pessoa — identidade, comprovante de residência, contrato. Depois de salvar, novos anexos só dentro do processo.</div>
+          <div class="mc-anx-nota">Até 4 documentos da pessoa — identidade, comprovante de residência, contrato. Use ⟳ se a foto estiver torta: documento de lado ou de cabeça para baixo faz a leitura errar números. Depois de salvar, novos anexos só dentro do processo.</div>
         </div>
         <button type="button" class="btn btn-primary btn-sm mc-anx-ler" id="mc-anx-ler" disabled>Ler os documentos e preencher</button>
       </div>
@@ -2521,7 +2525,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.206';
+const APP_VERSAO = 'v1.8.207';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6401,7 +6405,12 @@ const MC_ANX_MAX_ARQ = 5 * 1024 * 1024;
 const MC_ANX_MAX_TOT = 10 * 1024 * 1024;
 /* 1600 px no lado maior: a API reduz a imagem antes de contar token, então
    acima disso paga-se rede e disco sem ganhar leitura nenhuma. */
-const MC_ANX_LADO    = 1600;
+/* [v1.8.207] 2400 e nao 1600: no passaporte, 85 virava 65. Dígito pequeno
+   em documento plastificado precisa de pixel. */
+const MC_ANX_LADO    = 2400;
+/* 0.92 e nao 0.75: compressao alta borra justamente o tracinho que separa
+   um 5 de um 6. Custo de IA nao muda — a API reduz antes de contar token. */
+const MC_ANX_QUALID  = 0.92;
 /* Acima disto a imagem e' recomprimida mesmo se for pequena na tela. */
 const MC_ANX_PESO_OK = 900 * 1024;
 /* Quantas paginas de um PDF vao pra IA. Decisao da S83: a 1 pega a
@@ -6441,6 +6450,10 @@ function mcAnxEncolher(file){
     if(!/^image\//i.test(file.type||'')) return res(file);
     const url=URL.createObjectURL(file);
     const img=new Image();
+    /* [v1.8.207] respeita o EXIF do celular: foto tirada deitada, que o
+       aparelho marcou como girada, ja' entra na posicao certa. Nao resolve
+       documento fotografado de cabeca pra baixo — pra isso existe o botao. */
+    try{ img.style.imageOrientation='from-image'; }catch(_){ }
     img.onload=function(){
       const maior=Math.max(img.width, img.height);
       /* [v1.8.205] passa pelo encolhimento se a IMAGEM for grande OU se o
@@ -6457,7 +6470,7 @@ function mcAnxEncolher(file){
         URL.revokeObjectURL(url);
         if(!b || b.size>=file.size) return res(file);
         res(new File([b], (file.name||'foto').replace(/\.[^.]+$/,'')+'.jpg', {type:'image/jpeg'}));
-      }, 'image/jpeg', 0.75);
+      }, 'image/jpeg', MC_ANX_QUALID);
     };
     img.onerror=function(){ URL.revokeObjectURL(url); res(file); };
     img.src=url;
@@ -6481,7 +6494,9 @@ async function mcAnxAdicionar(lista){
       mcAnxErro(f.name+' não coube: cabem '+mcAnxPeso(MC_ANX_MAX_TOT)+' no cadastro todo, e você já usou '+mcAnxPeso(mcAnxTotal())+'.');
       continue;
     }
-    MC_ANEXOS.push({ file:pronto, nome:f.name, bytes:pronto.size, tipo:mcAnxTipo(pronto.name, pronto.type) });
+    const item={ file:pronto, nome:f.name, bytes:pronto.size, tipo:mcAnxTipo(pronto.name, pronto.type), thumb:'' };
+    item.thumb=await mcAnxMiniatura(pronto);
+    MC_ANEXOS.push(item);
   }
   mcAnxRender();
 }
@@ -6512,12 +6527,14 @@ async function mcPdfEmImagens(file, maxPags){
   const out = [];
   for(let p=1; p<=n; p++){
     const pag = await doc.getPage(p);
-    const vp  = pag.getViewport({ scale: 1.6 });
+    /* [v1.8.207] 3x em vez de 1,6x: numa fatura A4 cheia, o CPF em fonte
+       miuda so' fica legivel a partir daqui. */
+    const vp  = pag.getViewport({ scale: 3.0 });
     const cv  = document.createElement('canvas');
     cv.width  = Math.round(vp.width);
     cv.height = Math.round(vp.height);
     await pag.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
-    const b64 = cv.toDataURL('image/jpeg', 0.75).split(',')[1];
+    const b64 = cv.toDataURL('image/jpeg', MC_ANX_QUALID).split(',')[1];
     out.push({ nome:(file.name||'documento')+' (pág. '+p+')', mime:'image/jpeg', dados:b64 });
   }
   return out;
@@ -6633,6 +6650,62 @@ async function mcAnxLer(){
 
 function mcAnxTirar(i){ MC_ANEXOS.splice(i,1); mcAnxErro(''); mcAnxRender(); }
 
+/* [v1.8.207] Miniatura pequena so' pra tela. Nao e' o que vai pra IA — e' o
+   que deixa o advogado perceber que o documento esta' torto. */
+function mcAnxMiniatura(file){
+  return new Promise(function(res){
+    if(!/^image\//i.test(file.type||'')) return res('');
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=function(){
+      const cv=document.createElement('canvas');
+      const f=Math.min(1, 120/Math.max(img.width,img.height));
+      cv.width=Math.max(1,Math.round(img.width*f));
+      cv.height=Math.max(1,Math.round(img.height*f));
+      try{ cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height); }
+      catch(_){ URL.revokeObjectURL(url); return res(''); }
+      URL.revokeObjectURL(url);
+      res(cv.toDataURL('image/jpeg',0.7));
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); res(''); };
+    img.src=url;
+  });
+}
+
+/* 🔴 Gira a IMAGEM DE VERDADE, nao so' a miniatura. O que o advogado ve na
+   lista e' exatamente o que a IA vai receber — se fosse so' visual, ele
+   giraria a tela e a IA continuaria recebendo torto. */
+async function mcAnxGirar(i){
+  const a=MC_ANEXOS[i];
+  if(!a || !/^image\//i.test(a.file.type||'')) return;
+  mcAnxErro('');
+  const girado=await new Promise(function(res){
+    const url=URL.createObjectURL(a.file);
+    const img=new Image();
+    img.onload=function(){
+      const cv=document.createElement('canvas');
+      cv.width=img.height; cv.height=img.width;   // 90 graus: troca os lados
+      try{
+        const cx=cv.getContext('2d');
+        cx.translate(cv.width/2, cv.height/2);
+        cx.rotate(Math.PI/2);
+        cx.drawImage(img, -img.width/2, -img.height/2);
+      }catch(_){ URL.revokeObjectURL(url); return res(null); }
+      cv.toBlob(function(b){
+        URL.revokeObjectURL(url);
+        if(!b) return res(null);
+        res(new File([b], a.file.name, {type:'image/jpeg'}));
+      }, 'image/jpeg', MC_ANX_QUALID);
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); res(null); };
+    img.src=url;
+  });
+  if(!girado){ mcAnxErro('Não consegui girar esta imagem.'); return; }
+  a.file=girado; a.bytes=girado.size;
+  a.thumb=await mcAnxMiniatura(girado);
+  mcAnxRender();
+}
+
 function mcAnxRender(){
   const lista=document.getElementById('mc-anx-lista');
   const qtd=document.getElementById('mc-anx-qtd');
@@ -6657,10 +6730,15 @@ function mcAnxRender(){
     : 'Anexe RG, comprovante e contrato — a ficha se preenche sozinha';
   if(ler) ler.disabled = MC_TETO_CHEIO || !MC_ANEXOS.length;
   lista.innerHTML=MC_ANEXOS.map(function(a,i){
+    /* [v1.8.207] PDF nao tem miniatura nem giro: ele ja' vem na orientacao
+       certa, e virar pagina de PDF nao e' problema que exista na pratica. */
+    const ehImg=/^image\//i.test((a.file&&a.file.type)||'');
     return '<div class="mc-anx-item">'+
-      '<span class="mc-anx-tipo">'+esc(a.tipo)+'</span>'+
+      (a.thumb ? '<img class="mc-anx-mini" src="'+a.thumb+'" alt="">'
+               : '<span class="mc-anx-tipo">'+esc(a.tipo)+'</span>')+
       '<span class="mc-anx-nome" title="'+esc(a.nome)+'">'+esc(a.nome)+'</span>'+
       '<span class="mc-anx-peso">'+mcAnxPeso(a.bytes)+'</span>'+
+      (ehImg ? '<button type="button" class="btn btn-ghost btn-sm mc-anx-girar" title="Girar 90°" onclick="mcAnxGirar('+i+')">⟳</button>' : '')+
       '<button type="button" class="btn btn-ghost btn-sm" onclick="mcAnxTirar('+i+')">Tirar</button>'+
       '</div>';
   }).join('');
