@@ -1861,7 +1861,10 @@
     </div>
     <div class="msub" style="margin-top:8px">Dados para petições e procurações (opcionais)</div>
     <div class="row2">
+      <div class="field"><label>RG</label><input type="text" id="mc-rg" placeholder="Ex.: 12.345.678-9"></div>
       <div class="field"><label>Nacionalidade</label><input type="text" id="mc-nac" placeholder="Ex.: Brasileiro(a)"></div>
+    </div>
+    <div class="row2">
       <div class="field"><label>Estado civil</label>
         <select id="mc-ec">
           <option value="">—</option>
@@ -1873,8 +1876,8 @@
           <option>Viúvo(a)</option>
         </select>
       </div>
+      <div class="field"><label>Profissão</label><input type="text" id="mc-prof" placeholder="Ex.: Comerciante"></div>
     </div>
-    <div class="field"><label>Profissão</label><input type="text" id="mc-prof" placeholder="Ex.: Comerciante"></div>
     <div class="msub" style="margin-top:8px">Endereço</div>
     <div class="row2">
       <div class="field"><label>CEP</label><input type="text" id="mc-cep" placeholder="00000-000" inputmode="numeric" oninput="maskCep(this)" onblur="buscarCepCliente()"></div>
@@ -2444,7 +2447,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.201';
+const APP_VERSAO = 'v1.8.202';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6275,6 +6278,7 @@ function abrirModalCliente(id){
     document.getElementById('mc-id').value=c.id||''; document.getElementById('mc-nome').value=c.nome||'';
     document.getElementById('mc-email').value=c.email||''; document.getElementById('mc-tel').value=c.telefone||'';
     document.getElementById('mc-cpf').value=c.cpf||'';
+    document.getElementById('mc-rg').value=c.rg||'';
     document.getElementById('mc-nasc').value=c.data_nascimento||'';
     document.getElementById('mc-nac').value=c.nacionalidade||'';
     document.getElementById('mc-ec').value=c.estado_civil||'';
@@ -6287,7 +6291,7 @@ function abrirModalCliente(id){
     document.getElementById('mc-cid').value=c.cidade||'';
     document.getElementById('mc-uf').value=c.uf||'';
     carregarEdicoes('clientes', c.id, 'mc-edicoes', 'mc-edicoes-sec');
-  }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); checarTetoClientes(); }
+  }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-rg','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); checarTetoClientes(); }
   const reqEl=document.getElementById('mc-email-req'); if(reqEl) reqEl.style.display=(SESS&&SESS.cliente_email_obrig===false)?'none':'';
   m.classList.add('open');
 }
@@ -6393,6 +6397,7 @@ async function salvarCliente(){
   const tel=document.getElementById('mc-tel').value.trim();
   const nasc=document.getElementById('mc-nasc').value;
   const cpf=document.getElementById('mc-cpf').value.trim();
+  const rg=document.getElementById('mc-rg').value.trim();
   const nac=document.getElementById('mc-nac').value.trim();
   const ec=document.getElementById('mc-ec').value;
   const prof=document.getElementById('mc-prof').value.trim();
@@ -6418,7 +6423,7 @@ async function salvarCliente(){
   const id=document.getElementById('mc-id').value||null;
   const btn=document.getElementById('mc-save'); setLoading(btn,true);
   try{ const {error}=await db.rpc('sp_salvar_cliente',{p_token:TOKEN,p_id:id,p_nome:nome,
-      p_email:(email||null), p_telefone:tel, p_data_nasc:nasc, p_cpf:(cpf||null),
+      p_email:(email||null), p_telefone:tel, p_data_nasc:nasc, p_cpf:(cpf||null), p_rg:(rg||null),
       p_nacionalidade:(nac||null), p_estado_civil:(ec||null), p_profissao:(prof||null),
       p_cep:(cep||null), p_logradouro:(log||null), p_numero:(num||null), p_complemento:(comp||null),
       p_bairro:(bai||null), p_cidade:(cid||null), p_uf:(uf||null)}); if(error) throw error;
