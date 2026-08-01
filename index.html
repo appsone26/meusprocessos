@@ -1126,6 +1126,28 @@
   .td-txt b{color:var(--text)}
   .td-acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
   .td-prog{font-size:.78rem;color:var(--muted-2);margin-top:14px;min-height:1.2em}
+
+  /* ===== [v1.8.203] ANEXO NO CADASTRO DE CLIENTE (Bloco A1 · 3b-1) ===== */
+  .mc-anx{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel)}
+  .mc-anx-head{display:flex;justify-content:space-between;align-items:center;
+    font-size:.74rem;color:var(--muted-2);margin-bottom:10px}
+  .mc-anx-head b{color:var(--text);font-weight:600}
+  .mc-drop{border:1px dashed var(--line);border-radius:9px;padding:16px 12px;text-align:center;
+    transition:border-color .15s,background .15s}
+  .mc-drop.sobre{border-color:var(--cyan);background:rgba(59,130,246,.08)}
+  .mc-drop.cheio{opacity:.55}
+  .mc-drop-ic{font-size:1.25rem;margin-bottom:6px}
+  .mc-drop-txt{font-size:.8rem;color:var(--muted);margin-bottom:10px}
+  .mc-anx-item{display:flex;align-items:center;gap:10px;padding:8px 10px;margin-top:8px;
+    border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
+  .mc-anx-tipo{font-size:.62rem;font-weight:700;letter-spacing:.03em;color:var(--muted-2);
+    border:1px solid var(--line);border-radius:4px;padding:2px 5px;flex:none}
+  /* nome longo corta com reticencias em vez de empurrar o botao pra fora */
+  .mc-anx-nome{flex:1;min-width:0;font-size:.8rem;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  .mc-anx-peso{font-size:.72rem;color:var(--muted-2);flex:none}
+  .mc-anx-nota{font-size:.72rem;color:var(--muted-2);line-height:1.5;margin-top:10px}
+  .mc-anx-erro{font-size:.75rem;color:var(--danger);line-height:1.5;margin-top:10px}
 </style>
 <script>
   /* Anti-piscada no F5: roda ANTES de a página pintar. Se já existe sessão
@@ -1896,6 +1918,24 @@
       <div class="ds-head"><h3 style="font-size:.9rem"><span class="ico">🛡️</span> Histórico de edições</h3><span style="font-size:.72rem;color:var(--muted-2)">visível só para o master</span></div>
       <div id="mc-edicoes"></div>
     </div>
+    <div id="mc-anx-bloco">
+      <div class="msub" style="margin-top:16px">Documentos do cliente</div>
+      <div class="mc-anx" id="mc-anx-area">
+        <div class="mc-anx-head">
+          <span><b id="mc-anx-qtd">0</b> de 4</span>
+          <span id="mc-anx-peso">0 de 10 MB</span>
+        </div>
+        <div class="mc-drop" id="mc-drop">
+          <div class="mc-drop-ic">📎</div>
+          <div class="mc-drop-txt" id="mc-drop-txt">Arraste os documentos aqui</div>
+          <button type="button" class="btn btn-ghost btn-sm" id="mc-anx-sel">Selecionar arquivos</button>
+          <input type="file" id="mc-anx-file" multiple accept="image/*,application/pdf,.docx" style="display:none">
+        </div>
+        <div id="mc-anx-lista"></div>
+        <div class="mc-anx-erro hidden" id="mc-anx-erro"></div>
+        <div class="mc-anx-nota">Até 4 documentos da pessoa — identidade, comprovante de residência, contrato. Depois de salvar, novos anexos só dentro do processo.</div>
+      </div>
+    </div>
     <div class="mfoot">
       <button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-cliente')">Cancelar</button>
       <button class="btn btn-primary btn-sm" id="mc-save" onclick="salvarCliente()">Salvar</button>
@@ -2447,7 +2487,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.202';
+const APP_VERSAO = 'v1.8.203';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6269,6 +6309,156 @@ async function checarTetoClientes(){
     }
   }catch(e){ console.warn('[teto-clientes] cancela indisponivel:', e); }
 }
+/* =============== [v1.8.203] ANEXO NO CADASTRO (Bloco A1 · peça 3b-1) ==========
+   Os arquivos vivem SÓ na memória, em MC_ANEXOS. Nada toca o Storage antes
+   de o cliente existir — decisão fechada na S83, e o motivo é a pendência
+   0c: hoje 53% do bucket é arquivo órfão (686 MB) porque documento entrou
+   no disco antes de ter dono. Cadastro é justamente a tela onde a pessoa
+   anexa, troca e desiste. Aqui ela pode desistir de graça.
+
+   Os tetos repetem os da Edge v1.8.95 de propósito: o front avisa cedo e
+   com jeito, a Edge recusa de qualquer jeito. Guarda dupla.
+   ⚠️ Pendência 10.5: o 10 MB devia sair de escritorios.tamanho_max_upload_mb
+   em vez de estar cravado aqui. Fica anotado, não é desta peça.
+============================================================================ */
+const MC_ANX_MAX     = 4;
+const MC_ANX_MAX_ARQ = 5 * 1024 * 1024;
+const MC_ANX_MAX_TOT = 10 * 1024 * 1024;
+/* 1600 px no lado maior: a API reduz a imagem antes de contar token, então
+   acima disso paga-se rede e disco sem ganhar leitura nenhuma. */
+const MC_ANX_LADO    = 1600;
+let   MC_ANEXOS      = [];
+let   _mcAnxLigado   = false;
+
+function mcAnxPeso(b){
+  if(b >= 1048576) return (b/1048576).toFixed(1).replace('.',',')+' MB';
+  return Math.max(1, Math.round(b/1024))+' KB';
+}
+function mcAnxTotal(){ return MC_ANEXOS.reduce((t,a)=>t+a.bytes, 0); }
+function mcAnxTipo(nome, mime){
+  const n=(nome||'').toLowerCase(), m=(mime||'').toLowerCase();
+  if(m.includes('pdf')      || n.endsWith('.pdf'))  return 'PDF';
+  if(m.includes('wordprocessingml') || n.endsWith('.docx')) return 'DOC';
+  if(n.endsWith('.png')     || m.includes('png'))   return 'PNG';
+  return 'JPG';
+}
+function mcAnxErro(t){
+  const e=document.getElementById('mc-anx-erro');
+  if(!e) return;
+  if(!t){ e.classList.add('hidden'); e.textContent=''; return; }
+  e.textContent=t; e.classList.remove('hidden');
+}
+
+/* Encolhe no navegador. Devolve o próprio arquivo se já for pequeno ou se
+   algo der errado — encolher é otimização, nunca motivo para o anexo falhar. */
+function mcAnxEncolher(file){
+  return new Promise(function(res){
+    if(!/^image\//i.test(file.type||'')) return res(file);
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=function(){
+      const maior=Math.max(img.width, img.height);
+      if(maior<=MC_ANX_LADO && file.size<=MC_ANX_MAX_ARQ){ URL.revokeObjectURL(url); return res(file); }
+      const fator=Math.min(1, MC_ANX_LADO/maior);
+      const cv=document.createElement('canvas');
+      cv.width =Math.max(1, Math.round(img.width *fator));
+      cv.height=Math.max(1, Math.round(img.height*fator));
+      try{ cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height); }
+      catch(_){ URL.revokeObjectURL(url); return res(file); }
+      cv.toBlob(function(b){
+        URL.revokeObjectURL(url);
+        if(!b || b.size>=file.size) return res(file);
+        res(new File([b], (file.name||'foto').replace(/\.[^.]+$/,'')+'.jpg', {type:'image/jpeg'}));
+      }, 'image/jpeg', 0.75);
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); res(file); };
+    img.src=url;
+  });
+}
+
+async function mcAnxAdicionar(lista){
+  mcAnxErro('');
+  const arr=Array.from(lista||[]);
+  for(const f of arr){
+    if(MC_ANEXOS.length>=MC_ANX_MAX){ mcAnxErro('Você chegou aos '+MC_ANX_MAX+' documentos. Para trocar um, tire o que não serve e suba outro no lugar.'); break; }
+    const tipo=mcAnxTipo(f.name, f.type);
+    const ehImg=/^image\//i.test(f.type||'') || tipo==='PNG' || tipo==='JPG';
+    if(!ehImg && tipo!=='PDF' && tipo!=='DOC'){ mcAnxErro(f.name+' não é um tipo aceito. Envie foto, PDF ou Word.'); continue; }
+    const pronto=await mcAnxEncolher(f);
+    if(pronto.size>MC_ANX_MAX_ARQ){
+      mcAnxErro(f.name+' tem '+mcAnxPeso(pronto.size)+' e passa do limite de '+mcAnxPeso(MC_ANX_MAX_ARQ)+' por arquivo.');
+      continue;
+    }
+    if(mcAnxTotal()+pronto.size>MC_ANX_MAX_TOT){
+      mcAnxErro(f.name+' não coube: cabem '+mcAnxPeso(MC_ANX_MAX_TOT)+' no cadastro todo, e você já usou '+mcAnxPeso(mcAnxTotal())+'.');
+      continue;
+    }
+    MC_ANEXOS.push({ file:pronto, nome:f.name, bytes:pronto.size, tipo:mcAnxTipo(pronto.name, pronto.type) });
+  }
+  mcAnxRender();
+}
+
+function mcAnxTirar(i){ MC_ANEXOS.splice(i,1); mcAnxErro(''); mcAnxRender(); }
+
+function mcAnxRender(){
+  const lista=document.getElementById('mc-anx-lista');
+  const qtd=document.getElementById('mc-anx-qtd');
+  const peso=document.getElementById('mc-anx-peso');
+  const drop=document.getElementById('mc-drop');
+  const txt=document.getElementById('mc-drop-txt');
+  const sel=document.getElementById('mc-anx-sel');
+  if(!lista) return;
+  const cheio=MC_ANEXOS.length>=MC_ANX_MAX;
+  if(qtd)  qtd.textContent=MC_ANEXOS.length;
+  if(peso) peso.textContent=mcAnxPeso(mcAnxTotal())+' de '+mcAnxPeso(MC_ANX_MAX_TOT);
+  if(drop) drop.classList.toggle('cheio', cheio);
+  if(sel)  sel.disabled=cheio;
+  if(txt)  txt.textContent = cheio ? 'Você chegou aos '+MC_ANX_MAX+' documentos'
+         : (MC_ANEXOS.length ? 'Arraste mais documentos aqui' : 'Arraste os documentos aqui');
+  lista.innerHTML=MC_ANEXOS.map(function(a,i){
+    return '<div class="mc-anx-item">'+
+      '<span class="mc-anx-tipo">'+esc(a.tipo)+'</span>'+
+      '<span class="mc-anx-nome" title="'+esc(a.nome)+'">'+esc(a.nome)+'</span>'+
+      '<span class="mc-anx-peso">'+mcAnxPeso(a.bytes)+'</span>'+
+      '<button type="button" class="btn btn-ghost btn-sm" onclick="mcAnxTirar('+i+')">Tirar</button>'+
+      '</div>';
+  }).join('');
+}
+
+/* Liga os eventos uma vez só. O modal e' estatico na pagina, entao nao da
+   pra ligar no HTML: o arrastar precisa de preventDefault nos quatro. */
+function mcAnxLigar(){
+  if(_mcAnxLigado) return;
+  const drop=document.getElementById('mc-drop');
+  const inp =document.getElementById('mc-anx-file');
+  const sel =document.getElementById('mc-anx-sel');
+  if(!drop || !inp || !sel) return;
+  sel.addEventListener('click', function(){ inp.click(); });
+  inp.addEventListener('change', function(){ mcAnxAdicionar(inp.files); inp.value=''; });
+  ['dragenter','dragover'].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); drop.classList.add('sobre'); });
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); drop.classList.remove('sobre'); });
+  });
+  drop.addEventListener('drop', function(e){
+    if(MC_ANEXOS.length>=MC_ANX_MAX) return;
+    if(e.dataTransfer && e.dataTransfer.files) mcAnxAdicionar(e.dataTransfer.files);
+  });
+  _mcAnxLigado=true;
+}
+
+/* mostrar=false quando e' EDICAO: anexo novo so' dentro do processo, que e'
+   a frase que o proprio aviso da tela promete ao advogado. */
+function mcAnxModo(mostrar){
+  MC_ANEXOS=[];
+  const b=document.getElementById('mc-anx-bloco');
+  if(b) b.classList.toggle('hidden', !mostrar);
+  mcAnxErro('');
+  mcAnxRender();
+  if(mostrar) mcAnxLigar();
+}
+
 function abrirModalCliente(id){
   const m=document.getElementById('modal-cliente'); document.getElementById('mc-msg').className='modal-msg';
   /* [v1.8.201] O disabled do teto persiste entre aberturas do modal.
@@ -6291,7 +6481,8 @@ function abrirModalCliente(id){
     document.getElementById('mc-cid').value=c.cidade||'';
     document.getElementById('mc-uf').value=c.uf||'';
     carregarEdicoes('clientes', c.id, 'mc-edicoes', 'mc-edicoes-sec');
-  }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-rg','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); checarTetoClientes(); }
+    mcAnxModo(false);
+  }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-rg','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); checarTetoClientes(); mcAnxModo(true); }
   const reqEl=document.getElementById('mc-email-req'); if(reqEl) reqEl.style.display=(SESS&&SESS.cliente_email_obrig===false)?'none':'';
   m.classList.add('open');
 }
