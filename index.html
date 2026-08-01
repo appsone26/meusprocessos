@@ -1997,6 +1997,10 @@
       <div class="field"><label>Cidade</label><input type="text" id="mc-cid" placeholder="Cidade"></div>
       <div class="field"><label>UF</label><input type="text" id="mc-uf" placeholder="UF" maxlength="2" oninput="this.value=this.value.replace(/[^A-Za-zÀ-ÿ]/g,'').toUpperCase().slice(0,2)"></div>
     </div>
+    <div class="det-sec hidden" id="mc-docs-sec" style="margin-top:16px">
+      <div class="ds-head"><h3 style="font-size:.9rem"><span class="ico">📎</span> Documentos do cliente</h3></div>
+      <div id="mc-docs"></div>
+    </div>
     <div class="det-sec hidden" id="mc-edicoes-sec" style="margin-top:16px">
       <div class="ds-head"><h3 style="font-size:.9rem"><span class="ico">🛡️</span> Histórico de edições</h3><span style="font-size:.72rem;color:var(--muted-2)">visível só para o master</span></div>
       <div id="mc-edicoes"></div>
@@ -2552,7 +2556,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.211';
+const APP_VERSAO = 'v1.8.212';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6879,8 +6883,9 @@ function abrirModalCliente(id){
     document.getElementById('mc-cid').value=c.cidade||'';
     document.getElementById('mc-uf').value=c.uf||'';
     carregarEdicoes('clientes', c.id, 'mc-edicoes', 'mc-edicoes-sec');
+    carregarDocsCliente(c.id);
     mcAnxModo(false);
-  }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-rg','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); checarTetoClientes(); mcAnxModo(true); }
+  }else{ document.getElementById('mc-title').textContent='Novo cliente'; ['mc-id','mc-nome','mc-email','mc-tel','mc-cpf','mc-rg','mc-nasc','mc-nac','mc-ec','mc-prof','mc-cep','mc-log','mc-num','mc-comp','mc-bai','mc-cid','mc-uf'].forEach(i=>document.getElementById(i).value=''); document.getElementById('mc-edicoes-sec').classList.add('hidden'); carregarDocsCliente(null); checarTetoClientes(); mcAnxModo(true); }
   const reqEl=document.getElementById('mc-email-req'); if(reqEl) reqEl.style.display=(SESS&&SESS.cliente_email_obrig===false)?'none':'';
   m.classList.add('open');
 }
@@ -7012,6 +7017,52 @@ async function mcAnxSubir(clienteId, btn){
   }
   if(uso && typeof atualizarBarraStorage==='function') atualizarBarraStorage(uso);
   return {ok:ok, falhou:falhou, cota:cota};
+}
+
+/* [v1.8.212] Os documentos DESTE cliente, dentro do cliente.
+   Usa o p_cliente_id que a v1.8.140 (S82) criou justamente pra isto — o
+   documento do cadastro pertence a' pessoa e pode existir antes de haver
+   processo, entao filtrar por processo nunca acharia.
+
+   Nao explode a tela se falhar: e' informacao de apoio: o cadastro em si
+   tem de continuar utilizavel mesmo se a lista nao vier. */
+async function carregarDocsCliente(clienteId){
+  const sec=document.getElementById('mc-docs-sec');
+  const el=document.getElementById('mc-docs');
+  if(!sec || !el) return;
+  if(!clienteId){ sec.classList.add('hidden'); el.innerHTML=''; return; }
+  sec.classList.remove('hidden');
+  el.innerHTML='<div class="det-empty">Carregando…</div>';
+  try{
+    const {data,error}=await db.rpc('sp_listar_documentos',
+      {p_token:TOKEN, p_processo_id:null, p_cliente_id:clienteId});
+    if(error) throw error;
+    const lista=data||[];
+    if(!lista.length){
+      el.innerHTML='<div class="det-empty">Nenhum documento deste cliente.</div>';
+      return;
+    }
+    el.innerHTML='<div class="doc-list">'+lista.map(function(d){
+      /* O processo aparece quando existe: documento do cadastro nao tem, e
+         e' assim que o advogado distingue um do outro. */
+      const ctx=[d.processo_numero||d.processo_titulo].filter(Boolean).map(esc).join(' · ');
+      return '<div class="doc-row">'+
+        '<div class="doc-ic">'+docIcone(d.nome_arquivo,d.mime_type)+'</div>'+
+        '<div class="doc-main">'+
+          '<div class="doc-name" title="'+esc(d.nome_arquivo)+'">'+esc(d.nome_arquivo)+'</div>'+
+          '<div class="doc-meta">'+fmtBytes(d.tamanho_bytes)+
+            (ctx?(' · '+ctx):'')+
+            (d.criado_em?(' · '+fmtData(d.criado_em)):'')+'</div>'+
+        '</div>'+
+        '<div class="doc-acts">'+
+          '<button type="button" class="btn btn-ghost btn-sm" onclick=\'baixarDocumento('+JSON.stringify(d.id)+')\'>Baixar</button>'+
+        '</div>'+
+      '</div>';
+    }).join('')+'</div>';
+  }catch(e){
+    if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
+    el.innerHTML='<div class="det-empty">'+esc(traduzErro(e))+'</div>';
+  }
 }
 
 async function salvarCliente(){
