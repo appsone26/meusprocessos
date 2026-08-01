@@ -2525,7 +2525,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.207';
+const APP_VERSAO = 'v1.8.208';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -9773,6 +9773,31 @@ async function confirmarPagamento(){
 }
 
 function fecharModal(id){ document.getElementById(id).classList.remove('open'); }
+
+/* [v1.8.208] TODO MODAL ABRE NO TOPO.
+   A rolagem mora no .modal (overflow:auto), e fechar so' tira a classe
+   'open' — o scrollTop fica onde o dedo deixou. Como o card de cadastro e'
+   mais alto que a tela, o advogado terminava no Salvar la' embaixo e, na
+   vez seguinte, o modal reabria exatamente ali: tinha que subir na mao pra
+   achar o primeiro campo. Toda vez, em cada cadastro.
+
+   Um vigia so' resolve todos: sao 15+ lugares que fazem add('open'), e
+   qualquer modal novo nasceria com o defeito de volta. */
+const _vigiaModalTopo = new MutationObserver(function(muts){
+  muts.forEach(function(m){
+    const el=m.target;
+    if(el && el.classList && el.classList.contains('modal') && el.classList.contains('open')){
+      el.scrollTop=0;
+      const bx=el.querySelector('.box');
+      if(bx) bx.scrollTop=0;
+    }
+  });
+});
+try{
+  _vigiaModalTopo.observe(document.documentElement, {
+    subtree:true, attributes:true, attributeFilter:['class']
+  });
+}catch(e){ console.warn('[modal-topo] vigia indisponivel:', e); }
 // Clicar fora / Esc: por padrão NÃO fecha — protege os formulários de cadastro/edição (não perde o trabalho).
 // Exceções: modal-ia tem aviso próprio ("não salvo"); avisos só-leitura podem ser dispensados.
 const MODAIS_DISPENSAVEIS = ['modal-grandes','modal-planos'];
