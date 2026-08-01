@@ -1148,6 +1148,24 @@
   .mc-anx-peso{font-size:.72rem;color:var(--muted-2);flex:none}
   .mc-anx-nota{font-size:.72rem;color:var(--muted-2);line-height:1.5;margin-top:10px}
   .mc-anx-erro{font-size:.75rem;color:var(--danger);line-height:1.5;margin-top:10px}
+
+  /* ===== [v1.8.204] A FAIXA DE DOCUMENTOS (Bloco A1 · 3b-2) ===== */
+  .mc-faixa{border:1px solid var(--warn);border-radius:10px;overflow:hidden;
+    margin:0 0 14px;background:color-mix(in srgb, var(--warn) 8%, transparent)}
+  .mc-faixa-cab{display:flex;align-items:center;gap:10px;padding:10px 12px;
+    cursor:pointer;user-select:none}
+  .mc-faixa-cab .fx-ic{font-size:1.05rem;flex:none}
+  .mc-faixa-cab .fx-tx{flex:1;min-width:0}
+  .mc-faixa-cab .fx-tx b{display:block;font-size:.8rem;font-weight:600;color:var(--warn)}
+  .mc-faixa-cab .fx-tx small{font-size:.72rem;color:var(--muted)}
+  .mc-faixa-cab .fx-seta{flex:none;color:var(--warn);font-size:.72rem}
+  .mc-faixa-corpo{border-top:1px solid var(--warn);padding:12px;background:var(--panel-2)}
+  /* Depois de ler, a faixa vira recibo e troca de cor: o âmbar chama pra
+     ação, o verde confirma que a ação aconteceu. */
+  .mc-faixa.pronta{border-color:var(--ok);background:color-mix(in srgb, var(--ok) 8%, transparent)}
+  .mc-faixa.pronta .fx-tx b,
+  .mc-faixa.pronta .fx-seta{color:var(--ok)}
+  .mc-anx-ler{width:100%;margin-top:11px}
 </style>
 <script>
   /* Anti-piscada no F5: roda ANTES de a página pintar. Se já existe sessão
@@ -1871,6 +1889,34 @@
     <h3 id="mc-title">Novo cliente</h3>
     <p class="msub">Campos com <span class="req">*</span> são obrigatórios.</p>
     <div class="modal-msg" id="mc-msg"></div>
+    <div class="mc-faixa hidden" id="mc-faixa">
+      <div class="mc-faixa-cab" id="mc-faixa-cab">
+        <span class="fx-ic" id="mc-faixa-ic">📎</span>
+        <span class="fx-tx">
+          <b id="mc-faixa-tit">Cadastre pelos documentos</b>
+          <small id="mc-faixa-sub">Anexe RG, comprovante e contrato — a ficha se preenche sozinha</small>
+        </span>
+        <span class="fx-seta" id="mc-faixa-seta">▾</span>
+      </div>
+      <div class="mc-faixa-corpo hidden" id="mc-faixa-corpo">
+        <div class="mc-anx" id="mc-anx-area">
+          <div class="mc-anx-head">
+            <span><b id="mc-anx-qtd">0</b> de 4</span>
+            <span id="mc-anx-peso">0 de 10 MB</span>
+          </div>
+          <div class="mc-drop" id="mc-drop">
+            <div class="mc-drop-ic">📎</div>
+            <div class="mc-drop-txt" id="mc-drop-txt">Arraste os documentos aqui</div>
+            <button type="button" class="btn btn-ghost btn-sm" id="mc-anx-sel">Selecionar arquivos</button>
+            <input type="file" id="mc-anx-file" multiple accept="image/*,application/pdf,.docx" style="display:none">
+          </div>
+          <div id="mc-anx-lista"></div>
+          <div class="mc-anx-erro hidden" id="mc-anx-erro"></div>
+          <div class="mc-anx-nota">Até 4 documentos da pessoa — identidade, comprovante de residência, contrato. Depois de salvar, novos anexos só dentro do processo.</div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm mc-anx-ler" id="mc-anx-ler" disabled>Ler os documentos e preencher</button>
+      </div>
+    </div>
     <input type="hidden" id="mc-id">
     <div class="field"><label>Nome <span class="req">*</span></label><input type="text" id="mc-nome" placeholder="Nome do cliente"></div>
     <div class="row2">
@@ -1918,25 +1964,7 @@
       <div class="ds-head"><h3 style="font-size:.9rem"><span class="ico">🛡️</span> Histórico de edições</h3><span style="font-size:.72rem;color:var(--muted-2)">visível só para o master</span></div>
       <div id="mc-edicoes"></div>
     </div>
-    <div id="mc-anx-bloco">
-      <div class="msub" style="margin-top:16px">Documentos do cliente</div>
-      <div class="mc-anx" id="mc-anx-area">
-        <div class="mc-anx-head">
-          <span><b id="mc-anx-qtd">0</b> de 4</span>
-          <span id="mc-anx-peso">0 de 10 MB</span>
-        </div>
-        <div class="mc-drop" id="mc-drop">
-          <div class="mc-drop-ic">📎</div>
-          <div class="mc-drop-txt" id="mc-drop-txt">Arraste os documentos aqui</div>
-          <button type="button" class="btn btn-ghost btn-sm" id="mc-anx-sel">Selecionar arquivos</button>
-          <input type="file" id="mc-anx-file" multiple accept="image/*,application/pdf,.docx" style="display:none">
-        </div>
-        <div id="mc-anx-lista"></div>
-        <div class="mc-anx-erro hidden" id="mc-anx-erro"></div>
-        <div class="mc-anx-nota">Até 4 documentos da pessoa — identidade, comprovante de residência, contrato. Depois de salvar, novos anexos só dentro do processo.</div>
-      </div>
-    </div>
-    <div class="mfoot">
+        <div class="mfoot">
       <button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-cliente')">Cancelar</button>
       <button class="btn btn-primary btn-sm" id="mc-save" onclick="salvarCliente()">Salvar</button>
     </div>
@@ -2487,7 +2515,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.203';
+const APP_VERSAO = 'v1.8.204';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6415,6 +6443,14 @@ function mcAnxRender(){
   if(sel)  sel.disabled=cheio;
   if(txt)  txt.textContent = cheio ? 'Você chegou aos '+MC_ANX_MAX+' documentos'
          : (MC_ANEXOS.length ? 'Arraste mais documentos aqui' : 'Arraste os documentos aqui');
+  /* [v1.8.204] o cabecalho conta o que tem dentro mesmo com a faixa fechada,
+     e o botao so' acende quando ha o que ler. */
+  const sub=document.getElementById('mc-faixa-sub');
+  const ler=document.getElementById('mc-anx-ler');
+  if(sub) sub.textContent = MC_ANEXOS.length
+    ? (MC_ANEXOS.length===1 ? '1 documento anexado' : MC_ANEXOS.length+' documentos anexados')
+    : 'Anexe RG, comprovante e contrato — a ficha se preenche sozinha';
+  if(ler) ler.disabled = !MC_ANEXOS.length;
   lista.innerHTML=MC_ANEXOS.map(function(a,i){
     return '<div class="mc-anx-item">'+
       '<span class="mc-anx-tipo">'+esc(a.tipo)+'</span>'+
@@ -6423,6 +6459,18 @@ function mcAnxRender(){
       '<button type="button" class="btn btn-ghost btn-sm" onclick="mcAnxTirar('+i+')">Tirar</button>'+
       '</div>';
   }).join('');
+}
+
+/* A faixa: fechada e' uma linha, aberta e' a area de anexo. Foi assim que
+   ficou aprovado — quem vai digitar na mao ve e ignora, e o formulario nao
+   e' empurrado pra baixo. */
+function mcFaixaAbrir(abrir){
+  const c=document.getElementById('mc-faixa-corpo');
+  const st=document.getElementById('mc-faixa-seta');
+  if(!c) return;
+  const vai = (abrir===undefined) ? c.classList.contains('hidden') : !!abrir;
+  c.classList.toggle('hidden', !vai);
+  if(st) st.textContent = vai ? '▴' : '▾';
 }
 
 /* Liga os eventos uma vez só. O modal e' estatico na pagina, entao nao da
@@ -6445,6 +6493,8 @@ function mcAnxLigar(){
     if(MC_ANEXOS.length>=MC_ANX_MAX) return;
     if(e.dataTransfer && e.dataTransfer.files) mcAnxAdicionar(e.dataTransfer.files);
   });
+  const cab=document.getElementById('mc-faixa-cab');
+  if(cab) cab.addEventListener('click', function(){ mcFaixaAbrir(); });
   _mcAnxLigado=true;
 }
 
@@ -6452,8 +6502,16 @@ function mcAnxLigar(){
    a frase que o proprio aviso da tela promete ao advogado. */
 function mcAnxModo(mostrar){
   MC_ANEXOS=[];
-  const b=document.getElementById('mc-anx-bloco');
-  if(b) b.classList.toggle('hidden', !mostrar);
+  const f=document.getElementById('mc-faixa');
+  if(f){
+    f.classList.toggle('hidden', !mostrar);
+    f.classList.remove('pronta');   // volta do verde pro ambar
+  }
+  const ic=document.getElementById('mc-faixa-ic');
+  const ti=document.getElementById('mc-faixa-tit');
+  if(ic) ic.textContent='📎';
+  if(ti) ti.textContent='Cadastre pelos documentos';
+  mcFaixaAbrir(false);              // sempre recolhida ao abrir o modal
   mcAnxErro('');
   mcAnxRender();
   if(mostrar) mcAnxLigar();
