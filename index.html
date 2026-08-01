@@ -1147,8 +1147,20 @@
     text-overflow:ellipsis;white-space:nowrap}
   .mc-anx-peso{font-size:.72rem;color:var(--muted-2);flex:none}
   /* [v1.8.207] miniatura: o advogado ve o que a IA vai ver */
-  .mc-anx-mini{width:38px;height:38px;flex:none;border-radius:5px;object-fit:cover;
-    border:1px solid var(--line);background:var(--bg-2)}
+  /* [v1.8.209] 64px e 'contain': a miniatura existe pra julgar ORIENTACAO.
+     Com 38px e 'cover' dava pra ver que tinha foto, nao se estava torta —
+     e o 'cover' ainda cortava a borda, que e' o que denuncia o lado certo. */
+  .mc-anx-mini{width:64px;height:64px;flex:none;border-radius:6px;object-fit:contain;
+    border:1px solid var(--line);background:var(--bg-2);cursor:zoom-in}
+  /* A ampliacao: z-index acima do modal (90) pra aparecer por cima dele. */
+  .mc-lupa{position:fixed;inset:0;z-index:200;background:rgba(4,8,16,.92);
+    display:none;place-items:center;padding:16px}
+  .mc-lupa.open{display:grid}
+  .mc-lupa img{max-width:100%;max-height:88vh;border-radius:8px;object-fit:contain}
+  .mc-lupa-fechar{position:absolute;top:14px;right:16px;font-size:1.6rem;
+    color:#fff;background:none;border:none;cursor:pointer;line-height:1}
+  .mc-lupa-dica{position:absolute;bottom:18px;left:0;right:0;text-align:center;
+    color:var(--muted);font-size:.78rem}
   .mc-anx-girar{flex:none;padding:4px 8px;font-size:.9rem;line-height:1}
   .mc-anx-nota{font-size:.72rem;color:var(--muted-2);line-height:1.5;margin-top:10px}
   .mc-anx-erro{font-size:.75rem;color:var(--danger);line-height:1.5;margin-top:10px}
@@ -1899,6 +1911,11 @@
     <h3 id="mc-title">Novo cliente</h3>
     <p class="msub">Campos com <span class="req">*</span> são obrigatórios.</p>
     <div class="modal-msg" id="mc-msg"></div>
+    <div class="mc-lupa" id="mc-lupa" onclick="mcAnxFecharLupa()">
+      <button type="button" class="mc-lupa-fechar" onclick="mcAnxFecharLupa()">✕</button>
+      <img id="mc-lupa-img" alt="Documento anexado">
+      <div class="mc-lupa-dica">Toque para fechar</div>
+    </div>
     <div class="mc-faixa hidden" id="mc-faixa">
       <div class="mc-faixa-cab" id="mc-faixa-cab">
         <span class="fx-ic" id="mc-faixa-ic">📎</span>
@@ -2525,7 +2542,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.208';
+const APP_VERSAO = 'v1.8.209';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6659,17 +6676,39 @@ function mcAnxMiniatura(file){
     const img=new Image();
     img.onload=function(){
       const cv=document.createElement('canvas');
-      const f=Math.min(1, 120/Math.max(img.width,img.height));
+      /* [v1.8.209] 240 e nao 120: a miniatura agora aparece com 64px na
+         tela, e em telas retina 120 ja' saia borrada. */
+      const f=Math.min(1, 240/Math.max(img.width,img.height));
       cv.width=Math.max(1,Math.round(img.width*f));
       cv.height=Math.max(1,Math.round(img.height*f));
       try{ cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height); }
       catch(_){ URL.revokeObjectURL(url); return res(''); }
       URL.revokeObjectURL(url);
-      res(cv.toDataURL('image/jpeg',0.7));
+      res(cv.toDataURL('image/jpeg',0.8));
     };
     img.onerror=function(){ URL.revokeObjectURL(url); res(''); };
     img.src=url;
   });
+}
+
+/* [v1.8.209] Abre a foto grande. Usa o ARQUIVO DE VERDADE, nao a
+   miniatura: quem amplia esta' vendo exatamente o que a IA vai receber. */
+let _mcLupaUrl='';
+function mcAnxAmpliar(i){
+  const a=MC_ANEXOS[i];
+  if(!a || !/^image\//i.test((a.file&&a.file.type)||'')) return;
+  const lupa=document.getElementById('mc-lupa');
+  const img=document.getElementById('mc-lupa-img');
+  if(!lupa || !img) return;
+  if(_mcLupaUrl) URL.revokeObjectURL(_mcLupaUrl);
+  _mcLupaUrl=URL.createObjectURL(a.file);
+  img.src=_mcLupaUrl;
+  lupa.classList.add('open');
+}
+function mcAnxFecharLupa(){
+  const lupa=document.getElementById('mc-lupa');
+  if(lupa) lupa.classList.remove('open');
+  if(_mcLupaUrl){ URL.revokeObjectURL(_mcLupaUrl); _mcLupaUrl=''; }
 }
 
 /* 🔴 Gira a IMAGEM DE VERDADE, nao so' a miniatura. O que o advogado ve na
@@ -6734,7 +6773,7 @@ function mcAnxRender(){
        certa, e virar pagina de PDF nao e' problema que exista na pratica. */
     const ehImg=/^image\//i.test((a.file&&a.file.type)||'');
     return '<div class="mc-anx-item">'+
-      (a.thumb ? '<img class="mc-anx-mini" src="'+a.thumb+'" alt="">'
+      (a.thumb ? '<img class="mc-anx-mini" src="'+a.thumb+'" alt="" title="Toque para ver maior" onclick="mcAnxAmpliar('+i+')">'
                : '<span class="mc-anx-tipo">'+esc(a.tipo)+'</span>')+
       '<span class="mc-anx-nome" title="'+esc(a.nome)+'">'+esc(a.nome)+'</span>'+
       '<span class="mc-anx-peso">'+mcAnxPeso(a.bytes)+'</span>'+
@@ -6787,6 +6826,7 @@ function mcAnxLigar(){
    a frase que o proprio aviso da tela promete ao advogado. */
 function mcAnxModo(mostrar){
   MC_ANEXOS=[];
+  mcAnxFecharLupa();
   const f=document.getElementById('mc-faixa');
   if(f){
     f.classList.toggle('hidden', !mostrar);
