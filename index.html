@@ -1162,6 +1162,16 @@
   .mc-lupa-dica{position:absolute;bottom:18px;left:0;right:0;text-align:center;
     color:var(--muted);font-size:.78rem}
   .mc-anx-girar{flex:none;padding:4px 8px;font-size:.9rem;line-height:1}
+  /* [v1.8.210] os botoes viram um grupo, pra descerem JUNTOS quando o
+     espaco acaba — se descessem soltos, um ficaria em cada linha. */
+  .mc-anx-acoes{display:flex;gap:6px;flex:none;align-items:center}
+  /* Em tela estreita a linha vira duas. Sem isto, no celular o nome do
+     arquivo encolhia ate' sumir e o botao Tirar vazava pra fora do card. */
+  @media (max-width:560px){
+    .mc-anx-item{flex-wrap:wrap;row-gap:8px}
+    .mc-anx-nome{flex:1 1 auto}
+    .mc-anx-acoes{flex-basis:100%;justify-content:flex-end}
+  }
   .mc-anx-nota{font-size:.72rem;color:var(--muted-2);line-height:1.5;margin-top:10px}
   .mc-anx-erro{font-size:.75rem;color:var(--danger);line-height:1.5;margin-top:10px}
 
@@ -2542,7 +2552,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.209';
+const APP_VERSAO = 'v1.8.210';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6777,8 +6787,10 @@ function mcAnxRender(){
                : '<span class="mc-anx-tipo">'+esc(a.tipo)+'</span>')+
       '<span class="mc-anx-nome" title="'+esc(a.nome)+'">'+esc(a.nome)+'</span>'+
       '<span class="mc-anx-peso">'+mcAnxPeso(a.bytes)+'</span>'+
-      (ehImg ? '<button type="button" class="btn btn-ghost btn-sm mc-anx-girar" title="Girar 90°" onclick="mcAnxGirar('+i+')">⟳</button>' : '')+
-      '<button type="button" class="btn btn-ghost btn-sm" onclick="mcAnxTirar('+i+')">Tirar</button>'+
+      '<span class="mc-anx-acoes">'+
+        (ehImg ? '<button type="button" class="btn btn-ghost btn-sm mc-anx-girar" title="Girar 90°" onclick="mcAnxGirar('+i+')">⟳</button>' : '')+
+        '<button type="button" class="btn btn-ghost btn-sm" onclick="mcAnxTirar('+i+')">Tirar</button>'+
+      '</span>'+
       '</div>';
   }).join('');
 }
