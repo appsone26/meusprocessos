@@ -2552,7 +2552,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.210';
+const APP_VERSAO = 'v1.8.211';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6980,6 +6980,40 @@ function renderProcessosDoCliente(lista){
     </div>`;
   }).join('')+'</div>';
 }
+/* [v1.8.211] Sobe os anexos do cadastro amarrados ao cliente recem-criado.
+   Mesmo caminho dos documentos de processo: upload-url -> Storage ->
+   registrar. A Edge ja' checa a cota no upload-url e ja' aceita ficar sem
+   processo_id (guarda em geral/), entao nao precisou mexer nela.
+
+   Devolve o placar. NAO lanca erro: o cliente ja' foi criado, e derrubar a
+   tela agora so' faria o advogado achar que perdeu o cadastro tambem. */
+async function mcAnxSubir(clienteId, btn){
+  const total=MC_ANEXOS.length;
+  let ok=0, falhou=0, cota=false, uso=null;
+  for(let i=0;i<total;i++){
+    const a=MC_ANEXOS[i];
+    if(btn) btn.textContent='Enviando documento '+(i+1)+'/'+total+'…';
+    try{
+      const up=await efDocumentos({acao:'upload-url', nome:a.nome,
+        mime:(a.file.type||''), tamanho:a.file.size, cliente_id:clienteId});
+      const {error:upErr}=await db.storage.from('documentos')
+        .uploadToSignedUrl(up.path, up.signed_token, a.file);
+      if(upErr) throw new Error(upErr.message||'Falha ao enviar o arquivo.');
+      const reg=await efDocumentos({acao:'registrar', cliente_id:clienteId,
+        nome:a.nome, path:up.path, tamanho:a.file.size, mime:(a.file.type||'')});
+      if(reg && reg.uso) uso=reg.uso;
+      ok++;
+    }catch(e){
+      const m=(e && e.message)||'';
+      /* COTA_CHEIA: nao adianta tentar o proximo, o espaco so' diminui. */
+      if(m.includes('COTA_CHEIA')){ cota=true; falhou+=(total-i); break; }
+      falhou++;
+    }
+  }
+  if(uso && typeof atualizarBarraStorage==='function') atualizarBarraStorage(uso);
+  return {ok:ok, falhou:falhou, cota:cota};
+}
+
 async function salvarCliente(){
   const nome=document.getElementById('mc-nome').value.trim();
   const email=document.getElementById('mc-email').value.trim();
@@ -7011,12 +7045,36 @@ async function salvarCliente(){
   if(new Date(nasc) > new Date()) return erro('A data de nascimento não pode ser no futuro.');
   const id=document.getElementById('mc-id').value||null;
   const btn=document.getElementById('mc-save'); setLoading(btn,true);
-  try{ const {error}=await db.rpc('sp_salvar_cliente',{p_token:TOKEN,p_id:id,p_nome:nome,
+  try{ const {data:novoId,error}=await db.rpc('sp_salvar_cliente',{p_token:TOKEN,p_id:id,p_nome:nome,
       p_email:(email||null), p_telefone:tel, p_data_nasc:nasc, p_cpf:(cpf||null), p_rg:(rg||null),
       p_nacionalidade:(nac||null), p_estado_civil:(ec||null), p_profissao:(prof||null),
       p_cep:(cep||null), p_logradouro:(log||null), p_numero:(num||null), p_complemento:(comp||null),
       p_bairro:(bai||null), p_cidade:(cid||null), p_uf:(uf||null)}); if(error) throw error;
-    fecharModal('modal-cliente'); toast(id?'Cliente atualizado.':'Cliente cadastrado.','ok'); await carregarClientes();
+
+    /* [v1.8.211] Cliente criado — agora os documentos ganham dono e podem
+       ir pro Storage. So' na CRIACAO: na edicao a faixa nem aparece. */
+    let placar=null;
+    const cliId = novoId || null;
+    if(!id && cliId && MC_ANEXOS.length){
+      placar = await mcAnxSubir(cliId, btn);
+    }
+
+    fecharModal('modal-cliente');
+    if(placar){
+      /* Toast honesto: o cliente foi criado de qualquer jeito, mas se um
+         documento se perdeu o advogado PRECISA saber — hoje nao existe tela
+         pra anexar documento a cliente sem processo, entao reanexar depende
+         de ele ficar sabendo agora. */
+      const p=['Cliente cadastrado'];
+      if(placar.ok) p.push(placar.ok===1?'1 documento anexado':placar.ok+' documentos anexados');
+      if(placar.cota) p.push('armazenamento cheio: '+placar.falhou+' não subiram');
+      else if(placar.falhou) p.push(placar.falhou+(placar.falhou===1?' documento falhou':' documentos falharam'));
+      toast(p.join(' · '), (placar.falhou?'err':'ok'));
+    }else{
+      toast(id?'Cliente atualizado.':'Cliente cadastrado.','ok');
+    }
+    MC_ANEXOS=[];
+    await carregarClientes();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); erro(traduzErro(e)); }
   finally{ setLoading(btn,false,'Salvar'); }
 }
