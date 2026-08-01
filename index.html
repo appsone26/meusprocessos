@@ -1451,7 +1451,7 @@
         <div class="view-head">
           <div><h2>Clientes</h2><p>Cadastre e organize os clientes do seu escritório.</p></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="abrirModalCliente()">+ Novo cliente</button>
+            <button class="btn btn-primary btn-sm" id="btn-novo-cliente" onclick="abrirModalCliente()">+ Novo cliente</button>
             <button class="btn btn-ghost btn-sm" onclick="exportarClientesExcel()">📊 Excel</button>
             <button class="btn btn-ghost btn-sm" onclick="exportarClientesPDF()">📄 PDF</button>
           </div>
@@ -2521,7 +2521,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.205';
+const APP_VERSAO = 'v1.8.206';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -6283,7 +6283,7 @@ async function reativarUsuario(id){
 /* ============ CLIENTES ============ */
 async function carregarClientes(){
   try{ const {data,error}=await db.rpc('sp_listar_clientes',{p_token:TOKEN}); if(error) throw error;
-    CLIENTES=data||[]; renderClientes(); preencherSelectClientes();
+    CLIENTES=data||[]; renderClientes(); preencherSelectClientes(); revisarTetoClientes();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
     document.getElementById('cli-area').innerHTML='<div class="empty"><div class="em-ic">⚠️</div><h3>Não foi possível carregar</h3><p>'+esc(traduzErro(e))+'</p></div>'; }
 }
@@ -6333,6 +6333,7 @@ async function checarTetoClientes(){
     const {data,error}=await db.rpc('sp_pode_cadastrar_cliente',{p_token:TOKEN});
     if(error) throw error;
     const r=Array.isArray(data)?data[0]:data; if(!r) return;
+    aplicarTetoClientes(r.pode===false);
     if(r.pode===false){
       btn.disabled=true;
       msg.textContent='Você atingiu o limite de clientes do seu plano. Para cadastrar mais, faça upgrade em Assinatura › Ver planos.';
@@ -6343,6 +6344,46 @@ async function checarTetoClientes(){
     }
   }catch(e){ console.warn('[teto-clientes] cancela indisponivel:', e); }
 }
+
+/* [v1.8.206] Aplica o teto na tela inteira: o botao da lista, a faixa e o
+   botao de ler. Um lugar so' decide, para nao haver caminho por fora. */
+function aplicarTetoClientes(cheio){
+  MC_TETO_CHEIO = !!cheio;
+  const bn=document.getElementById('btn-novo-cliente');
+  if(bn){
+    bn.disabled=MC_TETO_CHEIO;
+    bn.title=MC_TETO_CHEIO ? 'Você atingiu o limite de clientes do seu plano' : '';
+  }
+  const fx=document.getElementById('mc-faixa');
+  if(fx){
+    fx.classList.toggle('hidden', MC_TETO_CHEIO);
+    if(MC_TETO_CHEIO) mcFaixaAbrir(false);
+  }
+  const sel=document.getElementById('mc-anx-sel');
+  const inp=document.getElementById('mc-anx-file');
+  if(sel) sel.disabled=MC_TETO_CHEIO;
+  if(inp) inp.disabled=MC_TETO_CHEIO;
+  const ler=document.getElementById('mc-anx-ler');
+  if(ler && MC_TETO_CHEIO) ler.disabled=true;
+  if(MC_TETO_CHEIO){ MC_ANEXOS=[]; mcAnxRender(); }
+}
+
+/* Le a cancela do banco sem mexer no modal — serve pra tela de clientes,
+   que precisa saber do teto antes de alguem clicar em qualquer coisa. */
+async function revisarTetoClientes(){
+  try{
+    const {data,error}=await db.rpc('sp_pode_cadastrar_cliente',{p_token:TOKEN});
+    if(error) throw error;
+    const r=Array.isArray(data)?data[0]:data;
+    aplicarTetoClientes(r && r.pode===false);
+  }catch(e){
+    /* Cancela fora do ar: NAO trava a tela. Barrar todo mundo por causa de
+       uma falha de rede seria pior que o gasto que isto evita — e o Salvar
+       continua sendo checado pelo banco de qualquer jeito. */
+    console.warn('[teto-clientes] revisao indisponivel:', e);
+  }
+}
+
 /* =============== [v1.8.203] ANEXO NO CADASTRO (Bloco A1 · peça 3b-1) ==========
    Os arquivos vivem SÓ na memória, em MC_ANEXOS. Nada toca o Storage antes
    de o cliente existir — decisão fechada na S83, e o motivo é a pendência
@@ -6368,6 +6409,10 @@ const MC_ANX_PESO_OK = 900 * 1024;
    de luz (historico de consumo) fica de fora. */
 const MC_ANX_PAGS    = 2;
 let   MC_ANEXOS      = [];
+/* [v1.8.206] Escritorio no teto de clientes nao anexa e nao le. Sem isto,
+   quem estourou o plano ainda queimava dolar nosso numa leitura que jamais
+   ia poder salvar. */
+let   MC_TETO_CHEIO  = false;
 let   _mcAnxLigado   = false;
 
 function mcAnxPeso(b){
@@ -6610,7 +6655,7 @@ function mcAnxRender(){
   if(sub) sub.textContent = MC_ANEXOS.length
     ? (MC_ANEXOS.length===1 ? '1 documento anexado' : MC_ANEXOS.length+' documentos anexados')
     : 'Anexe RG, comprovante e contrato — a ficha se preenche sozinha';
-  if(ler) ler.disabled = !MC_ANEXOS.length;
+  if(ler) ler.disabled = MC_TETO_CHEIO || !MC_ANEXOS.length;
   lista.innerHTML=MC_ANEXOS.map(function(a,i){
     return '<div class="mc-anx-item">'+
       '<span class="mc-anx-tipo">'+esc(a.tipo)+'</span>'+
