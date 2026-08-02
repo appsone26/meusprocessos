@@ -634,6 +634,29 @@
   /* [3A] linha generica de campos lado a lado */
   .field-row{display:flex;gap:8px;align-items:flex-end}
   .field-row .field{flex:1;margin:0}
+  /* [3A.2] responsaveis em etiquetas */
+  .resp-cx{background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);
+           border-radius:8px;padding:6px;height:76px;overflow-y:auto;display:flex;
+           flex-wrap:wrap;gap:6px;align-content:flex-start}
+  .resp-cx.vazia{align-items:center;justify-content:center;color:var(--muted-2);font-size:.78rem}
+  .resp-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);
+             border:1px solid var(--line);border-radius:999px;padding:3px 6px 3px 10px;font-size:.78rem}
+  .resp-chip button{background:none;border:0;color:var(--muted-2);cursor:pointer;
+                    font-size:.9rem;line-height:1;padding:0 2px}
+  .resp-chip button:hover{color:#ef4444}
+  /* [3A.2] historico */
+  .hist-cx{max-height:190px;overflow-y:auto;padding:0 0 0 16px;border-left:2px solid var(--line);
+           margin:6px 0 12px}
+  .hist-li{position:relative;padding:0 0 12px 12px}
+  .hist-li::before{content:'';position:absolute;left:-21px;top:5px;width:8px;height:8px;
+                   border-radius:50%;background:var(--line)}
+  .hist-li:first-child::before{background:var(--cyan,#22d3ee)}
+  .hist-qd{font-size:.72rem;color:var(--muted-2)}
+  .hist-tx{font-size:.84rem;white-space:pre-wrap}
+  .hist-tx.sis{font-style:italic;color:var(--muted-2)}
+  .mfoot.split{display:flex;align-items:center;gap:8px}
+  .mfoot.split .dir{margin-left:auto;display:flex;gap:8px}
+  .alert-row.clicavel{cursor:pointer}
   .field-cnj-row .field{flex:1;margin:0}
   .tl-date{font-size:.74rem;color:var(--cyan);font-weight:600}
   .tl-desc{color:#fff;font-size:.92rem;margin:2px 0}
@@ -2172,9 +2195,21 @@
       <div class="field"><label>Data <span class="req">*</span></label><input type="date" id="ma-data"></div>
       <div class="field"><label>Hora</label><input type="time" id="ma-hora"></div>
     </div>
-    <div class="mfoot">
-      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-alerta')">Cancelar</button>
-      <button class="btn btn-primary btn-sm" id="ma-save" onclick="salvarAlerta()">Salvar</button>
+    <div class="field-row">
+      <div class="field"><label>Adicionar responsável</label><select id="ma-resp-sel" onchange="maAddResp(this)"></select></div>
+      <div class="field"><label>Responsáveis</label><div class="resp-cx vazia" id="ma-resp-cx"></div></div>
+    </div>
+    <div id="ma-hist-bloco" style="display:none">
+      <label style="font-size:.78rem;color:var(--muted-2)">Histórico — o mais recente em cima</label>
+      <div class="hist-cx" id="ma-hist"></div>
+    </div>
+    <div class="field"><label id="ma-nota-lab">Nova anotação</label><textarea id="ma-nota" rows="2" placeholder="Escrever a próxima atualização…"></textarea></div>
+    <div class="mfoot split">
+      <button class="btn btn-ghost btn-sm" id="ma-concluir" onclick="concluirDoModal()" style="display:none;border-color:#22c55e;color:#22c55e">✓ Concluir</button>
+      <div class="dir">
+        <button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-alerta')">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="ma-save" onclick="salvarAlerta()">Salvar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -8882,7 +8917,7 @@ function abrirProcessoDoAlerta(pid){
 function renderAgenda(){
   const area=document.getElementById('alerta-area');
   const itens=[
-    ...ALERTAS.map(a=>({tipo:'alerta',id:a.id,descricao:a.descricao,dias_restantes:a.dias_restantes,processo_id:a.processo_id,processo_nome:a.processo_nome,data_alerta:a.data_alerta})),
+    ...ALERTAS.map(a=>({tipo:'alerta',id:a.id,descricao:a.descricao,dias_restantes:a.dias_restantes,processo_id:a.processo_id,processo_nome:a.processo_nome,data_alerta:a.data_alerta,especie:a.especie,hora:a.hora})),
     ...PROVALERTAS.map(p=>({tipo:'prov',id:p.id,descricao:p.descricao,dias_restantes:p.dias_restantes,processo_id:p.processo_id,processo_nome:p.processo_nome}))
   ].sort((x,y)=>x.dias_restantes-y.dias_restantes);
   if(!itens.length){ area.innerHTML='<div class="empty"><div class="em-ic">🔔</div><h3>Nada na agenda</h3><p>Nenhum alerta ou providência pendente. Clique em “Novo alerta” para criar um lembrete ou prazo.</p></div>'; return; }
@@ -8891,9 +8926,12 @@ function renderAgenda(){
     const quando = it.tipo==='alerta' ? `${fmtData(it.data_alerta)} · ${quandoTexto(it.dias_restantes)}` : quandoTexto(it.dias_restantes);
     const desc = it.tipo==='prov' ? `<span class="ab-tag">Providência</span> ${esc(it.descricao)}` : esc(it.descricao);
     const acts = it.tipo==='alerta'
-      ? `<button class="lnk" onclick='abrirModalAlerta(${JSON.stringify(it.id)})'>Editar</button><button class="lnk danger" onclick='deletarAlerta(${JSON.stringify(it.id)})'>Concluir</button>`
+      ? ''
       : `<button class="lnk danger" onclick='concluirProvBarra(${JSON.stringify(it.id)})'>Concluir</button>`;
-    return `<div class="alert-row">
+    const abre = it.tipo==='alerta'
+      ? ` class="alert-row clicavel" onclick='abrirModalAlerta(${JSON.stringify(it.id)})'`
+      : ' class="alert-row"';
+    return `<div${abre}>
       <span class="ar-when ${cls}">${quando}</span>
       <div class="ar-main"><div class="ar-desc">${desc}</div>${it.processo_nome?`<div class="ar-proc" onclick='abrirProcessoDoAlerta(${JSON.stringify(it.processo_id)})'>${esc(it.processo_nome)}</div>`:''}</div>
       <div class="li-acts">${acts}</div>
@@ -8930,17 +8968,74 @@ function renderLixeira(){
       <div class="li-tags"><span class="tagx">${someTxt}</span></div>
     </div>`;}).join('')+'</div>';
 }
-function abrirModalAlerta(id){
+let MA_RESP=[];
+function maPintaResp(){
+  const cx=document.getElementById('ma-resp-cx');
+  if(!MA_RESP.length){ cx.className='resp-cx vazia'; cx.textContent='ninguém ainda'; }
+  else{ cx.className='resp-cx';
+    cx.innerHTML=MA_RESP.map((r,i)=>`<span class="resp-chip"><b>${esc(r.nome)}</b><button title="tirar" onclick='maTiraResp(${i})'>×</button></span>`).join(''); }
+  const sel=document.getElementById('ma-resp-sel');
+  const livres=USUARIOS.filter(u=>!MA_RESP.some(r=>r.id===u.id));
+  sel.innerHTML='<option value="">Selecione…</option>'+livres.map(u=>`<option value="${u.id}">${esc(u.nome||'(sem nome)')}</option>`).join('');
+}
+function maAddResp(sel){
+  const id=sel.value; sel.value='';
+  if(!id) return;
+  const u=USUARIOS.find(x=>x.id===id); if(!u) return;
+  if(!MA_RESP.some(r=>r.id===id)) MA_RESP.push({id:u.id,nome:u.nome||'(sem nome)'});
+  maPintaResp();
+}
+function maTiraResp(i){ MA_RESP.splice(i,1); maPintaResp(); }
+function maPintaHist(linhas){
+  const bloco=document.getElementById('ma-hist-bloco'), cx=document.getElementById('ma-hist');
+  if(!linhas||!linhas.length){ bloco.style.display='none'; cx.innerHTML=''; return; }
+  const ord=linhas.slice().sort((a,b)=>new Date(b.criado_em)-new Date(a.criado_em));
+  cx.innerHTML=ord.map(h=>{
+    const quem=h.origem==='sistema'?'sistema':(h.usuario_nome||'—');
+    return `<div class="hist-li"><div class="hist-qd">${esc(fmtDataHora(h.criado_em))} · ${esc(quem)}</div><div class="hist-tx ${h.origem==='sistema'?'sis':''}">${esc(h.texto||'')}</div></div>`;
+  }).join('');
+  bloco.style.display='';
+}
+async function abrirModalAlerta(id){
   document.getElementById('ma-msg').className='modal-msg';
+  document.getElementById('ma-nota').value='';
+  MA_RESP=[]; maPintaHist(null);
+  if(!USUARIOS.length){
+    try{ const r=await db.rpc('sp_listar_usuarios',{p_token:TOKEN}); if(!r.error) USUARIOS=r.data||[]; }
+    catch(e){}
+  }
+  const concluir=document.getElementById('ma-concluir');
   if(id){ const a=ALERTAS.find(x=>x.id===id)||{}; document.getElementById('ma-title').textContent='Editar alerta';
     document.getElementById('ma-id').value=a.id||''; document.getElementById('ma-desc').value=a.descricao||'';
     document.getElementById('ma-data').value=a.data_alerta||'';
     document.getElementById('ma-especie').value=a.especie||'evento';
     document.getElementById('ma-hora').value=(a.hora||'').slice(0,5);
+    const ids=a.responsaveis_ids||[], nomes=a.responsaveis_nomes||[];
+    MA_RESP=ids.map((x,i)=>({id:x,nome:nomes[i]||'(sem nome)'}));
+    document.getElementById('ma-nota-lab').textContent='Nova anotação';
+    concluir.style.display='';
   }else{ document.getElementById('ma-title').textContent='Novo alerta';
     ['ma-id','ma-desc','ma-data','ma-hora'].forEach(i=>document.getElementById(i).value='');
-    document.getElementById('ma-especie').value='evento'; }
+    document.getElementById('ma-especie').value='evento';
+    document.getElementById('ma-nota-lab').textContent='Primeira anotação (opcional)';
+    concluir.style.display='none'; }
+  maPintaResp();
   document.getElementById('modal-alerta').classList.add('open');
+  if(id){
+    try{ const r=await db.rpc('sp_listar_historico',{p_token:TOKEN,p_alerta_id:id});
+      if(!r.error) maPintaHist(r.data||[]);
+    }catch(e){}
+  }
+}
+async function concluirDoModal(){
+  const id=document.getElementById('ma-id').value||null; if(!id) return;
+  if(!confirm('Esta tarefa vai sair da lista e ir para Finalizados. É isso mesmo?')) return;
+  const btn=document.getElementById('ma-concluir'); setLoading(btn,true);
+  try{ const {error}=await db.rpc('sp_encerrar_alerta',{p_token:TOKEN,p_id:id,p_motivo:'concluido'}); if(error) throw error;
+    fecharModal('modal-alerta'); toast('Tarefa concluída.','ok'); await carregarAlertas();
+  }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
+    toast(traduzErro(e),'err');
+  }finally{ setLoading(btn,false,'✓ Concluir'); }
 }
 async function salvarAlerta(){
   const desc=document.getElementById('ma-desc').value.trim();
@@ -8953,7 +9048,9 @@ async function salvarAlerta(){
   const especie=document.getElementById('ma-especie').value||'evento';
   const hora=document.getElementById('ma-hora').value||null;
   const btn=document.getElementById('ma-save'); setLoading(btn,true);
-  try{ const {error}=await db.rpc('sp_salvar_alerta',{p_token:TOKEN,p_descricao:desc,p_data_alerta:data,p_id:id,p_especie:especie,p_hora:hora}); if(error) throw error;
+  const resps=MA_RESP.map(r=>r.id);
+  const nota=document.getElementById('ma-nota').value.trim()||null;
+  try{ const {error}=await db.rpc('sp_salvar_alerta',{p_token:TOKEN,p_descricao:desc,p_data_alerta:data,p_id:id,p_especie:especie,p_hora:hora,p_texto:nota,p_responsaveis:(resps.length?resps:null)}); if(error) throw error;
     fecharModal('modal-alerta'); toast(id?'Alerta atualizado.':'Alerta criado.','ok'); await carregarAlertas();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); erro(traduzErro(e)); }
   finally{ setLoading(btn,false,'Salvar'); }
