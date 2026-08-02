@@ -631,6 +631,9 @@
   .dtj-preview-item:last-child{border-bottom:none}
   .dtj-preview-date{color:var(--muted-2);min-width:80px;flex-shrink:0;font-size:.8rem}
   .field-cnj-row{display:flex;gap:8px;align-items:flex-end}
+  /* [3A] linha generica de campos lado a lado */
+  .field-row{display:flex;gap:8px;align-items:flex-end}
+  .field-row .field{flex:1;margin:0}
   .field-cnj-row .field{flex:1;margin:0}
   .tl-date{font-size:.74rem;color:var(--cyan);font-weight:600}
   .tl-desc{color:#fff;font-size:.92rem;margin:2px 0}
@@ -2153,12 +2156,22 @@
 <div class="modal" id="modal-alerta">
   <div class="box" style="max-width:460px">
     <h3 id="ma-title">Novo alerta</h3>
-    <p class="msub">Um lembrete livre ou ligado a um processo. Campos com <span class="req">*</span> são obrigatórios.</p>
+    <p class="msub">Uma tarefa da agenda do escritório. Para algo de um processo, crie a pendência dentro dele. Campos com <span class="req">*</span> são obrigatórios.</p>
     <div class="modal-msg" id="ma-msg"></div>
     <input type="hidden" id="ma-id">
-    <div class="field"><label>Descrição <span class="req">*</span></label><input type="text" id="ma-desc" placeholder="Ex.: Audiência às 14h"></div>
-    <div class="field"><label>Data <span class="req">*</span></label><input type="date" id="ma-data"></div>
-    <div class="field"><label>Vincular a um processo (opcional)</label><select id="ma-proc"></select></div>
+    <div class="field"><label>Descrição <span class="req">*</span></label><textarea id="ma-desc" rows="3" placeholder="O que precisa ser feito…"></textarea></div>
+    <div class="field"><label>Tipo</label><select id="ma-especie">
+      <option value="evento">Evento</option>
+      <option value="prazo">Prazo</option>
+      <option value="audiencia">Audiência</option>
+      <option value="pericia">Perícia</option>
+      <option value="reuniao">Reunião</option>
+      <option value="primeiro_atendimento">Primeiro atendimento</option>
+    </select></div>
+    <div class="field-row">
+      <div class="field"><label>Data <span class="req">*</span></label><input type="date" id="ma-data"></div>
+      <div class="field"><label>Hora</label><input type="time" id="ma-hora"></div>
+    </div>
     <div class="mfoot">
       <button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-alerta')">Cancelar</button>
       <button class="btn btn-primary btn-sm" id="ma-save" onclick="salvarAlerta()">Salvar</button>
@@ -8918,14 +8931,15 @@ function renderLixeira(){
     </div>`;}).join('')+'</div>';
 }
 function abrirModalAlerta(id){
-  const sel=document.getElementById('ma-proc');
-  sel.innerHTML='<option value="">— Sem processo (lembrete livre) —</option>'+PROCESSOS.map(p=>`<option value="${p.id}">${esc(p.nome_parte||'(sem título)')}</option>`).join('');
   document.getElementById('ma-msg').className='modal-msg';
   if(id){ const a=ALERTAS.find(x=>x.id===id)||{}; document.getElementById('ma-title').textContent='Editar alerta';
     document.getElementById('ma-id').value=a.id||''; document.getElementById('ma-desc').value=a.descricao||'';
-    document.getElementById('ma-data').value=a.data_alerta||''; document.getElementById('ma-proc').value=a.processo_id||'';
+    document.getElementById('ma-data').value=a.data_alerta||'';
+    document.getElementById('ma-especie').value=a.especie||'evento';
+    document.getElementById('ma-hora').value=(a.hora||'').slice(0,5);
   }else{ document.getElementById('ma-title').textContent='Novo alerta';
-    ['ma-id','ma-desc','ma-data'].forEach(i=>document.getElementById(i).value=''); document.getElementById('ma-proc').value=''; }
+    ['ma-id','ma-desc','ma-data','ma-hora'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('ma-especie').value='evento'; }
   document.getElementById('modal-alerta').classList.add('open');
 }
 async function salvarAlerta(){
@@ -8936,9 +8950,10 @@ async function salvarAlerta(){
   if(!desc) return erro('Informe a descrição do alerta.');
   if(!data) return erro('Informe a data.');
   const id=document.getElementById('ma-id').value||null;
-  const proc=document.getElementById('ma-proc').value||null;
+  const especie=document.getElementById('ma-especie').value||'evento';
+  const hora=document.getElementById('ma-hora').value||null;
   const btn=document.getElementById('ma-save'); setLoading(btn,true);
-  try{ const {error}=await db.rpc('sp_salvar_alerta',{p_token:TOKEN,p_descricao:desc,p_data_alerta:data,p_processo_id:proc,p_id:id}); if(error) throw error;
+  try{ const {error}=await db.rpc('sp_salvar_alerta',{p_token:TOKEN,p_descricao:desc,p_data_alerta:data,p_id:id,p_especie:especie,p_hora:hora}); if(error) throw error;
     fecharModal('modal-alerta'); toast(id?'Alerta atualizado.':'Alerta criado.','ok'); await carregarAlertas();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); erro(traduzErro(e)); }
   finally{ setLoading(btn,false,'Salvar'); }
