@@ -55,8 +55,13 @@
   html.tema-claro .doc-name{color:var(--text)}
   html.tema-claro .alert-row{background:#ffffff;border-color:var(--line)}
   /* [3B.1b] a linha da agenda segue o mesmo branco das outras listas */
-  html.tema-claro .ag-item{background:#ffffff;border-color:var(--line)}
-  html.tema-claro .ag-item:hover{background:rgba(79,70,229,.05);border-color:rgba(79,70,229,.4)}
+  /* border-color e atalho: pinta os QUATRO lados. Por isso a borda
+     esquerda da especie precisa ser redeclarada logo depois. */
+  html.tema-claro .ag-item{background:#ffffff;border-color:var(--line);
+                           border-left-color:var(--esp,#64748b)}
+  html.tema-claro .ag-item:hover{background:rgba(79,70,229,.05);
+                                 border-color:rgba(79,70,229,.4);
+                                 border-left-color:var(--esp,#64748b)}
   html.tema-claro .ag-grupo{border-bottom-color:var(--line)}
   html.tema-claro .ar-desc{color:var(--text)}
   html.tema-claro .fin-parc{background:rgba(0,0,0,.02);border-color:var(--line)}
