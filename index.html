@@ -672,6 +672,30 @@
   .mfoot.split{display:flex;align-items:center;gap:8px}
   .mfoot.split .dir{margin-left:auto;display:flex;gap:8px}
   .alert-row.clicavel{cursor:pointer}
+  /* [3B.1] lista agrupada por dia */
+  .ag-grupo{display:flex;align-items:baseline;gap:8px;margin:16px 0 6px;
+            padding-bottom:5px;border-bottom:1px solid var(--line)}
+  .ag-grupo:first-child{margin-top:2px}
+  .ag-grupo b{font-size:.86rem}
+  .ag-grupo span{font-size:.74rem;color:var(--muted-2);margin-left:auto}
+  .ag-grupo.atraso b{color:#ef4444}
+  .ag-grupo.hoje b{color:var(--cyan,#22d3ee)}
+  .ag-item{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;
+           border:1px solid var(--line);border-left:4px solid var(--esp,#64748b);
+           border-radius:9px;margin-bottom:6px;cursor:pointer;
+           background:rgba(255,255,255,.02)}
+  .ag-item:hover{background:rgba(255,255,255,.05)}
+  .ag-item.semclique{cursor:default}
+  .ag-hora{flex:0 0 46px;font-size:.8rem;color:var(--muted-2);
+           font-variant-numeric:tabular-nums;padding-top:1px}
+  .ag-corpo{flex:1 1 auto;min-width:0}
+  .ag-tit{font-size:.92rem;overflow-wrap:anywhere}
+  .ag-sub{font-size:.75rem;color:var(--muted-2);margin-top:2px;overflow-wrap:anywhere}
+  .ag-ult{font-size:.75rem;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
+  .ag-esp{display:inline-flex;align-items:center;gap:5px}
+  .ag-esp i{width:7px;height:7px;border-radius:50%;background:var(--esp,#64748b);
+            display:inline-block}
+  .ag-acts{flex:0 0 auto}
   .field-cnj-row .field{flex:1;margin:0}
   .tl-date{font-size:.74rem;color:var(--cyan);font-weight:600}
   .tl-desc{color:#fff;font-size:.92rem;margin:2px 0}
@@ -1509,7 +1533,7 @@
           </div>
         </div>
         <div class="toolbar">
-          <div class="seg"><button id="seg-agenda" class="active" onclick="setAlertaTab('agenda')">Agenda</button><button id="seg-lixeira" onclick="setAlertaTab('lixeira')">Lixeira</button></div>
+          <div class="seg"><button id="seg-agenda" class="active" onclick="setAlertaTab('agenda')">Agenda</button><button id="seg-lixeira" onclick="setAlertaTab('lixeira')">Finalizados</button></div>
         </div>
         <div id="alerta-area"><div class="loading">Carregando…</div></div>
       </div>
@@ -8931,28 +8955,84 @@ function abrirProcessoDoAlerta(pid){
   if(PROCESSOS.find(x=>x.id===pid)) abrirModalProcesso(pid);
   else { statusProc='ativo'; setStatusProc('ativo'); }
 }
+const ESPECIES={
+  prazo:               {rot:'Prazo',                cor:'#ef4444'},
+  audiencia:           {rot:'Audi\u00eancia',            cor:'#f59e0b'},
+  pericia:             {rot:'Per\u00edcia',              cor:'#a855f7'},
+  reuniao:             {rot:'Reuni\u00e3o',              cor:'#3b82f6'},
+  evento:              {rot:'Evento',               cor:'#64748b'},
+  primeiro_atendimento:{rot:'1\u00ba atendimento',      cor:'#22c55e'}
+};
+function espInfo(e){ return ESPECIES[e] || ESPECIES.evento; }
+function agRotuloDia(iso, dias){
+  if(dias < 0) return null;
+  const DOW=['domingo','segunda','ter\u00e7a','quarta','quinta','sexta','s\u00e1bado'];
+  const p=(iso||'').split('-');
+  if(p.length!==3) return 'Sem data';
+  const d=new Date(+p[0], +p[1]-1, +p[2]);
+  const nome=DOW[d.getDay()]+', '+p[2]+'/'+p[1];
+  if(dias===0) return 'Hoje \u00b7 '+nome;
+  if(dias===1) return 'Amanh\u00e3 \u00b7 '+nome;
+  return nome.charAt(0).toUpperCase()+nome.slice(1);
+}
 function renderAgenda(){
   const area=document.getElementById('alerta-area');
   const itens=[
-    ...ALERTAS.map(a=>({tipo:'alerta',id:a.id,descricao:a.descricao,dias_restantes:a.dias_restantes,processo_id:a.processo_id,processo_nome:a.processo_nome,data_alerta:a.data_alerta,especie:a.especie,hora:a.hora})),
-    ...PROVALERTAS.map(p=>({tipo:'prov',id:p.id,descricao:p.descricao,dias_restantes:p.dias_restantes,processo_id:p.processo_id,processo_nome:p.processo_nome}))
-  ].sort((x,y)=>x.dias_restantes-y.dias_restantes);
-  if(!itens.length){ area.innerHTML='<div class="empty"><div class="em-ic">🔔</div><h3>Nada na agenda</h3><p>Nenhum alerta ou providência pendente. Clique em “Novo alerta” para criar um lembrete ou prazo.</p></div>'; return; }
-  area.innerHTML='<div class="list">'+itens.map(it=>{
-    const cls=it.dias_restantes<=0?'h':(it.dias_restantes<=3?'u':'');
-    const quando = it.tipo==='alerta' ? `${fmtData(it.data_alerta)} · ${quandoTexto(it.dias_restantes)}` : quandoTexto(it.dias_restantes);
-    const desc = it.tipo==='prov' ? `<span class="ab-tag">Providência</span> ${esc(it.descricao)}` : esc(it.descricao);
-    const acts = it.tipo==='alerta'
-      ? ''
-      : `<button class="lnk danger" onclick='concluirProvBarra(${JSON.stringify(it.id)})'>Concluir</button>`;
-    const abre = it.tipo==='alerta'
-      ? ` class="alert-row clicavel" onclick='abrirModalAlerta(${JSON.stringify(it.id)})'`
-      : ' class="alert-row"';
-    return `<div${abre}>
-      <span class="ar-when ${cls}">${quando}</span>
-      <div class="ar-main"><div class="ar-desc">${desc}</div>${it.processo_nome?`<div class="ar-proc" onclick='abrirProcessoDoAlerta(${JSON.stringify(it.processo_id)})'>${esc(it.processo_nome)}</div>`:''}</div>
-      <div class="li-acts">${acts}</div>
-    </div>`;}).join('')+'</div>';
+    ...ALERTAS.map(a=>({tipo:'alerta',id:a.id,titulo:a.descricao,
+      dias:a.dias_restantes,data:a.data_alerta,hora:a.hora,especie:a.especie,
+      processo_id:a.processo_id,processo_nome:a.processo_nome,
+      resp:(a.responsaveis_nomes&&a.responsaveis_nomes.length)?a.responsaveis_nomes.join(', '):(a.responsavel_nome||''),
+      ultima:a.ultima_atualizacao,ultima_em:a.ultima_atualizacao_em})),
+    ...PROVALERTAS.map(p=>({tipo:'prov',id:p.id,titulo:p.descricao,
+      dias:p.dias_restantes,data:p.prazo,hora:p.hora,especie:p.especie,
+      processo_id:p.processo_id,processo_nome:p.processo_nome,resp:'',ultima:null}))
+  ].sort((x,y)=>(x.dias-y.dias) || String(x.hora||'99').localeCompare(String(y.hora||'99')));
+
+  if(!itens.length){
+    area.innerHTML='<div class="empty"><div class="em-ic">\ud83d\udd14</div><h3>Nada na agenda</h3>'
+      +'<p>Nenhuma tarefa ou provid\u00eancia pendente. Clique em \u201cNovo alerta\u201d para criar uma.</p></div>';
+    return;
+  }
+
+  const grupos=[]; const idx={};
+  itens.forEach(it=>{
+    const chave = it.dias<0 ? '__atraso__' : (it.data||'__sem__');
+    if(idx[chave]===undefined){ idx[chave]=grupos.length; grupos.push({chave:chave,itens:[],dias:it.dias,data:it.data}); }
+    grupos[idx[chave]].itens.push(it);
+  });
+
+  area.innerHTML=grupos.map(g=>{
+    const atraso = g.chave==='__atraso__';
+    const rot = atraso ? 'Atrasado' : (agRotuloDia(g.data,g.dias)||'Sem data');
+    const cls = atraso ? 'atraso' : (g.dias===0?'hoje':'');
+    const cab = `<div class="ag-grupo ${cls}"><b>${esc(rot)}</b>`
+      + `<span>${g.itens.length} ${g.itens.length===1?'item':'itens'}</span></div>`;
+    return cab + g.itens.map(it=>{
+      const ei=espInfo(it.especie);
+      const hora = it.hora ? String(it.hora).slice(0,5) : '\u2014';
+      const prov = it.tipo==='prov';
+      const sub=[`<span class="ag-esp"><i></i>${esc(ei.rot)}</span>`];
+      if(prov) sub.push('Provid\u00eancia');
+      if(it.processo_nome) sub.push(esc(it.processo_nome));
+      if(it.resp) sub.push(esc(it.resp));
+      if(atraso) sub.push(`<b style="color:#ef4444">venceu h\u00e1 ${Math.abs(it.dias)} dia(s)</b>`);
+      const ult = it.ultima ? `<div class="ag-ult"><b>${esc(fmtData(it.ultima_em))} \u00b7</b> ${esc(it.ultima)}</div>` : '';
+      const acts = prov
+        ? `<div class="ag-acts"><button class="lnk danger" onclick='event.stopPropagation();concluirProvBarra(${JSON.stringify(it.id)})'>Concluir</button></div>`
+        : '';
+      const clique = prov ? ' class="ag-item semclique"'
+        : ` class="ag-item" onclick='abrirModalAlerta(${JSON.stringify(it.id)})'`;
+      return `<div${clique} style="--esp:${ei.cor}">
+        <div class="ag-hora">${hora}</div>
+        <div class="ag-corpo">
+          <div class="ag-tit">${esc(it.titulo||'(sem t\u00edtulo)')}</div>
+          <div class="ag-sub">${sub.join(' \u00b7 ')}</div>
+          ${ult}
+        </div>
+        ${acts}
+      </div>`;
+    }).join('');
+  }).join('');
 }
 function setAlertaTab(tab){
   alertaTab=tab;
@@ -8967,11 +9047,11 @@ async function carregarLixeira(){
   try{ const {data,error}=await db.rpc('sp_listar_alertas_lixeira',{p_token:TOKEN}); if(error) throw error;
     LIXEIRA=data||[]; renderLixeira();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
-    area.innerHTML='<div class="empty"><div class="em-ic">⚠️</div><h3>Não foi possível carregar a lixeira</h3><p>'+esc(traduzErro(e))+'</p></div>'; }
+    area.innerHTML='<div class="empty"><div class="em-ic">⚠️</div><h3>Não foi possível carregar os finalizados</h3><p>'+esc(traduzErro(e))+'</p></div>'; }
 }
 function renderLixeira(){
   const area=document.getElementById('alerta-area');
-  if(!LIXEIRA.length){ area.innerHTML='<div class="empty"><div class="em-ic">🗑️</div><h3>Lixeira vazia</h3><p>Alertas removidos aparecem aqui por 90 dias e depois somem sozinhos.</p></div>'; return; }
+  if(!LIXEIRA.length){ area.innerHTML='<div class="empty"><div class="em-ic">✅</div><h3>Nada finalizado ainda</h3><p>Tarefas concluídas ou removidas aparecem aqui por 90 dias.</p></div>'; return; }
   area.innerHTML='<div class="list">'+LIXEIRA.map(a=>{
     const d=a.dias_para_sumir;
     const someTxt = d<=0?'some hoje':(d===1?'some amanhã':('some em '+d+' dias'));
@@ -8980,7 +9060,7 @@ function renderLixeira(){
       <div class="ar-main">
         <div class="ar-desc">${esc(a.descricao)}</div>
         ${a.processo_nome?`<div class="ar-meta">⚖️ ${esc(a.processo_nome)}</div>`:''}
-        <div class="ar-meta">🗑️ Removido por ${esc(a.deletado_por_nome||'—')} em ${fmtDataHora(a.deletado_em)}</div>
+        <div class="ar-meta">✓ Encerrado por ${esc(a.deletado_por_nome||'o sistema')} em ${fmtDataHora(a.deletado_em)}</div>
       </div>
       <div class="li-tags"><span class="tagx">${someTxt}</span></div>
     </div>`;}).join('')+'</div>';
@@ -9857,8 +9937,8 @@ function _lixeiraSomeTxt(d){ d=Number(d); return d<=0?'some hoje':(d===1?'some a
 function exportarAlertasExcel(){
   if(alertaTab==='lixeira'){
     const linhas=(LIXEIRA||[]).map(a=>[a.descricao||'',a.data_alerta?fmtData(a.data_alerta):'',a.processo_nome||'',a.deletado_por_nome||'',a.deletado_em?fmtDataHora(a.deletado_em):'',_lixeiraSomeTxt(a.dias_para_sumir)]);
-    baixarExcel('Lixeira de alertas - '+expNomeEscritorio()+' - '+expHoje(),
-      [{nome:'Lixeira',colunas:['Descrição','Data','Processo','Removido por','Removido em','Some em'],linhas:linhas}]);
+    baixarExcel('Alertas finalizados - '+expNomeEscritorio()+' - '+expHoje(),
+      [{nome:'Finalizados',colunas:['Título','Data','Processo','Encerrado por','Encerrado em','Some em'],linhas:linhas}]);
     return;
   }
   const linhasAlertas=(ALERTAS||[]).map(a=>[a.descricao||'',a.data_alerta?fmtData(a.data_alerta):'',quandoTexto(Number(a.dias_restantes)),a.processo_nome||'']);
@@ -9871,8 +9951,8 @@ function exportarAlertasExcel(){
 function exportarAlertasPDF(){
   if(alertaTab==='lixeira'){
     const linhas=(LIXEIRA||[]).map(a=>[a.descricao||'',a.data_alerta?fmtData(a.data_alerta):'—',a.processo_nome||'—',a.deletado_por_nome||'—',a.deletado_em?fmtDataHora(a.deletado_em):'—',_lixeiraSomeTxt(a.dias_para_sumir)]);
-    gerarPDF('Lixeira de alertas - '+expNomeEscritorio()+' - '+expHoje(),'Lixeira de alertas',(LIXEIRA||[]).length+' item(ns) · somem após 90 dias',
-      [{titulo:'Alertas removidos',head:['Descrição','Data','Processo','Removido por','Removido em','Some em'],body:linhas,vazio:'Lixeira vazia.'}]);
+    gerarPDF('Alertas finalizados - '+expNomeEscritorio()+' - '+expHoje(),'Alertas finalizados',(LIXEIRA||[]).length+' item(ns) · somem após 90 dias',
+      [{titulo:'Tarefas encerradas',head:['Título','Data','Processo','Encerrado por','Encerrado em','Some em'],body:linhas,vazio:'Nada finalizado.'}]);
     return;
   }
   const linhasAlertas=(ALERTAS||[]).map(a=>[a.descricao||'',a.data_alerta?fmtData(a.data_alerta):'—',quandoTexto(Number(a.dias_restantes)),a.processo_nome||'—']);
