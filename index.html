@@ -632,12 +632,15 @@
   .dtj-preview-date{color:var(--muted-2);min-width:80px;flex-shrink:0;font-size:.8rem}
   .field-cnj-row{display:flex;gap:8px;align-items:flex-end}
   /* [3A] linha generica de campos lado a lado */
-  .field-row{display:flex;gap:8px;align-items:flex-end}
-  .field-row .field{flex:1;margin:0}
+  .field-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+  .field-row .field{flex:1 1 130px;margin:0;min-width:0}
+  /* [3A.3] responsaveis: seletor com a MESMA altura da caixa */
+  .field-row.resp-row .field{flex:1 1 190px}
+  #ma-resp-sel{height:76px}
   /* [3A.2] responsaveis em etiquetas */
   .resp-cx{background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);
-           border-radius:8px;padding:6px;height:76px;overflow-y:auto;display:flex;
-           flex-wrap:wrap;gap:6px;align-content:flex-start}
+           border-radius:8px;padding:6px;height:76px;overflow-y:auto;overflow-x:hidden;
+           display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
   .resp-cx.vazia{align-items:center;justify-content:center;color:var(--muted-2);font-size:.78rem}
   .resp-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);
              border:1px solid var(--line);border-radius:999px;padding:3px 6px 3px 10px;font-size:.78rem}
@@ -645,14 +648,16 @@
                     font-size:.9rem;line-height:1;padding:0 2px}
   .resp-chip button:hover{color:#ef4444}
   /* [3A.2] historico */
-  .hist-cx{max-height:190px;overflow-y:auto;padding:0 0 0 16px;border-left:2px solid var(--line);
-           margin:6px 0 12px}
+  /* [3A.3] tres entradas, nao quatro. E rola so na vertical. */
+  .hist-cx{max-height:132px;overflow-y:auto;overflow-x:hidden;padding:0 4px 0 16px;
+           border-left:2px solid var(--line);margin:6px 0 12px}
   .hist-li{position:relative;padding:0 0 12px 12px}
   .hist-li::before{content:'';position:absolute;left:-21px;top:5px;width:8px;height:8px;
                    border-radius:50%;background:var(--line)}
   .hist-li:first-child::before{background:var(--cyan,#22d3ee)}
   .hist-qd{font-size:.72rem;color:var(--muted-2)}
-  .hist-tx{font-size:.84rem;white-space:pre-wrap}
+  /* [3A.3] palavra gigante quebra em vez de empurrar a tela pro lado */
+  .hist-tx{font-size:.84rem;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
   .hist-tx.sis{font-style:italic;color:var(--muted-2)}
   .mfoot.split{display:flex;align-items:center;gap:8px}
   .mfoot.split .dir{margin-left:auto;display:flex;gap:8px}
@@ -2177,33 +2182,33 @@
 
 <!-- MODAL ALERTA -->
 <div class="modal" id="modal-alerta">
-  <div class="box" style="max-width:460px">
+  <div class="box" style="max-width:560px">
     <h3 id="ma-title">Novo alerta</h3>
-    <p class="msub">Uma tarefa da agenda do escritório. Para algo de um processo, crie a pendência dentro dele. Campos com <span class="req">*</span> são obrigatórios.</p>
+    <p class="msub">Adicione aqui as tarefas do escritório.</p>
     <div class="modal-msg" id="ma-msg"></div>
     <input type="hidden" id="ma-id">
-    <div class="field"><label>Descrição <span class="req">*</span></label><textarea id="ma-desc" rows="3" placeholder="O que precisa ser feito…"></textarea></div>
-    <div class="field"><label>Tipo</label><select id="ma-especie">
-      <option value="evento">Evento</option>
-      <option value="prazo">Prazo</option>
-      <option value="audiencia">Audiência</option>
-      <option value="pericia">Perícia</option>
-      <option value="reuniao">Reunião</option>
-      <option value="primeiro_atendimento">Primeiro atendimento</option>
-    </select></div>
+    <div class="field"><label>Título <span class="req">*</span></label><input type="text" id="ma-desc" placeholder="Ex.: Despachar com o juiz"></div>
+    <div class="field"><label>Nova descrição</label><textarea id="ma-nota" rows="2" placeholder="Escrever a próxima atualização…"></textarea></div>
     <div class="field-row">
+      <div class="field"><label>Tipo</label><select id="ma-especie">
+        <option value="evento">Evento</option>
+        <option value="prazo">Prazo</option>
+        <option value="audiencia">Audiência</option>
+        <option value="pericia">Perícia</option>
+        <option value="reuniao">Reunião</option>
+        <option value="primeiro_atendimento">Primeiro atendimento</option>
+      </select></div>
       <div class="field"><label>Data <span class="req">*</span></label><input type="date" id="ma-data"></div>
       <div class="field"><label>Hora</label><input type="time" id="ma-hora"></div>
     </div>
-    <div class="field-row">
-      <div class="field"><label>Adicionar responsável</label><select id="ma-resp-sel" onchange="maAddResp(this)"></select></div>
+    <div class="field-row resp-row">
+      <div class="field"><label>Adicionar responsável</label><select id="ma-resp-sel" size="3" onchange="maAddResp(this)"></select></div>
       <div class="field"><label>Responsáveis</label><div class="resp-cx vazia" id="ma-resp-cx"></div></div>
     </div>
     <div id="ma-hist-bloco" style="display:none">
       <label style="font-size:.78rem;color:var(--muted-2)">Histórico — o mais recente em cima</label>
       <div class="hist-cx" id="ma-hist"></div>
     </div>
-    <div class="field"><label id="ma-nota-lab">Nova anotação</label><textarea id="ma-nota" rows="2" placeholder="Escrever a próxima atualização…"></textarea></div>
     <div class="mfoot split">
       <button class="btn btn-ghost btn-sm" id="ma-concluir" onclick="concluirDoModal()" style="display:none;border-color:#22c55e;color:#22c55e">✓ Concluir</button>
       <div class="dir">
@@ -8991,7 +8996,9 @@ function maPintaHist(linhas){
   if(!linhas||!linhas.length){ bloco.style.display='none'; cx.innerHTML=''; return; }
   const ord=linhas.slice().sort((a,b)=>new Date(b.criado_em)-new Date(a.criado_em));
   cx.innerHTML=ord.map(h=>{
-    const quem=h.origem==='sistema'?'sistema':(h.usuario_nome||'—');
+    // [3A.3] quem mandou a mudanca assina. 'sistema' so quando nao ha
+    // ninguem por tras — o caso da varredura automatica.
+    const quem=h.usuario_nome||'sistema';
     return `<div class="hist-li"><div class="hist-qd">${esc(fmtDataHora(h.criado_em))} · ${esc(quem)}</div><div class="hist-tx ${h.origem==='sistema'?'sis':''}">${esc(h.texto||'')}</div></div>`;
   }).join('');
   bloco.style.display='';
@@ -9012,12 +9019,10 @@ async function abrirModalAlerta(id){
     document.getElementById('ma-hora').value=(a.hora||'').slice(0,5);
     const ids=a.responsaveis_ids||[], nomes=a.responsaveis_nomes||[];
     MA_RESP=ids.map((x,i)=>({id:x,nome:nomes[i]||'(sem nome)'}));
-    document.getElementById('ma-nota-lab').textContent='Nova anotação';
     concluir.style.display='';
   }else{ document.getElementById('ma-title').textContent='Novo alerta';
     ['ma-id','ma-desc','ma-data','ma-hora'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('ma-especie').value='evento';
-    document.getElementById('ma-nota-lab').textContent='Primeira anotação (opcional)';
     concluir.style.display='none'; }
   maPintaResp();
   document.getElementById('modal-alerta').classList.add('open');
