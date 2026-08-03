@@ -682,8 +682,9 @@
   .mfoot.split .dir{margin-left:auto;display:flex;gap:8px}
   .alert-row.clicavel{cursor:pointer}
   /* [v1.8.214] a providencia abre o modal; o checkbox nao */
-  .prov-item .pm{cursor:pointer}
-  .prov-item .pm:hover .pd{text-decoration:underline}
+  /* [v1.8.216] a linha inteira abre o modal */
+  .prov-item{cursor:pointer}
+  .prov-item:hover .pd{text-decoration:underline}
   /* [3B.1] lista agrupada por dia */
   .ag-grupo{display:flex;align-items:baseline;gap:8px;margin:16px 0 6px;
             padding-bottom:5px;border-bottom:1px solid var(--line)}
@@ -2732,7 +2733,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.215';
+const APP_VERSAO = 'v1.8.216';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -7776,9 +7777,8 @@ function renderMovs(){
   }).join('')+'</div>' : '<div class="det-empty">Nenhum andamento ainda.</div>';
   const pArea=document.getElementById('det-providencias');
   pArea.innerHTML = prov.length ? '<div class="prov">'+prov.map(m=>`
-    <div class="prov-item ${m.concluida?'done':''}">
-      <input type="checkbox" class="pk" ${m.concluida?'checked':''} ${ro?'disabled':''} onchange='concluirProv(${JSON.stringify(m.id)},this.checked)'>
-      <div class="pm" onclick='abrirModalMov("providencia",${JSON.stringify(m.id)})'><div class="pd">${esc(m.descricao)}</div>${m.data_mov?`<div class="pp">prazo: ${fmtData(m.data_mov)}</div>`:''}${m.concluida?`<div class="pc">✓ concluída por ${esc(m.concluida_por_nome||'—')}${m.concluida_em?(' em '+fmtData(m.concluida_em)):''}</div>`:''}</div>
+    <div class="prov-item ${m.concluida?'done':''}" onclick='abrirModalMov("providencia",${JSON.stringify(m.id)})'>
+      <div class="pm"><div class="pd">${esc(m.descricao)}</div>${m.data_mov?`<div class="pp">prazo: ${fmtData(m.data_mov)}</div>`:''}${m.concluida?`<div class="pc">✓ concluída por ${esc(m.concluida_por_nome||'—')}${m.concluida_em?(' em '+fmtData(m.concluida_em)):''}</div>`:''}</div>
     </div>`).join('')+'</div>' : '<div class="det-empty">Nenhuma providência pendente.</div>';
 }
 
@@ -8950,6 +8950,7 @@ function mmPintaHist(linhas){
    funcionava DENTRO do processo. Agora ele guarda o processo do
    proprio item em MM_PROC e abre de qualquer tela. */
 let MM_PROC = null;
+let MM_REABRIR = false;
 async function abrirModalMov(tipo, id, ctx){
   if(!ctx && procAtual && procAtual.status==='finalizado'){ toast('Processo finalizado. Restaure para editar.','err'); return; }
   const prov = tipo==='providencia';
@@ -8971,7 +8972,14 @@ async function abrirModalMov(tipo, id, ctx){
   // hora em andamento, que vem do tribunal.
   document.getElementById('mm-hora-bloco').style.display = prov?'':'none';
   document.getElementById('mm-nota-bloco').style.display = prov?'':'none';
-  document.getElementById('mm-concluir').style.display = (prov&&id&&!m.concluida)?'':'none';
+  // [v1.8.216] pendente conclui, concluida reabre. Sem a caixinha,
+  // este botao e o unico caminho nos dois sentidos.
+  MM_REABRIR = !!m.concluida;
+  const bc = document.getElementById('mm-concluir');
+  bc.style.display = (prov&&id)?'':'none';
+  bc.textContent = MM_REABRIR ? '↺ Reabrir' : '✓ Concluir';
+  bc.style.borderColor = MM_REABRIR ? '' : '#22c55e';
+  bc.style.color       = MM_REABRIR ? '' : '#22c55e';
   // Providencia: a caixa de cima e sempre TITULO, criando ou editando.
   // E o titulo que aparece na lista, na agenda e no kanban.
   document.getElementById('mm-desclabel').innerHTML = prov
@@ -9005,14 +9013,19 @@ function abrirProvDaAgenda(id){
 }
 async function concluirDoModalMov(){
   const id=document.getElementById('mm-id').value||null; if(!id) return;
-  if(!confirm('Esta providência vai sair das pendentes. É isso mesmo?')) return;
+  const reabrir = MM_REABRIR;
+  const pergunta = reabrir
+    ? 'Esta providência volta para as pendentes. É isso mesmo?'
+    : 'Esta providência vai sair das pendentes. É isso mesmo?';
+  if(!confirm(pergunta)) return;
   const btn=document.getElementById('mm-concluir'); setLoading(btn,true);
-  try{ const {error}=await db.rpc('sp_concluir_providencia',{p_token:TOKEN,p_id:id,p_concluida:true}); if(error) throw error;
-    fecharModal('modal-mov'); toast('Providência concluída.','ok');
+  try{ const {error}=await db.rpc('sp_concluir_providencia',{p_token:TOKEN,p_id:id,p_concluida:!reabrir}); if(error) throw error;
+    fecharModal('modal-mov');
+    toast(reabrir?'Providência reaberta.':'Providência concluída.','ok');
     if(procAtual) carregarMovs(); carregarAlertas();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
     toast(traduzErro(e),'err');
-  }finally{ setLoading(btn,false,'✓ Concluir'); }
+  }finally{ setLoading(btn,false,reabrir?'↺ Reabrir':'✓ Concluir'); }
 }
 async function salvarMov(){
   const desc=document.getElementById('mm-desc').value.trim(); const msg=document.getElementById('mm-msg');
