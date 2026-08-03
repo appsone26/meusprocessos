@@ -640,11 +640,12 @@
      entao desce INTEIRO e Data e Hora seguem juntas. No PC cabe e os
      tres ficam na mesma linha. */
   .tipo-campo{flex:1 1 150px}
-  .dh-bloco{display:flex;gap:8px;flex:2 1 230px;min-width:0}
-  /* [3A.5] a Data fica com o que sobrar; a Hora sao 5 caracteres,
-     nao precisa de metade da linha. */
-  .dh-bloco .field{flex:1 1 auto;min-width:0}
-  .dh-bloco .dh-hora{flex:0 0 100px}
+  .dh-bloco{display:flex;gap:8px;flex:2 1 230px;min-width:0;max-width:100%}
+  /* [3A.6] basis ZERO na Data: ela fica com o que sobrar e nao
+     reivindica largura pelo conteudo. Com basis auto ela pedia o
+     tamanho de "31 de jul. de 2026" e furava a margem. */
+  .dh-bloco .field{flex:1 1 0;min-width:0}
+  .dh-bloco .dh-hora{flex:0 0 88px}
   .dh-bloco input{width:100%;min-width:0}
   /* [3A.2] responsaveis em etiquetas */
   .resp-cx{background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);
