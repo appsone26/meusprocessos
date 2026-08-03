@@ -2733,7 +2733,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.216';
+const APP_VERSAO = 'v1.8.217';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -2805,7 +2805,7 @@ window.addEventListener('popstate', function(e){
 
 /* estado do app */
 let TOKEN = null, SESS = null;
-let CLIENTES = [], PROCESSOS = [], ALERTAS = [], LIXEIRA = [], PROVALERTAS = [], alertaTab = 'agenda', statusProc = 'ativo', alertExpand = false, procAtual = null, relPeriodo = '7', relHorizonte = 7, RELDATA = null, relCat = 'novos', relProvTab = 'pendentes';
+let CLIENTES = [], PROCESSOS = [], ALERTAS = [], LIXEIRA = [], PROVALERTAS = [], alertaTab = 'agenda', statusProc = 'ativo', alertExpand = false, procAtual = null, relPeriodo = '7', relHorizonte = 7, RELDATA = null, relCat = 'novos', relProvTab = 'pendentes', relBloco = 'providencias';
 let TOTAL_ATIVOS = null; // total de processos ativos cadastrados (chip da aba Processos)
 
 /* ============================================================
@@ -9550,7 +9550,11 @@ function renderRelatorio(d){
     {k:'novos',ic:'📥',t:'Processos novos',n:c.novos||0},
     {k:'finalizados',ic:'📤',t:'Finalizados',n:c.finalizados||0},
     {k:'andamentos',ic:'🕓',t:'Andamentos',n:c.andamentos||0},
-    {k:'providencias',ic:'✅',t:'Providências',n:c.providencias||0}
+    // [v1.8.217] soma os DOIS blocos. providencias_puras nao inclui
+    // alerta; a chave antiga 'providencias' incluia e ficou so por
+    // compatibilidade com o front velho.
+    {k:'providencias',ic:'✅',t:'Pendências',
+     n:(c.providencias_puras||0)+(c.alertas||0)}
   ];
   document.getElementById('rel-area').innerHTML =
     '<div class="rel-tiles">'+tiles.map(t=>`<button class="rel-tile ${t.k===relCat?'active':''}" onclick="setRelCat('${t.k}')"><span class="rt-ic">${t.ic}</span><span class="rt-n">${t.n}</span><span class="rt-t">${t.t}</span></button>`).join('')+'</div>'
@@ -9568,14 +9572,31 @@ function renderRelDetail(){
     titulo='Andamentos'; sub='o que andou no período';
     linhas=(d.andamentos||[]).map(relRowAnd); vazio='Nenhum andamento no período.';
   } else if(relCat==='providencias'){
-    titulo='Providências';
-    seg=`<div class="seg rel-seg-prov"><button class="${relProvTab==='pendentes'?'active':''}" onclick="setRelProvTab('pendentes')">Pendentes (${c.providencias||0})</button><button class="${relProvTab==='executadas'?'active':''}" onclick="setRelProvTab('executadas')">Executadas (${c.providencias_feitas||0})</button></div>`;
+    const alerta = (relBloco==='alertas');
+    titulo = alerta ? 'Alertas e tarefas' : 'Providências';
+    const nPend = alerta ? (c.alertas||0)          : (c.providencias_puras||0);
+    const nFeit = alerta ? (c.alertas_feitas||0)   : (c.providencias_feitas||0);
+    seg = '<div class="seg rel-seg-prov">'
+        + `<button class="${!alerta?'active':''}" onclick="setRelBloco('providencias')">Providências</button>`
+        + `<button class="${alerta?'active':''}" onclick="setRelBloco('alertas')">Alertas e tarefas</button>`
+        + '</div>'
+        + '<div class="seg rel-seg-prov">'
+        + `<button class="${relProvTab==='pendentes'?'active':''}" onclick="setRelProvTab('pendentes')">Pendentes (${nPend})</button>`
+        + `<button class="${relProvTab==='executadas'?'active':''}" onclick="setRelProvTab('executadas')">Executadas (${nFeit})</button>`
+        + '</div>';
     if(relProvTab==='executadas'){
       sub='cadastradas no período · concluídas';
-      linhas=(d.providencias_feitas||[]).map(relRowProvFeita); vazio='Nenhuma providência cadastrada e concluída no período.';
+      linhas=((alerta?d.alertas_feitas:d.providencias_feitas)||[]).map(relRowProvFeita);
+      vazio= alerta ? 'Nenhuma tarefa cadastrada e concluída no período.'
+                    : 'Nenhuma providência cadastrada e concluída no período.';
     } else {
       sub='cadastradas no período · ainda pendentes';
-      linhas=(d.providencias||[]).map(relRowProv); vazio='Nenhuma providência pendente cadastrada no período.';
+      // A chave 'providencias' e a LEGADA: ela ainda tem alerta dentro.
+      // Por isso o filtro por origem — sem ele o bloco continuaria misto.
+      const soProv=(d.providencias||[]).filter(x=>x.origem!=='alerta');
+      linhas=(alerta?(d.alertas||[]):soProv).map(relRowProv);
+      vazio= alerta ? 'Nenhuma tarefa pendente cadastrada no período.'
+                    : 'Nenhuma providência pendente cadastrada no período.';
     }
   } else {
     titulo='Processos novos'; sub='o que entrou no período';
@@ -9587,6 +9608,7 @@ function renderRelDetail(){
     + ((linhas&&linhas.length)?'<div class="rel-list">'+linhas.join('')+'</div>':`<div class="rel-empty">${vazio}</div>`);
 }
 function setRelProvTab(t){ relProvTab=t; renderRelDetail(); }
+function setRelBloco(b){ relBloco=b; renderRelDetail(); }
 function relRowProvFeita(x){
   return `<div class="rel-row"><div class="rr-t">${esc(x.descricao||'')} <span class="rel-tag ok">✓ feita</span></div><div class="rr-s">${['concluída em '+fmtData(x.concluida_em), x.concluida_por?('por '+x.concluida_por):'', x.processo_nome, x.numero].filter(Boolean).map(esc).join(' · ')}</div></div>`;
 }
