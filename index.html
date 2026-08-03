@@ -2312,7 +2312,7 @@
     </div>
     <div class="field-row resp-row">
       <div class="field"><label>Adicionar responsável</label><select id="ma-resp-sel" onchange="maAddResp(this)"></select></div>
-      <div class="field"><label>Responsáveis</label><div class="resp-cx vazia" id="ma-resp-cx"></div></div>
+      <div class="field"><label>Responsáveis <span class="req">*</span></label><div class="resp-cx vazia" id="ma-resp-cx"></div></div>
     </div>
     <div id="ma-hist-bloco" style="display:none">
       <label style="font-size:.78rem;color:var(--muted-2)">Histórico — o mais recente em cima</label>
@@ -2718,7 +2718,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.212';
+const APP_VERSAO = 'v1.8.213';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3509,6 +3509,29 @@ function ptrRecolhe(){ ptrSet(0,'anim'); PTR_D=0;
     if(el && el.style.height==='0px') el.innerHTML=''; },200); }
 
 /* Roda os quatro. Chamado pelo gesto E pelo clique no logo. */
+/* [v1.8.213] O gesto de puxar rebuscava so os DADOS. A PAGINA seguia
+   sendo a antiga, servida do cache do navegador, e versao nova so
+   entrava saindo e voltando. Agora conferimos a versao publicada.
+   A conferencia baixa o index.html inteiro, entao ela e limitada a
+   uma vez a cada 10 minutos para nao torrar dado do celular. */
+let VERSAO_CHECADA_EM = 0;
+async function versaoMudou(){
+  const agora = Date.now();
+  if(agora - VERSAO_CHECADA_EM < 600000) return false;
+  VERSAO_CHECADA_EM = agora;
+  try{
+    const r = await fetch(location.pathname + '?cb=' + agora, {cache:'no-store'});
+    if(!r.ok) return false;
+    const t = await r.text();
+    const m = t.match(/const APP_VERSAO = '([^']+)'/);
+    return !!(m && m[1] && m[1] !== APP_VERSAO);
+  }catch(e){ return false; }
+}
+function recarregarDeVerdade(){
+  /* location.reload() pode ser servido do cache. Um parametro novo na
+     URL obriga o navegador a buscar o arquivo de novo. */
+  location.replace(location.pathname + '?v=' + Date.now() + location.hash);
+}
 async function atualizarTudo(){
   if(!TOKEN || PTR_OCUPADO) return;
   PTR_OCUPADO=true;
@@ -3519,6 +3542,11 @@ async function atualizarTudo(){
   }
   ptrSet(52,'anim','<span class="ptr-sp"></span> Atualizando\u2026');
   try{
+    if(await versaoMudou()){
+      ptrSet(52,'anim pronto','\u2713 Vers\u00e3o nova. Recarregando\u2026');
+      setTimeout(recarregarDeVerdade, 1000);
+      return;
+    }
     await Promise.all([carregarClientes(),carregarProcessos(),
                        carregarAlertas(),carregarCicloVida()]);
     ptrSet(52,'anim pronto','\u2713 Atualizado');
@@ -9349,6 +9377,7 @@ async function salvarAlerta(){
   if(!desc) return erro('Informe a descrição do alerta.');
   if(!data) return erro('Informe a data.');
   const id=document.getElementById('ma-id').value||null;
+  if(!MA_RESP.length) return erro('Escolha pelo menos um responsável. Tarefa sem dono some do filtro por responsável.');
   const especie=document.getElementById('ma-especie').value||'evento';
   const hora=document.getElementById('ma-hora').value||null;
   const btn=document.getElementById('ma-save'); setLoading(btn,true);
