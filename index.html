@@ -2732,7 +2732,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.214';
+const APP_VERSAO = 'v1.8.215';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -8946,14 +8946,23 @@ function mmPintaHist(linhas){
   }).join('');
   bloco.style.display='';
 }
-async function abrirModalMov(tipo, id){
-  if(procAtual && procAtual.status==='finalizado'){ toast('Processo finalizado. Restaure para editar.','err'); return; }
+/* [v1.8.215] O modal guardava o processo em procAtual, entao so
+   funcionava DENTRO do processo. Agora ele guarda o processo do
+   proprio item em MM_PROC e abre de qualquer tela. */
+let MM_PROC = null;
+async function abrirModalMov(tipo, id, ctx){
+  if(!ctx && procAtual && procAtual.status==='finalizado'){ toast('Processo finalizado. Restaure para editar.','err'); return; }
   const prov = tipo==='providencia';
-  const m = id ? (MOVS.find(x=>x.id===id)||{}) : {};
+  const m = ctx || (id ? (MOVS.find(x=>x.id===id)||{}) : {});
+  MM_PROC = m.processo_id || (procAtual && procAtual.id) || null;
+  if(!MM_PROC){ toast('Não encontrei o processo desta providência.','err'); return; }
   document.getElementById('mm-tipo').value=tipo;
   document.getElementById('mm-id').value=id||'';
   document.getElementById('mm-msg').className='modal-msg';
   document.getElementById('mm-desc').value = m.descricao||'';
+  document.getElementById('mm-desc').rows = prov?1:3;
+  document.getElementById('mm-desc').placeholder = prov
+    ? 'Ex.: Protocolar contestação' : 'Descreva…';
   document.getElementById('mm-data').value = m.data_mov || new Date().toISOString().slice(0,10);
   document.getElementById('mm-hora').value = (m.hora||'').slice(0,5);
   document.getElementById('mm-nota').value='';
@@ -8961,9 +8970,11 @@ async function abrirModalMov(tipo, id){
   // hora e nova descricao sao coisa de providencia. O banco proibe
   // hora em andamento, que vem do tribunal.
   document.getElementById('mm-hora-bloco').style.display = prov?'':'none';
-  document.getElementById('mm-nota-bloco').style.display = (prov&&id)?'':'none';
+  document.getElementById('mm-nota-bloco').style.display = prov?'':'none';
   document.getElementById('mm-concluir').style.display = (prov&&id&&!m.concluida)?'':'none';
-  document.getElementById('mm-desclabel').innerHTML = (prov&&id)
+  // Providencia: a caixa de cima e sempre TITULO, criando ou editando.
+  // E o titulo que aparece na lista, na agenda e no kanban.
+  document.getElementById('mm-desclabel').innerHTML = prov
     ? 'Título <span class="req">*</span>' : 'Descrição <span class="req">*</span>';
   if(prov){
     document.getElementById('mm-title').textContent = id?'Providência':'Nova providência';
@@ -8981,13 +8992,24 @@ async function abrirModalMov(tipo, id){
     }catch(e){}
   }
 }
+/* [v1.8.215] Na agenda nao existe procAtual nem MOVS: os dados da
+   providencia vem de PROVALERTAS. Esta funcao monta o contexto e
+   entrega pronto para o modal. */
+function abrirProvDaAgenda(id){
+  const p=(PROVALERTAS||[]).find(x=>x.id===id);
+  if(!p){ toast('Providência não encontrada. Atualize a tela.','err'); return; }
+  abrirModalMov('providencia', id, {
+    descricao:p.descricao, data_mov:p.prazo, hora:p.hora,
+    processo_id:p.processo_id, concluida:false
+  });
+}
 async function concluirDoModalMov(){
   const id=document.getElementById('mm-id').value||null; if(!id) return;
   if(!confirm('Esta providência vai sair das pendentes. É isso mesmo?')) return;
   const btn=document.getElementById('mm-concluir'); setLoading(btn,true);
   try{ const {error}=await db.rpc('sp_concluir_providencia',{p_token:TOKEN,p_id:id,p_concluida:true}); if(error) throw error;
     fecharModal('modal-mov'); toast('Providência concluída.','ok');
-    carregarMovs(); carregarAlertas();
+    if(procAtual) carregarMovs(); carregarAlertas();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
     toast(traduzErro(e),'err');
   }finally{ setLoading(btn,false,'✓ Concluir'); }
@@ -9004,8 +9026,8 @@ async function salvarMov(){
   // Especie fixa: providencia e sempre prazo. Nao ha o que escolher.
   const especie=prov?'prazo':null;
   const btn=document.getElementById('mm-save'); setLoading(btn,true);
-  try{ const {error}=await db.rpc('sp_salvar_movimentacao',{p_token:TOKEN,p_processo_id:procAtual.id,p_descricao:desc,p_data_mov:data,p_tipo:tipo,p_id:id,p_especie:especie,p_hora:hora,p_texto:nota}); if(error) throw error;
-    fecharModal('modal-mov'); toast(prov?(id?'Providência atualizada.':'Providência adicionada.'):'Andamento registrado.','ok'); carregarMovs(); if(prov) carregarAlertas();
+  try{ const {error}=await db.rpc('sp_salvar_movimentacao',{p_token:TOKEN,p_processo_id:(MM_PROC||(procAtual&&procAtual.id)),p_descricao:desc,p_data_mov:data,p_tipo:tipo,p_id:id,p_especie:especie,p_hora:hora,p_texto:nota}); if(error) throw error;
+    fecharModal('modal-mov'); toast(prov?(id?'Providência atualizada.':'Providência adicionada.'):'Andamento registrado.','ok'); if(procAtual) carregarMovs(); if(prov) carregarAlertas();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); msg.textContent=traduzErro(e); msg.className='modal-msg err'; }
   finally{ setLoading(btn,false,'Salvar'); }
 }
@@ -9192,12 +9214,10 @@ function renderAgenda(){
       if(it.resp) sub.push(esc(it.resp));
       if(atraso) sub.push(`<b style="color:#ef4444">venceu h\u00e1 ${Math.abs(it.dias)} dia(s)</b>`);
       const ult = it.ultima ? `<div class="ag-ult"><b>${esc(fmtData(it.ultima_em))} \u00b7</b> ${esc(it.ultima)}</div>` : '';
-      const acts = prov
-        ? `<div class="ag-acts"><button class="lnk danger" onclick='event.stopPropagation();concluirProvBarra(${JSON.stringify(it.id)})'>Concluir</button></div>`
-        : '';
-      // [v1.8.214] a providencia agora abre dentro do processo dela
+      const acts = '';   // [v1.8.215] Concluir mora dentro do modal
+      // [v1.8.215] providencia abre o MODAL dela, de qualquer tela
       const clique = prov
-        ? ` class="ag-item" onclick='abrirProcessoDoAlerta(${JSON.stringify(it.processo_id)})'`
+        ? ` class="ag-item" onclick='abrirProvDaAgenda(${JSON.stringify(it.id)})'`
         : ` class="ag-item" onclick='abrirModalAlerta(${JSON.stringify(it.id)})'`;
       return `<div${clique} style="--esp:${ei.cor}">
         <div class="ag-hora">${hora}</div>
@@ -9233,7 +9253,8 @@ function renderAgKanban(itens, area){
             if(prov) sub.push('Provid\u00eancia');
             if(it.processo_nome) sub.push(esc(it.processo_nome));
             if(it.resp) sub.push(esc(it.resp));
-            const clique = prov ? ' class="kb-card semclique"'
+            const clique = prov
+              ? ` class="kb-card" onclick='abrirProvDaAgenda(${JSON.stringify(it.id)})'`
               : ` class="kb-card" onclick='abrirModalAlerta(${JSON.stringify(it.id)})'`;
             return `<div${clique} style="--esp:${ei.cor}">
               <div class="kb-hora">${esc(hora)}</div>
@@ -9287,7 +9308,9 @@ function renderAgMes(itens, area){
       + mostra.map(it=>{
           const ei=espInfo(it.especie);
           const hora = it.hora ? String(it.hora).slice(0,5) : '\u2014';
-          const cl = it.tipo==='prov' ? '' : ` onclick='abrirModalAlerta(${JSON.stringify(it.id)})'`;
+          const cl = it.tipo==='prov'
+            ? ` onclick='abrirProvDaAgenda(${JSON.stringify(it.id)})'`
+            : ` onclick='abrirModalAlerta(${JSON.stringify(it.id)})'`;
           return `<div class="ms-ev" style="--esp:${ei.cor}"${cl} title="${esc(it.titulo||'')}">`
             + `<b>${esc(hora)}</b><span>${esc(it.titulo||'')}</span></div>`;
         }).join('')
@@ -9320,7 +9343,8 @@ function abrirDia(iso){
     if(prov) sub.push('Provid\u00eancia');
     if(it.processo_nome) sub.push(esc(it.processo_nome));
     if(it.resp) sub.push(esc(it.resp));
-    const clique = prov ? ' class="ag-item semclique"'
+    const clique = prov
+      ? ` class="ag-item" onclick='fecharModal("modal-dia");abrirProvDaAgenda(${JSON.stringify(it.id)})'`
       : ` class="ag-item" onclick='fecharModal("modal-dia");abrirModalAlerta(${JSON.stringify(it.id)})'`;
     return `<div${clique} style="--esp:${ei.cor}">
       <div class="ag-hora">${esc(hora)}</div>
