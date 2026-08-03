@@ -54,6 +54,10 @@
   html.tema-claro .doc-row{background:#ffffff;border-color:var(--line)}
   html.tema-claro .doc-name{color:var(--text)}
   html.tema-claro .alert-row{background:#ffffff;border-color:var(--line)}
+  /* [3B.1b] a linha da agenda segue o mesmo branco das outras listas */
+  html.tema-claro .ag-item{background:#ffffff;border-color:var(--line)}
+  html.tema-claro .ag-item:hover{background:rgba(79,70,229,.05);border-color:rgba(79,70,229,.4)}
+  html.tema-claro .ag-grupo{border-bottom-color:var(--line)}
   html.tema-claro .ar-desc{color:var(--text)}
   html.tema-claro .fin-parc{background:rgba(0,0,0,.02);border-color:var(--line)}
   html.tema-claro .fp-v{color:var(--text)}
@@ -683,7 +687,7 @@
   .ag-item{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;
            border:1px solid var(--line);border-left:4px solid var(--esp,#64748b);
            border-radius:9px;margin-bottom:6px;cursor:pointer;
-           background:rgba(255,255,255,.02)}
+           background:var(--panel-2,rgba(255,255,255,.04))}
   .ag-item:hover{background:rgba(255,255,255,.05)}
   .ag-item.semclique{cursor:default}
   .ag-hora{flex:0 0 46px;font-size:.8rem;color:var(--muted-2);
