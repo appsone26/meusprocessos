@@ -681,6 +681,9 @@
   .mfoot.split{display:flex;align-items:center;gap:8px}
   .mfoot.split .dir{margin-left:auto;display:flex;gap:8px}
   .alert-row.clicavel{cursor:pointer}
+  /* [v1.8.214] a providencia abre o modal; o checkbox nao */
+  .prov-item .pm{cursor:pointer}
+  .prov-item .pm:hover .pd{text-decoration:underline}
   /* [3B.1] lista agrupada por dia */
   .ag-grupo{display:flex;align-items:baseline;gap:8px;margin:16px 0 6px;
             padding-bottom:5px;border-bottom:1px solid var(--line)}
@@ -2267,11 +2270,22 @@
     <p class="msub" id="mm-sub">Registre o que aconteceu no processo.</p>
     <div class="modal-msg" id="mm-msg"></div>
     <input type="hidden" id="mm-id"><input type="hidden" id="mm-tipo">
-    <div class="field"><label>Descrição <span class="req">*</span></label><textarea id="mm-desc" rows="3" placeholder="Descreva…"></textarea></div>
-    <div class="field"><label id="mm-datalabel">Data</label><input type="date" id="mm-data"></div>
-    <div class="mfoot">
-      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-mov')">Cancelar</button>
-      <button class="btn btn-primary btn-sm" id="mm-save" onclick="salvarMov()">Salvar</button>
+    <div class="field"><label id="mm-desclabel">Descrição <span class="req">*</span></label><textarea id="mm-desc" rows="3" placeholder="Descreva…"></textarea></div>
+    <div class="field" id="mm-nota-bloco" style="display:none"><label>Nova descrição</label><textarea id="mm-nota" rows="2" placeholder="Escrever a próxima atualização…"></textarea></div>
+    <div class="field-row">
+      <div class="field"><label id="mm-datalabel">Data</label><input type="date" id="mm-data"></div>
+      <div class="field dh-hora" id="mm-hora-bloco" style="display:none"><label>Hora</label><input type="time" id="mm-hora"></div>
+    </div>
+    <div id="mm-hist-bloco" style="display:none">
+      <label style="font-size:.78rem;color:var(--muted-2)">Histórico — o mais recente em cima</label>
+      <div class="hist-cx" id="mm-hist"></div>
+    </div>
+    <div class="mfoot split">
+      <button class="btn btn-ghost btn-sm" id="mm-concluir" onclick="concluirDoModalMov()" style="display:none;border-color:#22c55e;color:#22c55e">✓ Concluir</button>
+      <div class="dir">
+        <button class="btn btn-ghost btn-sm" onclick="fecharModal('modal-mov')">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="mm-save" onclick="salvarMov()">Salvar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2718,7 +2732,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.213';
+const APP_VERSAO = 'v1.8.214';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -7764,7 +7778,7 @@ function renderMovs(){
   pArea.innerHTML = prov.length ? '<div class="prov">'+prov.map(m=>`
     <div class="prov-item ${m.concluida?'done':''}">
       <input type="checkbox" class="pk" ${m.concluida?'checked':''} ${ro?'disabled':''} onchange='concluirProv(${JSON.stringify(m.id)},this.checked)'>
-      <div class="pm"><div class="pd">${esc(m.descricao)}</div>${m.data_mov?`<div class="pp">prazo: ${fmtData(m.data_mov)}</div>`:''}${m.concluida?`<div class="pc">✓ concluída por ${esc(m.concluida_por_nome||'—')}${m.concluida_em?(' em '+fmtData(m.concluida_em)):''}</div>`:''}</div>
+      <div class="pm" onclick='abrirModalMov("providencia",${JSON.stringify(m.id)})'><div class="pd">${esc(m.descricao)}</div>${m.data_mov?`<div class="pp">prazo: ${fmtData(m.data_mov)}</div>`:''}${m.concluida?`<div class="pc">✓ concluída por ${esc(m.concluida_por_nome||'—')}${m.concluida_em?(' em '+fmtData(m.concluida_em)):''}</div>`:''}</div>
     </div>`).join('')+'</div>' : '<div class="det-empty">Nenhuma providência pendente.</div>';
 }
 
@@ -8922,28 +8936,76 @@ function escolherSugestaoDoc(i){
 }
 function esconderSugestoesDoc(){ const box=document.getElementById('sug-doc'); if(box) setTimeout(()=>box.classList.add('hidden'),120); }
 
-function abrirModalMov(tipo){
+function mmPintaHist(linhas){
+  const bloco=document.getElementById('mm-hist-bloco'), cx=document.getElementById('mm-hist');
+  if(!linhas||!linhas.length){ bloco.style.display='none'; cx.innerHTML=''; return; }
+  const ord=linhas.slice().sort((a,b)=>new Date(b.criado_em)-new Date(a.criado_em));
+  cx.innerHTML=ord.map(h=>{
+    const quem=h.usuario_nome||'sistema';
+    return `<div class="hist-li"><div class="hist-qd">${esc(fmtDataHora(h.criado_em))} · ${esc(quem)}</div><div class="hist-tx ${h.origem==='sistema'?'sis':''}">${esc(h.texto||'')}</div></div>`;
+  }).join('');
+  bloco.style.display='';
+}
+async function abrirModalMov(tipo, id){
   if(procAtual && procAtual.status==='finalizado'){ toast('Processo finalizado. Restaure para editar.','err'); return; }
-  document.getElementById('mm-tipo').value=tipo; document.getElementById('mm-id').value='';
-  document.getElementById('mm-desc').value=''; document.getElementById('mm-data').value=new Date().toISOString().slice(0,10);
+  const prov = tipo==='providencia';
+  const m = id ? (MOVS.find(x=>x.id===id)||{}) : {};
+  document.getElementById('mm-tipo').value=tipo;
+  document.getElementById('mm-id').value=id||'';
   document.getElementById('mm-msg').className='modal-msg';
-  if(tipo==='providencia'){ document.getElementById('mm-title').textContent='Nova providência';
+  document.getElementById('mm-desc').value = m.descricao||'';
+  document.getElementById('mm-data').value = m.data_mov || new Date().toISOString().slice(0,10);
+  document.getElementById('mm-hora').value = (m.hora||'').slice(0,5);
+  document.getElementById('mm-nota').value='';
+  mmPintaHist(null);
+  // hora e nova descricao sao coisa de providencia. O banco proibe
+  // hora em andamento, que vem do tribunal.
+  document.getElementById('mm-hora-bloco').style.display = prov?'':'none';
+  document.getElementById('mm-nota-bloco').style.display = (prov&&id)?'':'none';
+  document.getElementById('mm-concluir').style.display = (prov&&id&&!m.concluida)?'':'none';
+  document.getElementById('mm-desclabel').innerHTML = (prov&&id)
+    ? 'Título <span class="req">*</span>' : 'Descrição <span class="req">*</span>';
+  if(prov){
+    document.getElementById('mm-title').textContent = id?'Providência':'Nova providência';
     document.getElementById('mm-sub').textContent='O que precisa ser feito (próximo passo).';
     document.getElementById('mm-datalabel').textContent='Prazo';
-  }else{ document.getElementById('mm-title').textContent='Novo andamento';
+  }else{
+    document.getElementById('mm-title').textContent='Novo andamento';
     document.getElementById('mm-sub').textContent='Registre o que aconteceu no processo.';
     document.getElementById('mm-datalabel').textContent='Data';
   }
   document.getElementById('modal-mov').classList.add('open');
+  if(id){
+    try{ const r=await db.rpc('sp_listar_historico',{p_token:TOKEN,p_movimentacao_id:id});
+      if(!r.error) mmPintaHist(r.data||[]);
+    }catch(e){}
+  }
+}
+async function concluirDoModalMov(){
+  const id=document.getElementById('mm-id').value||null; if(!id) return;
+  if(!confirm('Esta providência vai sair das pendentes. É isso mesmo?')) return;
+  const btn=document.getElementById('mm-concluir'); setLoading(btn,true);
+  try{ const {error}=await db.rpc('sp_concluir_providencia',{p_token:TOKEN,p_id:id,p_concluida:true}); if(error) throw error;
+    fecharModal('modal-mov'); toast('Providência concluída.','ok');
+    carregarMovs(); carregarAlertas();
+  }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
+    toast(traduzErro(e),'err');
+  }finally{ setLoading(btn,false,'✓ Concluir'); }
 }
 async function salvarMov(){
   const desc=document.getElementById('mm-desc').value.trim(); const msg=document.getElementById('mm-msg');
   if(!desc){ msg.textContent='Informe a descrição.'; msg.className='modal-msg err'; return; }
   const tipo=document.getElementById('mm-tipo').value;
   const data=document.getElementById('mm-data').value||new Date().toISOString().slice(0,10);
+  const id=document.getElementById('mm-id').value||null;
+  const prov=(tipo==='providencia');
+  const hora=prov?(document.getElementById('mm-hora').value||null):null;
+  const nota=prov?(document.getElementById('mm-nota').value.trim()||null):null;
+  // Especie fixa: providencia e sempre prazo. Nao ha o que escolher.
+  const especie=prov?'prazo':null;
   const btn=document.getElementById('mm-save'); setLoading(btn,true);
-  try{ const {error}=await db.rpc('sp_salvar_movimentacao',{p_token:TOKEN,p_processo_id:procAtual.id,p_descricao:desc,p_data_mov:data,p_tipo:tipo,p_id:null}); if(error) throw error;
-    fecharModal('modal-mov'); toast(tipo==='providencia'?'Providência adicionada.':'Andamento registrado.','ok'); carregarMovs();
+  try{ const {error}=await db.rpc('sp_salvar_movimentacao',{p_token:TOKEN,p_processo_id:procAtual.id,p_descricao:desc,p_data_mov:data,p_tipo:tipo,p_id:id,p_especie:especie,p_hora:hora,p_texto:nota}); if(error) throw error;
+    fecharModal('modal-mov'); toast(prov?(id?'Providência atualizada.':'Providência adicionada.'):'Andamento registrado.','ok'); carregarMovs(); if(prov) carregarAlertas();
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou(); msg.textContent=traduzErro(e); msg.className='modal-msg err'; }
   finally{ setLoading(btn,false,'Salvar'); }
 }
@@ -9133,7 +9195,9 @@ function renderAgenda(){
       const acts = prov
         ? `<div class="ag-acts"><button class="lnk danger" onclick='event.stopPropagation();concluirProvBarra(${JSON.stringify(it.id)})'>Concluir</button></div>`
         : '';
-      const clique = prov ? ' class="ag-item semclique"'
+      // [v1.8.214] a providencia agora abre dentro do processo dela
+      const clique = prov
+        ? ` class="ag-item" onclick='abrirProcessoDoAlerta(${JSON.stringify(it.processo_id)})'`
         : ` class="ag-item" onclick='abrirModalAlerta(${JSON.stringify(it.id)})'`;
       return `<div${clique} style="--esp:${ei.cor}">
         <div class="ag-hora">${hora}</div>
