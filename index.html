@@ -2733,7 +2733,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.218';
+const APP_VERSAO = 'v1.8.219';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -10221,26 +10221,49 @@ function _relSituacaoProv(x){
   if(dd===0) return 'vence hoje';
   return 'em '+dd+' dia(s)';
 }
+/* [v1.8.219] Na cabeca do advogado, providencia e alerta sao a mesma
+   coisa: tarefa a fazer. A exportacao junta as duas numa lista so.
+   Cuidado: d.providencias e a chave LEGADA e ainda tem alerta dentro —
+   so o campo origem separa. */
+function _relTarefasPendentes(d){
+  const prov=(d.providencias||[]).filter(x=>x.origem!=='alerta').map(x=>({
+    titulo:x.descricao||'', prazo:x.prazo, dias:x.dias_para_prazo,
+    resp:'', proc:(x.processo_nome||'')+(x.numero?(' \u00b7 '+x.numero):'')
+  }));
+  const ale=(d.alertas||[]).map(x=>({
+    titulo:x.descricao||'', prazo:x.prazo, dias:x.dias_para_prazo,
+    resp:x.responsavel||'', proc:(x.processo_nome||'')+(x.numero?(' \u00b7 '+x.numero):'')
+  }));
+  return prov.concat(ale).sort((a,b)=>String(a.prazo||'').localeCompare(String(b.prazo||'')));
+}
+function _relTarefasFinalizadas(d){
+  const prov=(d.providencias_feitas||[]).map(x=>({
+    titulo:x.descricao||'', quando:x.concluida_em, por:x.concluida_por||'',
+    proc:(x.processo_nome||'')+(x.numero?(' \u00b7 '+x.numero):'')
+  }));
+  const ale=(d.alertas_feitas||[]).map(x=>({
+    titulo:x.descricao||'', quando:x.concluida_em, por:x.concluida_por||'',
+    proc:(x.processo_nome||'')+(x.numero?(' \u00b7 '+x.numero):'')
+  }));
+  return prov.concat(ale).sort((a,b)=>String(b.quando||'').localeCompare(String(a.quando||'')));
+}
 function exportarRelatoriosExcel(){
   const d=RELDATA||{};
   const novos=(d.novos||[]).map(x=>[x.nome_parte||'',x.numero||'',x.cliente_nome||'',x.tipo==='extrajudicial'?'Caso':'Processo',fmtData(x.criado_em)]);
   const fin=(d.finalizados||[]).map(x=>[x.nome_parte||'',x.numero||'',x.cliente_nome||'',x.motivo||'',fmtData(x.data_finalizacao)]);
-  const and=(d.andamentos||[]).map(x=>[fmtData(x.data_mov),x.descricao||'',x.processo_nome||'',x.numero||'']);
-  // [v1.8.218] a chave 'providencias' e a LEGADA e ainda tem alerta
-  // dentro. So o campo origem separa os dois.
-  const soProv=(d.providencias||[]).filter(x=>x.origem!=='alerta');
-  const prov=soProv.map(x=>[x.descricao||'',fmtData(x.prazo),_relSituacaoProv(x),x.processo_nome||'',x.numero||'']);
-  const provF=(d.providencias_feitas||[]).map(x=>[x.descricao||'',fmtData(x.concluida_em),x.concluida_por||'',x.processo_nome||'',x.numero||'']);
-  const ale=(d.alertas||[]).map(x=>[x.descricao||'',fmtData(x.prazo),_relSituacaoProv(x),x.responsavel||'',x.processo_nome||'']);
-  const aleF=(d.alertas_feitas||[]).map(x=>[x.descricao||'',fmtData(x.concluida_em),x.concluida_por||'',x.responsavel||'',x.processo_nome||'']);
+  /* [v1.8.219] Andamento NAO vai para a exportacao: e servico de
+     monitoramento e por mes daria vinte paginas. Quem quiser ve
+     dentro do processo. Na tela do relatorio ele continua. */
+  const tPend=_relTarefasPendentes(d).map(x=>[
+    x.titulo, fmtData(x.prazo), _relSituacaoProv({dias_para_prazo:x.dias}),
+    x.resp||'—', x.proc||'Agenda livre']);
+  const tFeit=_relTarefasFinalizadas(d).map(x=>[
+    x.titulo, fmtData(x.quando), x.por||'—', x.proc||'Agenda livre']);
   const abas=[
     {nome:'Processos novos',colunas:['Parte','Nº','Cliente','Tipo','Criado em'],linhas:novos},
-    {nome:'Finalizados',colunas:['Parte','Nº','Cliente','Motivo','Finalizado em'],linhas:fin},
-    {nome:'Andamentos',colunas:['Data','Descrição','Processo','Nº'],linhas:and},
-    {nome:'Providências pendentes',colunas:['Descrição','Prazo','Situação','Processo','Nº'],linhas:prov},
-    {nome:'Providências executadas',colunas:['Descrição','Concluída em','Por','Processo','Nº'],linhas:provF},
-    {nome:'Alertas pendentes',colunas:['Título','Prazo','Situação','Responsável','Processo'],linhas:ale},
-    {nome:'Alertas executados',colunas:['Título','Concluída em','Por','Responsável','Processo'],linhas:aleF}
+    {nome:'Processos finalizados',colunas:['Parte','Nº','Cliente','Motivo','Finalizado em'],linhas:fin},
+    {nome:'Tarefas pendentes',colunas:['Tarefa','Prazo','Situação','Responsável','Processo'],linhas:tPend},
+    {nome:'Tarefas finalizadas',colunas:['Tarefa','Finalizada em','Finalizada por','Processo'],linhas:tFeit}
   ];
   baixarExcel('Relatorio - '+expNomeEscritorio()+' - '+expHoje(), abas);
 }
@@ -10248,21 +10271,17 @@ function exportarRelatoriosPDF(){
   const d=RELDATA||{};
   const novos=(d.novos||[]).map(x=>[x.nome_parte||'',x.numero||'—',x.cliente_nome||'—',x.tipo==='extrajudicial'?'Caso':'Processo',fmtData(x.criado_em)]);
   const fin=(d.finalizados||[]).map(x=>[x.nome_parte||'',x.numero||'—',x.cliente_nome||'—',x.motivo||'—',fmtData(x.data_finalizacao)]);
-  const and=(d.andamentos||[]).map(x=>[fmtData(x.data_mov),x.descricao||'',(x.processo_nome||'')+(x.numero?(' · '+x.numero):'')]);
-  // [v1.8.218] mesmo filtro por origem da tela e do Excel
-  const soProv=(d.providencias||[]).filter(x=>x.origem!=='alerta');
-  const prov=soProv.map(x=>[x.descricao||'',fmtData(x.prazo),_relSituacaoProv(x),(x.processo_nome||'')+(x.numero?(' · '+x.numero):'')]);
-  const provF=(d.providencias_feitas||[]).map(x=>[x.descricao||'',fmtData(x.concluida_em),x.concluida_por||'—',(x.processo_nome||'')+(x.numero?(' · '+x.numero):'')]);
-  const ale=(d.alertas||[]).map(x=>[x.descricao||'',fmtData(x.prazo),_relSituacaoProv(x),x.responsavel||'—']);
-  const aleF=(d.alertas_feitas||[]).map(x=>[x.descricao||'',fmtData(x.concluida_em),x.concluida_por||'—',x.responsavel||'—']);
+  /* [v1.8.219] Sem andamentos na exportacao. Ver comentario do Excel. */
+  const tPend=_relTarefasPendentes(d).map(x=>[
+    x.titulo, fmtData(x.prazo), _relSituacaoProv({dias_para_prazo:x.dias}),
+    x.resp||'—', x.proc||'Agenda livre']);
+  const tFeit=_relTarefasFinalizadas(d).map(x=>[
+    x.titulo, fmtData(x.quando), x.por||'—', x.proc||'Agenda livre']);
   const secoes=[
     {titulo:'Processos novos ('+novos.length+')',head:['Parte','Nº','Cliente','Tipo','Criado em'],body:novos,vazio:'Nenhum processo novo no período.'},
-    {titulo:'Finalizados ('+fin.length+')',head:['Parte','Nº','Cliente','Motivo','Finalizado em'],body:fin,vazio:'Nenhum processo finalizado no período.'},
-    {titulo:'Andamentos ('+and.length+')',head:['Data','Descrição','Processo'],body:and,vazio:'Nenhum andamento no período.'},
-    {titulo:'Providências pendentes ('+prov.length+')',head:['Descrição','Prazo','Situação','Processo'],body:prov,vazio:'Nenhuma providência pendente.'},
-    {titulo:'Providências executadas ('+provF.length+')',head:['Descrição','Concluída em','Por','Processo'],body:provF,vazio:'Nenhuma providência concluída no período.'},
-    {titulo:'Alertas e tarefas pendentes ('+ale.length+')',head:['Título','Prazo','Situação','Responsável'],body:ale,vazio:'Nenhuma tarefa pendente no período.'},
-    {titulo:'Alertas e tarefas executados ('+aleF.length+')',head:['Título','Concluída em','Por','Responsável'],body:aleF,vazio:'Nenhuma tarefa concluída no período.'}
+    {titulo:'Processos finalizados ('+fin.length+')',head:['Parte','Nº','Cliente','Motivo','Finalizado em'],body:fin,vazio:'Nenhum processo finalizado no período.'},
+    {titulo:'Tarefas pendentes ('+tPend.length+')',head:['Tarefa','Prazo','Situação','Responsável','Processo'],body:tPend,vazio:'Nenhuma tarefa pendente no período.'},
+    {titulo:'Tarefas finalizadas ('+tFeit.length+')',head:['Tarefa','Finalizada em','Finalizada por','Processo'],body:tFeit,vazio:'Nenhuma tarefa finalizada no período.'}
   ];
   gerarPDF('Relatorio - '+expNomeEscritorio()+' - '+expHoje(), 'Relatório do período', _relPeriodoLabel(), secoes);
 }
