@@ -2733,7 +2733,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.219';
+const APP_VERSAO = 'v1.8.220';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -7778,7 +7778,7 @@ function renderMovs(){
   const pArea=document.getElementById('det-providencias');
   pArea.innerHTML = prov.length ? '<div class="prov">'+prov.map(m=>`
     <div class="prov-item ${m.concluida?'done':''}" onclick='abrirModalMov("providencia",${JSON.stringify(m.id)})'>
-      <div class="pm"><div class="pd">${esc(m.descricao)}</div>${m.data_mov?`<div class="pp">prazo: ${fmtData(m.data_mov)}</div>`:''}${m.concluida?`<div class="pc">✓ concluída por ${esc(m.concluida_por_nome||'—')}${m.concluida_em?(' em '+fmtData(m.concluida_em)):''}</div>`:''}</div>
+      <div class="pm"><div class="pd">${esc(m.descricao)}</div>${m.data_mov?`<div class="pp">prazo: ${fmtData(m.data_mov)}</div>`:''}${m.concluida?`<div class="pc">✓ ${m.concluida_origem==='sistema'?'finalizada pelo sistema':('finalizada por '+esc(m.concluida_por_nome||'—'))}${m.concluida_em?(' em '+fmtData(m.concluida_em)):''}</div>`:''}</div>
     </div>`).join('')+'</div>' : '<div class="det-empty">Nenhuma providência pendente.</div>';
 }
 
@@ -9396,7 +9396,7 @@ function renderLixeira(){
       <div class="ar-main">
         <div class="ar-desc">${esc(a.descricao)}</div>
         ${a.processo_nome?`<div class="ar-meta">⚖️ ${esc(a.processo_nome)}</div>`:''}
-        <div class="ar-meta">✓ Encerrado por ${esc(a.deletado_por_nome||'o sistema')} em ${fmtDataHora(a.deletado_em)}</div>
+        <div class="ar-meta">✓ ${a.deletado_por_nome?('Finalizado por '+esc(a.deletado_por_nome)):'Finalizado pelo sistema'} em ${fmtDataHora(a.deletado_em)}</div>
       </div>
       <div class="li-tags"><span class="tagx">${someTxt}</span></div>
     </div>`;}).join('')+'</div>';
@@ -9582,7 +9582,7 @@ function renderRelDetail(){
         + '</div>'
         + '<div class="seg rel-seg-prov">'
         + `<button class="${relProvTab==='pendentes'?'active':''}" onclick="setRelProvTab('pendentes')">Pendentes (${nPend})</button>`
-        + `<button class="${relProvTab==='executadas'?'active':''}" onclick="setRelProvTab('executadas')">Executadas (${nFeit})</button>`
+        + `<button class="${relProvTab==='executadas'?'active':''}" onclick="setRelProvTab('executadas')">Finalizadas (${nFeit})</button>`
         + '</div>';
     if(relProvTab==='executadas'){
       sub='cadastradas no período · concluídas';
@@ -9610,7 +9610,7 @@ function renderRelDetail(){
 function setRelProvTab(t){ relProvTab=t; renderRelDetail(); }
 function setRelBloco(b){ relBloco=b; renderRelDetail(); }
 function relRowProvFeita(x){
-  return `<div class="rel-row"><div class="rr-t">${esc(x.descricao||'')} <span class="rel-tag ok">✓ feita</span></div><div class="rr-s">${['concluída em '+fmtData(x.concluida_em), x.concluida_por?('por '+x.concluida_por):'', x.processo_nome, x.numero].filter(Boolean).map(esc).join(' · ')}</div></div>`;
+  return `<div class="rel-row"><div class="rr-t">${esc(x.descricao||'')} <span class="rel-tag ok">✓ finalizada</span></div><div class="rr-s">${['finalizada em '+fmtData(x.concluida_em), x.concluida_por?('por '+x.concluida_por):'', x.processo_nome, x.numero].filter(Boolean).map(esc).join(' · ')}</div></div>`;
 }
 
 /* ---------- modais ---------- */
@@ -10329,7 +10329,7 @@ function exportarAlertasExcel(){
   if(alertaTab==='lixeira'){
     const linhas=(LIXEIRA||[]).map(a=>[a.descricao||'',a.data_alerta?fmtData(a.data_alerta):'',a.processo_nome||'',a.deletado_por_nome||'',a.deletado_em?fmtDataHora(a.deletado_em):'',_lixeiraSomeTxt(a.dias_para_sumir)]);
     baixarExcel('Alertas finalizados - '+expNomeEscritorio()+' - '+expHoje(),
-      [{nome:'Finalizados',colunas:['Título','Data','Processo','Encerrado por','Encerrado em','Some em'],linhas:linhas}]);
+      [{nome:'Tarefas finalizadas',colunas:['Título','Data','Processo','Finalizado por','Finalizado em','Some em'],linhas:linhas}]);
     return;
   }
   const linhasAlertas=(ALERTAS||[]).map(a=>[a.descricao||'',a.data_alerta?fmtData(a.data_alerta):'',quandoTexto(Number(a.dias_restantes)),a.processo_nome||'']);
@@ -10343,7 +10343,7 @@ function exportarAlertasPDF(){
   if(alertaTab==='lixeira'){
     const linhas=(LIXEIRA||[]).map(a=>[a.descricao||'',a.data_alerta?fmtData(a.data_alerta):'—',a.processo_nome||'—',a.deletado_por_nome||'—',a.deletado_em?fmtDataHora(a.deletado_em):'—',_lixeiraSomeTxt(a.dias_para_sumir)]);
     gerarPDF('Alertas finalizados - '+expNomeEscritorio()+' - '+expHoje(),'Alertas finalizados',(LIXEIRA||[]).length+' item(ns) · somem após 90 dias',
-      [{titulo:'Tarefas encerradas',head:['Título','Data','Processo','Encerrado por','Encerrado em','Some em'],body:linhas,vazio:'Nada finalizado.'}]);
+      [{titulo:'Tarefas finalizadas',head:['Título','Data','Processo','Finalizado por','Finalizado em','Some em'],body:linhas,vazio:'Nada finalizado.'}]);
     return;
   }
   const linhasAlertas=(ALERTAS||[]).map(a=>[a.descricao||'',a.data_alerta?fmtData(a.data_alerta):'—',quandoTexto(Number(a.dias_restantes)),a.processo_nome||'—']);
@@ -10374,7 +10374,7 @@ function _snapDadosLinhas(){
   return L;
 }
 function _snapMov(){ return (MOVS||[]).filter(m=>m.tipo==='andamento').map(m=>[m.data_mov?fmtData(m.data_mov):'—', m.descricao||'']); }
-function _snapProv(){ return (MOVS||[]).filter(m=>m.tipo==='providencia').map(m=>[m.concluida?'Concluída':'Pendente', m.descricao||'', m.data_mov?fmtData(m.data_mov):'—']); }
+function _snapProv(){ return (MOVS||[]).filter(m=>m.tipo==='providencia').map(m=>[m.concluida?'Finalizada':'Pendente', m.descricao||'', m.data_mov?fmtData(m.data_mov):'—']); }
 function _snapResumos(){
   const r=resumosDoProcesso().map(d=>['Resumo', fonteLabelResumo(d), d.criado_em?fmtData(d.criado_em):'']);
   const pe=peticoesDoProcesso().map(d=>['Petição', d.nome_arquivo||'Petição', d.criado_em?fmtData(d.criado_em):'']);
