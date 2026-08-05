@@ -1665,17 +1665,22 @@
         </div>
 
         <div class="card" style="margin-top:16px">
-          <div class="view-head" style="margin-bottom:10px">
+          <div class="view-head" style="margin-bottom:0;cursor:pointer;align-items:center" onclick="pfSanfona('modelos')">
             <div><h2 style="font-size:1.2rem">Modelos do escritório</h2><p style="margin:0">Textos-base reutilizáveis. Os de <b>petição</b> viram estilo pra IA; <b>procuração</b> e <b>honorário</b> serão preenchidos por campos (em breve).</p></div>
-            <button class="btn btn-primary btn-sm" type="button" id="pf-modelo-novo" onclick="abrirNovoModelo()" style="display:none">+ Novo modelo</button>
+            <span id="pf-chv-modelos" style="flex:0 0 auto;color:var(--muted-2);font-size:.85rem;transition:transform .18s;margin-left:10px">&#9662;</span>
           </div>
-          <div id="pf-modelos-list"></div>
+          <div id="pf-sec-modelos" style="display:none;margin-top:14px">
+            <div style="margin-bottom:10px"><button class="btn btn-primary btn-sm" type="button" id="pf-modelo-novo" onclick="abrirNovoModelo()" style="display:none">+ Novo modelo</button></div>
+            <div id="pf-modelos-list"></div>
+          </div>
         </div>
 
         <div class="card" style="margin-top:16px" id="pf-robo-card">
-          <div class="view-head" style="margin-bottom:6px">
-            <div><h2 style="font-size:1.2rem">Robô de mensagens</h2><p style="margin:0">E-mails automáticos e avisos aos clientes — aniversário, datas comemorativas e comunicados.</p></div>
+          <div class="view-head" style="margin-bottom:0;cursor:pointer;align-items:center" onclick="pfSanfona('robo')">
+            <div><h2 style="font-size:1.2rem">Robô de mensagens</h2><p style="margin:0">Todo dia de manhã ele te manda os prazos e as tarefas do escritório. Também envia aniversário, datas comemorativas e comunicados aos seus clientes.</p></div>
+            <span id="pf-chv-robo" style="flex:0 0 auto;color:var(--muted-2);font-size:.85rem;transition:transform .18s;margin-left:10px">&#9662;</span>
           </div>
+          <div id="pf-sec-robo" style="display:none;margin-top:14px">
           <div id="pf-robo-ro" class="msub" style="display:none;color:var(--warn)">Somente o responsável (master) pode alterar o robô. Você pode visualizar.</div>
 
           <div class="robo-row">
@@ -1705,21 +1710,29 @@
             <span class="rr-sub" style="margin:0">O teste vai para o e-mail de login do escritório.</span>
           </div>
 
-          <div class="view-head" style="margin:24px 0 8px">
-            <div><h2 style="font-size:1.05rem">Datas comemorativas</h2><p style="margin:0">Enviadas a todos os clientes, na data. Recorrem todo ano.</p></div>
-            <button class="btn btn-primary btn-sm" type="button" id="robo-data-nova" onclick="abrirNovaRoboData()" style="display:none">+ Nova data</button>
+          <div class="robo-sub-card" style="margin-top:20px">
+            <div class="view-head" style="margin:0 0 10px">
+              <div><h2 style="font-size:1.05rem">Datas comemorativas</h2><p style="margin:0">Enviadas a todos os clientes, na data. Recorrem todo ano.</p></div>
+              <button class="btn btn-primary btn-sm" type="button" id="robo-data-nova" onclick="abrirNovaRoboData()" style="display:none">+ Nova data</button>
+            </div>
+            <div id="robo-datas-list"></div>
           </div>
-          <div id="robo-datas-list"></div>
 
+          </div>
         </div>
 
         <div class="card" style="margin-top:16px" id="pf-avulso-card">
-          <div class="view-head" style="margin-bottom:8px"><div><h2 style="font-size:1.2rem">Comunicado avulso</h2><p style="margin:0">Mensagem manual para todos os clientes agora (ex.: alerta de golpe). Não usa data.</p></div></div>
+          <div class="view-head" style="margin-bottom:0;cursor:pointer;align-items:center" onclick="pfSanfona('avulso')">
+            <div><h2 style="font-size:1.2rem">Comunicado avulso</h2><p style="margin:0">Mensagem manual para todos os clientes agora (ex.: alerta de golpe). Não usa data.</p></div>
+            <span id="pf-chv-avulso" style="flex:0 0 auto;color:var(--muted-2);font-size:.85rem;transition:transform .18s;margin-left:10px">&#9662;</span>
+          </div>
+          <div id="pf-sec-avulso" style="display:none;margin-top:14px">
           <div class="robo-sub-card" id="robo-avulso-box">
             <div class="field"><label>Assunto</label><input type="text" id="robo-avulso-assunto" maxlength="160" placeholder="Ex.: Aviso importante"></div>
             <div class="field" style="margin-top:10px"><label>Mensagem</label><textarea id="robo-avulso-corpo" rows="5" placeholder="Escreva o comunicado…"></textarea></div>
             <div class="robo-tok">Use <code>{{nome}}</code> e <code>{{escritorio}}</code>.</div>
             <div style="margin-top:12px"><button class="btn btn-primary btn-sm" type="button" id="robo-avulso-btn" onclick="enviarRoboAvulso()">Enviar agora para todos</button></div>
+          </div>
           </div>
 
         </div>
@@ -2734,7 +2747,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.225';
+const APP_VERSAO = 'v1.8.226';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -10632,6 +10645,14 @@ function renderRoboConfig(c){
   set('robo-aniv-assunto',c.aniversario_assunto); set('robo-aniv-corpo',c.aniversario_corpo);
   set('robo-prazo-email', c.prazo_aviso_email);
   toggleRoboAniv();
+}
+function pfSanfona(k){
+  const b=document.getElementById('pf-sec-'+k);
+  if(!b) return;
+  const aberto=(b.style.display!=='none');
+  b.style.display=aberto?'none':'block';
+  const c=document.getElementById('pf-chv-'+k);
+  if(c) c.style.transform=aberto?'rotate(0deg)':'rotate(180deg)';
 }
 function toggleRoboAniv(){ const on=document.getElementById('robo-aniv-ativo'); const box=document.getElementById('robo-aniv-box'); if(box) box.style.display=(on&&on.checked)?'block':'none'; }
 function toggleRoboPrazo(){ const on=document.getElementById('robo-prazo-ativo'); const box=document.getElementById('robo-prazo-box'); if(box) box.style.display=(on&&on.checked)?'block':'none'; }
