@@ -822,6 +822,11 @@
   .card .c-meta{margin-top:12px;display:flex;flex-wrap:wrap;gap:7px}
   .tagx{font-size:.72rem;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted)}
   .tagx.cy{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3);color:var(--cyan)}
+  /* [v1.8.223] No tema claro var(--cyan) vira indigo #4f46e5, mas o
+     fundo e a borda continuavam no ciano do tema escuro — texto
+     escuro sobre azul lavado, ilegivel. Mesmo padrao da .tagx.al
+     (v1.8.201). O tema escuro nao muda. */
+  html.tema-claro .tagx.cy{background:rgba(79,70,229,.10);border-color:rgba(79,70,229,.35)}
   /* ---- Assinatura (v1.8.154) ---- */
   .ass-incl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}  /* [v1.8.163] 6 cards em 3+3 — sempre PAR, no celular vira 2+2+2 */
   .ass-incl{background:rgba(148,163,184,.08);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
@@ -2733,7 +2738,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.222';
+const APP_VERSAO = 'v1.8.223';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
