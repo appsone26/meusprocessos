@@ -2738,7 +2738,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.223';
+const APP_VERSAO = 'v1.8.224';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -7991,7 +7991,10 @@ function onPerfilLogoEscolhido(input){
   if(!/^image\//.test(file.type||'')){ toast('Selecione uma imagem (PNG, JPG…).','err'); return; }
   const reader=new FileReader();
   reader.onload=()=>{ const img=new Image();
-    img.onload=()=>{ const max=256; let w=img.width,h=img.height;
+    /* [v1.8.224] 256 -> 512. Em 256px o logo saia borrado no PDF:
+       jsPDF desenha em 110x46 pontos e a impressao a 300 DPI pede
+       ~460px de largura. Logos ja salvos precisam ser reenviados. */
+    img.onload=()=>{ const max=512; let w=img.width,h=img.height;
       const sc=Math.min(1,max/Math.max(w,h)); w=Math.max(1,Math.round(w*sc)); h=Math.max(1,Math.round(h*sc));
       const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
       cv.getContext('2d').drawImage(img,0,0,w,h);
