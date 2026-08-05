@@ -2733,7 +2733,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.220';
+const APP_VERSAO = 'v1.8.221';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3032,7 +3032,14 @@ async function enviarEsqueci(){
   goAuth('login');
   showMsg('Se houver uma conta com esse e-mail, enviamos um link para criar uma nova senha. Veja sua caixa de entrada (e o spam).','ok');
 }
+/* [v1.8.221] Tarefa nao nasce nem vive no passado. Banco v1.8.158
+   levanta DATA_NO_PASSADO; aqui a gente avisa antes de ir la. */
+const MSG_DATA_PASSADO = 'A data j\u00e1 passou. Escolha hoje ou uma data futura.';
+function hojeISO(){ return new Date().toISOString().slice(0,10); }
+function dataNoPassado(v){ return !!v && v < hojeISO(); }
 function traduzErro(e){ const r=(e&&(e.message||e.hint||''))||'';
+  if(r.includes('DATA_NO_PASSADO')) return MSG_DATA_PASSADO;
+  if(r.includes('REABERTURA_EXIGE_DATA_FUTURA')) return 'Para reabrir esta tarefa, escolha hoje ou uma data futura.';
   if(r.includes('CREDENCIAIS_INVALIDAS')) return 'E-mail ou senha incorretos.';
   if(r.includes('ESCRITORIO_INATIVO')) return 'Esta conta está inativa. Fale com o suporte.';
   if(r.includes('SENHA_FRACA')) return 'A senha precisa de 8+ caracteres, com maiúscula, minúscula e número.';
@@ -8988,10 +8995,15 @@ async function abrirModalMov(tipo, id, ctx){
     document.getElementById('mm-title').textContent = id?'Providência':'Nova providência';
     document.getElementById('mm-sub').textContent='O que precisa ser feito (próximo passo).';
     document.getElementById('mm-datalabel').textContent='Prazo';
+    /* [v1.8.221] providencia e tarefa: nao aceita passado */
+    document.getElementById('mm-data').min = hojeISO();
   }else{
     document.getElementById('mm-title').textContent='Novo andamento';
     document.getElementById('mm-sub').textContent='Registre o que aconteceu no processo.';
     document.getElementById('mm-datalabel').textContent='Data';
+    /* andamento e fato passado: campo livre, o tribunal manda de
+       semanas atras */
+    document.getElementById('mm-data').removeAttribute('min');
   }
   document.getElementById('modal-mov').classList.add('open');
   if(id){
@@ -9034,6 +9046,10 @@ async function salvarMov(){
   const data=document.getElementById('mm-data').value||new Date().toISOString().slice(0,10);
   const id=document.getElementById('mm-id').value||null;
   const prov=(tipo==='providencia');
+  /* [v1.8.221] so a providencia e tarefa. Andamento fica livre. */
+  if(prov && dataNoPassado(data)){
+    msg.textContent=MSG_DATA_PASSADO; msg.className='modal-msg err'; return;
+  }
   const hora=prov?(document.getElementById('mm-hora').value||null):null;
   const nota=prov?(document.getElementById('mm-nota').value.trim()||null):null;
   // Especie fixa: providencia e sempre prazo. Nao ha o que escolher.
@@ -9434,6 +9450,9 @@ function maPintaHist(linhas){
 async function abrirModalAlerta(id){
   document.getElementById('ma-msg').className='modal-msg';
   document.getElementById('ma-nota').value='';
+  /* [v1.8.221] o calendario nao deixa escolher para tras. Vale
+     tambem na edicao: tarefa vencida so salva se for remarcada. */
+  document.getElementById('ma-data').min = hojeISO();
   MA_RESP=[]; maPintaHist(null);
   if(!USUARIOS.length){
     try{ const r=await db.rpc('sp_listar_usuarios',{p_token:TOKEN}); if(!r.error) USUARIOS=r.data||[]; }
@@ -9477,6 +9496,7 @@ async function salvarAlerta(){
   function erro(t){ msg.textContent=t; msg.className='modal-msg err'; }
   if(!desc) return erro('Informe a descrição do alerta.');
   if(!data) return erro('Informe a data.');
+  if(dataNoPassado(data)) return erro(MSG_DATA_PASSADO);
   const id=document.getElementById('ma-id').value||null;
   if(!MA_RESP.length) return erro('Escolha pelo menos um responsável. Tarefa sem dono some do filtro por responsável.');
   const especie=document.getElementById('ma-especie').value||'evento';
