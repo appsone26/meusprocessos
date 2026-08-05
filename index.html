@@ -2733,7 +2733,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.221';
+const APP_VERSAO = 'v1.8.222';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -3123,6 +3123,13 @@ async function doSignup(){ clearMsg();
     const row=Array.isArray(data)?data[0]:data; if(!row||!row.token) throw {message:'Cadastro não retornou sessão.'};
     const s={token:row.token,escritorio_id:row.escritorio_id,usuario_id:row.usuario_id,usuario_nome:nome,escritorio_nome:escn,perfil:'master',pacote:'free',limite_processos:2};
     salvarSessao(s); abrirApp(s);
+    /* [v1.8.222] e-mail de boas-vindas. Sem await: o cadastro nao
+       espera o Resend. Erro aqui nunca vira erro de cadastro. */
+    try{ fetch(ROBO_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify({acao:'boas_vindas',token:row.token,nome:nome})
+    }).catch(()=>{}); }catch(_){}
     setTimeout(()=>toast('Conta criada! Bem-vindo.','ok'),500);
   }catch(e){ showMsg(traduzErro(e),'err'); } finally{ setLoading(btn,false,'Criar conta'); } }
 
