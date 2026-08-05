@@ -1684,10 +1684,6 @@
           </div>
 
           <div class="robo-row">
-            <div class="rr-main"><div class="rr-tit">Ligar o robô</div><div class="rr-sub">Chave geral dos envios automáticos. Desligada, nada sai automaticamente.</div></div>
-            <label class="sw"><input type="checkbox" id="robo-ativo"><span class="sl"></span></label>
-          </div>
-          <div class="robo-row">
             <div class="rr-main"><div class="rr-tit">Aniversário</div><div class="rr-sub">No dia, um e-mail só para o aniversariante.</div></div>
             <label class="sw"><input type="checkbox" id="robo-aniv-ativo" onchange="toggleRoboAniv()"><span class="sl"></span></label>
           </div>
@@ -1697,17 +1693,11 @@
             <div class="robo-tok">Use <code>{{nome}}</code> (nome do cliente) e <code>{{escritorio}}</code> (nome do escritório).</div>
           </div>
           <div class="robo-row">
-            <div class="rr-main"><div class="rr-tit">Aviso de prazo (equipe)</div><div class="rr-sub">Um resumo diário, pela manhã, com providências e alertas vencendo — enviado para o e-mail da equipe.</div></div>
-            <label class="sw"><input type="checkbox" id="robo-prazo-ativo" onchange="toggleRoboPrazo()"><span class="sl"></span></label>
+            <div class="rr-main"><div class="rr-tit">Aviso de prazo · automático</div><div class="rr-sub">Todo dia de manhã, um resumo com as providências e os alertas vencendo vai para o e-mail da equipe. Cada responsável recebe também os prazos dos processos sob a responsabilidade dele.</div></div>
           </div>
-          <div class="robo-sub-card" id="robo-prazo-box" style="display:none">
+          <div class="robo-sub-card" id="robo-prazo-box">
             <div class="field"><label>E-mail da equipe</label><input type="email" id="robo-prazo-email" maxlength="160" placeholder="resumo@seuescritorio.com"><div class="rr-sub" style="margin-top:6px">Para onde vai o resumo geral. Já vem com o e-mail do escritório — troque se quiser; em branco, usa o do escritório.</div></div>
-            <div class="field" style="margin-top:10px;max-width:220px"><label>Antecedência (dias)</label><input type="number" id="robo-prazo-dias" min="1" max="30" step="1" placeholder="3"></div>
             <div class="robo-tok">Lista os itens vencendo nos próximos dias <strong>e os já vencidos</strong> (providências). Alertas da agenda entram a partir de hoje.</div>
-            <div class="robo-row" style="margin-top:10px">
-              <div class="rr-main"><div class="rr-tit">Avisar também cada responsável</div><div class="rr-sub">Cada responsável recebe, no e-mail dele, só os prazos dos processos sob a responsabilidade dele.</div></div>
-              <label class="sw"><input type="checkbox" id="robo-prazo-resp"><span class="sl"></span></label>
-            </div>
           </div>
           <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" type="button" id="robo-cfg-save" onclick="salvarRoboConfig()">Salvar configurações</button>
@@ -1721,7 +1711,10 @@
           </div>
           <div id="robo-datas-list"></div>
 
-          <div class="view-head" style="margin:24px 0 8px"><div><h2 style="font-size:1.05rem">Comunicado avulso</h2><p style="margin:0">Mensagem manual para todos os clientes agora (ex.: alerta de golpe). Não usa data.</p></div></div>
+        </div>
+
+        <div class="card" style="margin-top:16px" id="pf-avulso-card">
+          <div class="view-head" style="margin-bottom:8px"><div><h2 style="font-size:1.2rem">Comunicado avulso</h2><p style="margin:0">Mensagem manual para todos os clientes agora (ex.: alerta de golpe). Não usa data.</p></div></div>
           <div class="robo-sub-card" id="robo-avulso-box">
             <div class="field"><label>Assunto</label><input type="text" id="robo-avulso-assunto" maxlength="160" placeholder="Ex.: Aviso importante"></div>
             <div class="field" style="margin-top:10px"><label>Mensagem</label><textarea id="robo-avulso-corpo" rows="5" placeholder="Escreva o comunicado…"></textarea></div>
@@ -1729,10 +1722,13 @@
             <div style="margin-top:12px"><button class="btn btn-primary btn-sm" type="button" id="robo-avulso-btn" onclick="enviarRoboAvulso()">Enviar agora para todos</button></div>
           </div>
 
-          <div class="view-head" style="margin:24px 0 8px"><div><h2 style="font-size:1.05rem">Histórico de envios</h2><p style="margin:0">Últimos e-mails enviados pelo robô.</p></div>
+        </div>
+
+        <div class="card" style="margin-top:16px" id="pf-hist-card">
+          <div class="view-head" style="margin-bottom:8px"><div><h2 style="font-size:1.2rem">Histórico de envios</h2><p style="margin:0">Últimos e-mails enviados pelo robô.</p></div>
             <button class="btn btn-ghost btn-sm" type="button" onclick="carregarRoboLog()">Atualizar</button>
           </div>
-          <div id="robo-log-list"></div>
+          <div id="robo-log-list" style="max-height:230px;overflow-y:auto;border:1px solid var(--line);border-radius:9px"></div>
         </div>
 
         <div class="card" style="margin-top:16px">
@@ -2577,7 +2573,7 @@
       <div class="field"><label>Nome <span class="req">*</span></label><input type="text" id="mrd-nome" maxlength="80" placeholder="Ex.: Dia da Mulher"></div>
       <div class="field"><label>Dia e mês <span class="req">*</span></label><input type="date" id="mrd-data"></div>
     </div>
-    <label class="perm-check" style="margin:2px 0 8px"><input type="checkbox" id="mrd-ativo"> Ativa (envia nesta data)</label>
+    <div class="rr-sub" style="margin:2px 0 10px">A data passa a valer assim que for salva. Para parar de enviar, exclua a data.</div>
     <div class="field"><label>Assunto</label><input type="text" id="mrd-assunto" maxlength="160" placeholder="Ex.: Feliz Natal! 🎄"></div>
     <div class="field" style="margin-top:10px"><label>Mensagem</label><textarea id="mrd-corpo" rows="6" placeholder="Escreva a mensagem…"></textarea></div>
     <div class="robo-tok">Use <code>{{nome}}</code> e <code>{{escritorio}}</code>.</div>
@@ -2738,7 +2734,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.224';
+const APP_VERSAO = 'v1.8.225';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -10632,13 +10628,10 @@ async function carregarRobo(){
 function renderRoboConfig(c){
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=(v==null?'':v); };
   const chk=(id,v)=>{ const el=document.getElementById(id); if(el) el.checked=!!v; };
-  chk('robo-ativo',c.ativo); chk('robo-aniv-ativo',c.aniversario_ativo);
+  chk('robo-aniv-ativo',c.aniversario_ativo);
   set('robo-aniv-assunto',c.aniversario_assunto); set('robo-aniv-corpo',c.aniversario_corpo);
-  chk('robo-prazo-ativo',c.prazo_aviso_ativo);
-  set('robo-prazo-dias', (c.prazo_aviso_dias==null?3:c.prazo_aviso_dias));
   set('robo-prazo-email', c.prazo_aviso_email);
-  chk('robo-prazo-resp', c.prazo_aviso_responsavel);
-  toggleRoboAniv(); toggleRoboPrazo();
+  toggleRoboAniv();
 }
 function toggleRoboAniv(){ const on=document.getElementById('robo-aniv-ativo'); const box=document.getElementById('robo-aniv-box'); if(box) box.style.display=(on&&on.checked)?'block':'none'; }
 function toggleRoboPrazo(){ const on=document.getElementById('robo-prazo-ativo'); const box=document.getElementById('robo-prazo-box'); if(box) box.style.display=(on&&on.checked)?'block':'none'; }
@@ -10648,14 +10641,14 @@ async function salvarRoboConfig(){
   try{
     const {error}=await db.rpc('sp_robo_salvar_config',{
       p_token:TOKEN,
-      p_ativo:document.getElementById('robo-ativo').checked,
+      p_ativo:true,
       p_aniversario_ativo:document.getElementById('robo-aniv-ativo').checked,
       p_aniversario_assunto:document.getElementById('robo-aniv-assunto').value,
       p_aniversario_corpo:document.getElementById('robo-aniv-corpo').value,
-      p_prazo_aviso_ativo:document.getElementById('robo-prazo-ativo').checked,
-      p_prazo_aviso_dias:(function(){ const n=parseInt(document.getElementById('robo-prazo-dias').value,10); return isNaN(n)?3:Math.min(30,Math.max(1,n)); })(),
+      p_prazo_aviso_ativo:true,
+      p_prazo_aviso_dias:3,
       p_prazo_aviso_email:document.getElementById('robo-prazo-email').value.trim(),
-      p_prazo_aviso_responsavel:document.getElementById('robo-prazo-resp').checked
+      p_prazo_aviso_responsavel:true
     });
     if(error) throw error;
     toast('Configurações do robô salvas.','ok');
@@ -10677,7 +10670,7 @@ async function carregarRoboDatas(){
 function renderRoboDatas(){
   const box=document.getElementById('robo-datas-list'); if(!box) return;
   const master=roboEhMaster();
-  if(!ROBO_DATAS.length){ box.innerHTML='<div class="empty" style="padding:28px 16px"><div class="em-ic">📅</div><h3>Nenhuma data</h3><p>'+(master?'Clique em “+ Nova data” para criar a primeira.':'O responsável (master) cadastra as datas.')+'</p></div>'; return; }
+  if(!ROBO_DATAS.length){ box.innerHTML='<div class="rr-sub" style="padding:6px 0">'+(master?'Nenhuma data cadastrada. Clique em “+ Nova data” para criar a primeira.':'O responsável (master) cadastra as datas.')+'</div>'; return; }
   box.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+ROBO_DATAS.map(d=>{
     const dt=String(d.dia).padStart(2,'0')+'/'+MESES_ABREV[d.mes];
     const acoes=master
@@ -10685,7 +10678,7 @@ function renderRoboDatas(){
       : '';
     return `<div class="robo-data-item">
       <span class="rd-dt">${dt}</span>
-      <div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.nome||'(sem nome)')}</div><div style="font-size:.74rem;color:var(--muted-2)">${d.ativo?'<span style="color:var(--ok)">Ativa</span>':'Desligada'}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.nome||'(sem nome)')}</div></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">${acoes}</div>
     </div>`;
   }).join('')+'</div>';
@@ -10697,7 +10690,6 @@ function abrirNovaRoboData(){
   document.getElementById('mrd-id').value='';
   document.getElementById('mrd-nome').value='';
   document.getElementById('mrd-data').value='';
-  document.getElementById('mrd-ativo').checked=false;
   document.getElementById('mrd-assunto').value='';
   document.getElementById('mrd-corpo').value='';
   mrdMsg('');
@@ -10710,7 +10702,6 @@ function editarRoboData(id){
   document.getElementById('mrd-id').value=id;
   document.getElementById('mrd-nome').value=d.nome||'';
   document.getElementById('mrd-data').value='2024-'+String(d.mes).padStart(2,'0')+'-'+String(d.dia).padStart(2,'0');
-  document.getElementById('mrd-ativo').checked=!!d.ativo;
   document.getElementById('mrd-assunto').value=d.assunto||'';
   document.getElementById('mrd-corpo').value=d.corpo||'';
   mrdMsg('');
@@ -10727,7 +10718,7 @@ async function salvarRoboData(){
   try{
     const {error}=await db.rpc('sp_robo_salvar_data',{
       p_token:TOKEN, p_id:ROBO_DATA_EDIT_ID, p_nome:nome, p_dia:dia, p_mes:mes,
-      p_ativo:document.getElementById('mrd-ativo').checked,
+      p_ativo:true,
       p_assunto:document.getElementById('mrd-assunto').value,
       p_corpo:document.getElementById('mrd-corpo').value
     });
