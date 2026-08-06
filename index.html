@@ -917,6 +917,10 @@
   .f8-big{font-size:1.65rem;font-weight:700;line-height:1.1;margin-top:14px}
   .f8-big span{font-size:.72rem;font-weight:400;color:var(--muted);display:block;margin-top:2px}
   .f8-quebra{font-size:.75rem;color:var(--muted-2);margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+  .f8-desc{font-size:.75rem;color:var(--muted-2);margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+  .f8-descl{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:3px}
+  .f8-descl.abate{color:var(--ok)}
+  .f8-avisa{margin-top:11px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.30);border-radius:10px;padding:9px 11px;font-size:.75rem;color:var(--warn);line-height:1.45}
   .f8-ok{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:.9rem}
   .f8-okdot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
   .f8-vazio{font-size:.8rem;color:var(--muted-2);margin-top:10px;line-height:1.5}
@@ -2747,7 +2751,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.226';
+const APP_VERSAO = 'v1.8.227';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5174,6 +5178,40 @@ function fatSelo(f, grave){
   return '<span class="fat-open'+(grave?" f8-late":"")+'">vencida há '+a+" "+(a===1?"dia":"dias")+"</span>";
 }
 
+/* [v1.8.227] O desconto no card de fatura.
+   Com UMA fatura usa os campos f_*; com duas ou mais usa a soma bruta,
+   porque ai o card ja fala do conjunto. Sem desconto devolve "" e o card
+   fica exatamente como era antes. */
+function fatDescontoHtml(f, qtd){
+  if(!f) return "";
+  var cheio = (qtd >= 2) ? Number(f.cheio_bruto_centavos||0)
+                         : Number(f.f_cheio_centavos||0);
+  var abate = (qtd >= 2) ? Number(f.desconto_total_centavos||0)
+                         : Number(f.f_desconto_centavos||0);
+  if(!(abate > 0) || !(cheio > 0)) return "";
+
+  var pct   = Number(f.desconto_percentual||0);
+  var rotulo = String(f.observacao||"");
+  if(!rotulo) rotulo = pct>0 ? ("Desconto "+pct+"%") : "Desconto";
+
+  var bloco =
+    '<div class="f8-desc">'+
+      '<div class="f8-descl"><span>'+(qtd>=2?"Mensalidades":"Mensalidade")+'</span>'+
+        '<b class="fat-num">'+escFmtCent(cheio)+"</b></div>"+
+      '<div class="f8-descl abate"><span>'+esc(rotulo)+"</span>"+
+        '<b class="fat-num">- '+escFmtCent(abate)+"</b></div>"+
+    "</div>";
+
+  /* o aviso de fim: so nos ultimos 3 meses, e so quando ha data.
+     desconto_ate nulo = desconto para sempre, nao avisa nunca. */
+  if(f.desconto_avisar === true && f.desconto_ate){
+    bloco += '<div class="f8-avisa">Seu desconto vale at\u00e9 <b>'+
+      esc(fmtData(f.desconto_ate))+"</b>. A partir da compet\u00eancia seguinte, "+
+      'a mensalidade volta a <b class="fat-num">'+escFmtCent(cheio)+"</b>.</div>";
+  }
+  return bloco;
+}
+
 function fatCardFatura(){
   var f = FAT && FAT.fatura;
   if(!f || f.tem_aberta !== true){
@@ -5209,6 +5247,7 @@ function fatCardFatura(){
       fatSelo(f, grave)+
     "</div>"+
     '<div class="f8-big fat-num">'+escFmtCent(saldo)+"<span>em aberto</span></div>"+
+    fatDescontoHtml(f, qtd)+
     quebra+
     f8bAcoes(f, qtd, saldo)+
   "</div>";
