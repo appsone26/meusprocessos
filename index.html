@@ -1650,7 +1650,7 @@
               <div class="field"><label>Nome do escritório</label><input id="pf-nome" type="text" maxlength="120"></div>
               <div class="field"><label>Responsável</label><input id="pf-resp" type="text" maxlength="120"></div>
               <div class="row2">
-                <div class="field"><label>CNPJ</label><input id="pf-cnpj" type="text" maxlength="20"></div>
+                <div class="field"><label>CPF / CNPJ</label><input id="pf-cnpj" type="text" maxlength="18" autocomplete="off" oninput="pfDocDigitou()"><div id="pf-cnpj-aviso" style="display:none;margin-top:6px;font-size:.78rem;line-height:1.4;background:var(--bg-2);border:1px solid var(--amber,#f59e0b);border-radius:8px;padding:7px 9px">Sua nota fiscal e gerada com esse numero. Confira antes de salvar.</div></div>
                 <div class="field"><label>OAB</label><input id="pf-oab" type="text" maxlength="40"></div>
               </div>
               <div class="field"><label>Razão social</label><input id="pf-razao" type="text" maxlength="160"></div>
@@ -2752,7 +2752,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.231';
+const APP_VERSAO = 'v1.8.232';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -4838,6 +4838,9 @@ var SEL_PLANOS=[], SEL_Q=0, SEL_ATUAL=null, SEL_POLL=null, SEL_PAG=null, SEL_SIM
 /* [v1.8.228] {pct, ate, codigo} do desconto vigente, ou null. Quem enche
    e o selSimular, lendo a sp_plano_simular. */
 var SEL_DESC=null;
+/* [v1.8.232] documento fiscal do escritorio, lido junto com o perfil
+   no verPlanos(). Serve de guarda no botao de pagar. */
+var SEL_DOC=null;
 var SUP_WPP='5521993141281';                 /* +55 21 99314-1281 — WhatsApp do atendimento */
 var SUP_EMAIL='contato@appsone.com.br';      /* leads acima de 300 processos */
 
@@ -4864,6 +4867,7 @@ async function verPlanos(){
       const p=await db.rpc('sp_obter_perfil_escritorio',{p_token:TOKEN});
       const L=(Array.isArray(p.data)?p.data[0]:p.data)||{};
       if(String(L.pacote||'free')!=='free' && L.limite_processos!=null) SEL_ATUAL=Number(L.limite_processos);
+      SEL_DOC = L.cnpj || null;   /* [v1.8.232] carona na mesma leitura */
     }catch(_){}
 
     /* Onde a régua nasce: no plano atual; se free, na menor faixa que cabe o que ele já tem. */
@@ -4948,6 +4952,7 @@ function selRender(){
         '<div style="background:var(--bg-2);border:1px solid var(--blue);border-radius:8px;padding:10px 12px"><div style="font-weight:600">Pix, mês a mês</div><div style="color:var(--muted);font-size:.8rem;margin-top:2px">Pagou, liberou na hora.</div></div>'+
         '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;opacity:.65"><div style="font-weight:600">Assinatura recorrente <span class="ass-buy-soon-tag" style="position:static;display:inline-block;margin-left:4px">em breve</span></div><div style="color:var(--muted);font-size:.8rem;margin-top:2px">Debita sozinho todo mês.</div></div>'+
       '</div>'+
+      '<div id="sel-doc" style="display:none;margin-top:14px"></div>'+
       '<div id="sel-aviso" style="display:none;margin-top:14px"></div>'+
       '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">'+
         '<button class="btn btn-primary btn-sm" type="button" id="sel-btn" onclick="selAssinar()">Assinar este plano</button>'+
@@ -5170,7 +5175,138 @@ async function selCupomAplicar(){
 }
 
 /* Compra: a Edge é quem decide. 409 = não cabe = NÃO cobrou. */
+/* =================================================================
+   [v1.8.232] CPF / CNPJ do escritorio
+
+   O digito verificador e matematica local: nao consulta ninguem,
+   nao custa nada, e pega quase todo erro de digitacao.
+
+   CNPJ ALFANUMERICO (producao desde 31/07/2026): as 12 primeiras
+   posicoes podem ter A-Z, as 2 ultimas continuam numericas. O valor
+   de cada caractere e ASCII-48, entao 0-9 valem 0-9 e A-Z valem
+   17-42. O CNPJ numerico antigo e caso particular da mesma conta.
+
+   Espelha fn_doc_tipo no banco. Aqui e cortesia com o cliente;
+   quem trava de verdade e a SP.
+   ================================================================= */
+function docNorm(s){ return String(s==null?'':s).toUpperCase().replace(/[^0-9A-Z]/g,''); }
+
+function docTipo(s){
+  var d=docNorm(s), n=d.length, i, k, soma, resto, dv, pesos;
+  if(n===11){
+    if(!/^[0-9]{11}$/.test(d)) return null;
+    if(d===new Array(12).join(d.charAt(0))) return null;   /* 111.111.111-11 e afins */
+    for(i=0;i<2;i++){
+      soma=0;
+      for(k=1;k<=9+i;k++){ soma+=parseInt(d.charAt(k-1),10)*((11+i)-k); }
+      resto=soma%11; dv=(resto<2)?0:(11-resto);
+      if(parseInt(d.charAt(9+i),10)!==dv) return null;
+    }
+    return 'CPF';
+  }
+  if(n===14){
+    if(!/^[0-9A-Z]{12}[0-9]{2}$/.test(d)) return null;
+    for(i=0;i<2;i++){
+      pesos=(i===0)?[5,4,3,2,9,8,7,6,5,4,3,2]:[6,5,4,3,2,9,8,7,6,5,4,3,2];
+      soma=0;
+      for(k=1;k<=12+i;k++){ soma+=(d.charCodeAt(k-1)-48)*pesos[k-1]; }
+      resto=soma%11; dv=(resto<2)?0:(11-resto);
+      if(parseInt(d.charAt(12+i),10)!==dv) return null;
+    }
+    return 'CNPJ';
+  }
+  return null;
+}
+
+/* Mascara so de tela. O banco guarda sempre sem pontuacao. */
+function docMascara(s){
+  var d=docNorm(s).slice(0,14), o='', i;
+  if(d.length<=11){
+    for(i=0;i<d.length;i++){ if(i===3||i===6) o+='.'; if(i===9) o+='-'; o+=d.charAt(i); }
+  }else{
+    for(i=0;i<d.length;i++){ if(i===2||i===5) o+='.'; if(i===8) o+='/'; if(i===12) o+='-'; o+=d.charAt(i); }
+  }
+  return o;
+}
+
+function selDocPedir(){
+  var area=document.getElementById('sel-doc'); if(!area) return;
+  area.style.display='';
+  area.innerHTML=
+    '<div style="background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px">'+
+      '<div style="font-weight:600">Falta o CPF ou CNPJ</div>'+
+      '<div style="color:var(--muted);font-size:.84rem;margin-top:3px;line-height:1.45">E o numero que vai sair na sua nota fiscal. Pedimos uma vez so.</div>'+
+      '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">'+
+        '<input id="sel-doc-in" type="text" maxlength="18" autocomplete="off" placeholder="CPF ou CNPJ" oninput="selDocDigitou()" style="flex:1;min-width:200px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.95rem;padding:9px 11px">'+
+        '<button class="btn btn-primary btn-sm" type="button" id="sel-doc-btn" onclick="selDocConfirmar()" disabled>Confirmar e gerar Pix</button>'+
+      '</div>'+
+      '<div id="sel-doc-msg" style="margin-top:8px;font-size:.84rem;min-height:1.2em"></div>'+
+    '</div>';
+  var el=document.getElementById('sel-doc-in');
+  if(el) el.focus();
+  try{ area.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(_){}
+}
+
+function selDocDigitou(){
+  var el=document.getElementById('sel-doc-in');
+  var bt=document.getElementById('sel-doc-btn');
+  var ms=document.getElementById('sel-doc-msg');
+  if(!el) return;
+  var cru=docNorm(el.value);
+  el.value=docMascara(cru);
+  var tipo=docTipo(cru);
+  if(bt) bt.disabled=!tipo;
+  if(!ms) return;
+  if(tipo){
+    ms.style.color='var(--ok)';
+    ms.textContent = (tipo==='CPF') ? 'CPF valido.' : 'CNPJ valido.';
+  }else if(cru.length===0){
+    ms.textContent='';
+  }else if(cru.length===11 || cru.length===14){
+    ms.style.color='var(--danger)';
+    ms.textContent = (cru.length===11) ? 'Esse CPF nao confere. Revise os numeros.' : 'Esse CNPJ nao confere. Revise os numeros.';
+  }else{
+    ms.style.color='var(--muted)';
+    ms.textContent='Faltam digitos. CPF tem 11, CNPJ tem 14.';
+  }
+}
+
+async function selDocConfirmar(){
+  var el=document.getElementById('sel-doc-in');
+  var bt=document.getElementById('sel-doc-btn');
+  var ms=document.getElementById('sel-doc-msg');
+  if(!el) return;
+  var cru=docNorm(el.value);
+  if(!docTipo(cru)) return;
+  if(bt){ bt.disabled=true; bt.textContent='Salvando...'; }
+  try{
+    const {data,error}=await db.rpc('sp_documento_fiscal_salvar',{p_token:TOKEN,p_documento:cru});
+    if(error) throw error;
+    var r=(Array.isArray(data)?data[0]:data)||{};
+    if(r.sp_documento_fiscal_salvar) r=r.sp_documento_fiscal_salvar;
+    if(r.ok!==true) throw new Error('FALHA');
+    SEL_DOC=r.documento||cru;
+    var area=document.getElementById('sel-doc');
+    if(area){ area.style.display='none'; area.innerHTML=''; }
+    selAssinar();          /* segue para o Pix, sem ele clicar de novo */
+    return;
+  }catch(e){
+    var m=String((e&&(e.message||e.details||e.hint||e.code))||'');
+    var txt;
+    if(m.indexOf('SESSAO_INVALIDA')>=0) return sessaoExpirou();
+    else if(m.indexOf('PERMISSAO_NEGADA')>=0) txt='So o responsavel pelo escritorio pode informar o CPF ou CNPJ.';
+    else if(m.indexOf('DOCUMENTO_INVALIDO')>=0) txt='Esse numero nao confere. Revise os digitos.';
+    else if(m.indexOf('DOCUMENTO_VAZIO')>=0) txt='Informe o CPF ou o CNPJ.';
+    else txt='Nao consegui salvar agora. Tente de novo.';
+    if(ms){ ms.style.color='var(--danger)'; ms.textContent=txt; }
+  }
+  if(bt){ bt.disabled=false; bt.textContent='Confirmar e gerar Pix'; }
+}
+
 async function selAssinar(){
+  /* [v1.8.232] sem CPF/CNPJ valido nao existe Pix: o numero e o que
+     sai na nota fiscal. Pede uma vez so, na primeira compra. */
+  if(!docTipo(SEL_DOC)){ selDocPedir(); return; }
   var bt=document.getElementById('sel-btn'), area=document.getElementById('sel-pix'), av=document.getElementById('sel-aviso');
   if(SEL_POLL){ clearInterval(SEL_POLL); SEL_POLL=null; }
   if(bt){ bt.disabled=true; bt.textContent='Gerando…'; }
@@ -8138,6 +8274,15 @@ function pfLogoDragSetup(box){
 }
 function pfSet(id,v){ const el=document.getElementById(id); if(el) el.value=(v==null?'':v); }
 function pfVal(id){ const el=document.getElementById(id); return el?el.value:''; }
+/* [v1.8.232] o campo continua editavel pelo master -- decisao do Edgard.
+   O aviso so aparece quando ele MEXE, senao vira ruido e ele para de ler. */
+function pfDocDigitou(){
+  var el=document.getElementById('pf-cnpj');
+  var av=document.getElementById('pf-cnpj-aviso');
+  if(!el) return;
+  el.value=docMascara(el.value);
+  if(av) av.style.display='';
+}
 async function carregarPerfil(){
   const ehMaster=!!((PERM&&PERM.perfil==='master')||(SESS&&SESS.perfil==='master'));
   PERFIL_LOGO=undefined;
@@ -8145,7 +8290,7 @@ async function carregarPerfil(){
     const {data,error}=await db.rpc('sp_obter_perfil_escritorio',{p_token:TOKEN});
     if(error) throw error;
     const p=(Array.isArray(data)?data[0]:data)||{};
-    pfSet('pf-nome',p.nome); pfSet('pf-resp',p.responsavel); pfSet('pf-cnpj',p.cnpj);
+    pfSet('pf-nome',p.nome); pfSet('pf-resp',p.responsavel); pfSet('pf-cnpj',docMascara(p.cnpj));
     pfSet('pf-razao',p.razao_social); pfSet('pf-oab',p.oab); pfSet('pf-tel',p.telefone);
     pfSet('pf-end',p.endereco); pfSet('pf-cidade',p.cidade); pfSet('pf-uf',p.uf); pfSet('pf-cep',p.cep);
     pfSet('pf-email',p.email);
@@ -8235,11 +8380,19 @@ function aplicarModoPerfil(master){
   const ro=document.getElementById('pf-readonly-note'); if(ro) ro.style.display=master?'none':'';
 }
 async function salvarPerfil(){
+  /* [v1.8.232] preenchido e torto nao passa: esse numero vira nota fiscal.
+     Vazio passa -- so vira obrigatorio na hora de comprar. */
+  var _doc=docNorm(pfVal('pf-cnpj'));
+  if(_doc!=='' && !docTipo(_doc)){
+    toast('Esse CPF ou CNPJ nao confere. Revise os digitos.','err');
+    var _el=document.getElementById('pf-cnpj'); if(_el) _el.focus();
+    return;
+  }
   const btn=document.getElementById('pf-save'); const old=btn?btn.textContent:'';
   if(btn){ btn.textContent='Salvando…'; btn.disabled=true; }
   try{
     const {data,error}=await db.rpc('sp_salvar_perfil_escritorio',{
-      p_token:TOKEN, p_nome:pfVal('pf-nome'), p_responsavel:pfVal('pf-resp'), p_cnpj:pfVal('pf-cnpj'),
+      p_token:TOKEN, p_nome:pfVal('pf-nome'), p_responsavel:pfVal('pf-resp'), p_cnpj:docNorm(pfVal('pf-cnpj')),
       p_razao_social:pfVal('pf-razao'), p_oab:pfVal('pf-oab'), p_telefone:pfVal('pf-tel'),
       p_endereco:pfVal('pf-end'), p_cidade:pfVal('pf-cidade'), p_uf:pfVal('pf-uf'), p_cep:pfVal('pf-cep'),
       p_logo_url:(PERFIL_LOGO===undefined?null:PERFIL_LOGO)
