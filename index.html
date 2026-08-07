@@ -1157,6 +1157,14 @@
 .pnl-selo-risco.mut{background:rgba(148,163,184,.12);color:var(--muted)}
 .pnl-cap-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
   .pnl-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  /* [v1.8.233] sanfonas do painel: some o triangulo nativo, entra a seta nossa */
+  .pnl-sanf > summary::-webkit-details-marker{display:none}
+  .pnl-sanf > summary::marker{content:""}
+  .pnl-sanf > summary .sanf-seta{transition:transform .15s;color:var(--muted);font-size:.8rem}
+  .pnl-sanf[open] > summary .sanf-seta{transform:rotate(90deg)}
+  .pnl-sanf[open] > summary{border-bottom:1px solid var(--line)}
+  .pnl-sanf > .sanf-corpo{padding:14px 0 16px}
+  .pnl-sanf .card{border:0;background:transparent;padding:0;margin:0}
   .pnl-card-h{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text);font-size:.95rem;margin-bottom:10px}
   .pnl-ic{font-size:1.1rem}
   .pnl-rest{font-family:'Space Grotesk';font-size:1.7rem;font-weight:700;color:var(--cyan);line-height:1.1}
@@ -1981,9 +1989,12 @@
         <!-- [v1.8.184] O ciclo vem antes de tudo. Quem esta prestes a ser
              desativado nao pode estar embaixo de tres cards de configuracao. -->
         <div id="pnl-banner"></div>
+        <details class="pnl-sanf" style="margin-bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0 16px">
+          <summary style="cursor:pointer;padding:13px 0;font-size:.95rem;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px"><span class="sanf-seta">&#9654;</span>Aviso em destaque</summary>
+          <div class="sanf-corpo">
         <!-- Card: Aviso em destaque -->
         <div class="card" style="margin-bottom:18px;border-color:var(--cyan)">
-          <div class="view-head" style="margin-bottom:10px"><div><h2 style="font-size:1.05rem">📢 Aviso em destaque</h2><p style="margin:0;font-size:.8rem">Mensagem exibida como popup para todos os escritórios logados. Só uma ativa por vez.</p></div></div>
+          <div class="view-head" style="margin-bottom:10px"><div><p style="margin:0;font-size:.8rem">Mensagem exibida como popup para todos os escritórios logados. Só uma ativa por vez.</p></div></div>
           <textarea id="pnl-aviso-texto" rows="3" style="width:100%;resize:vertical;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:10px 12px;box-sizing:border-box" placeholder="Ex.: Atualizamos o sistema! Agora você pode comprimir PDFs antes de resumir. 🚀"></textarea>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" type="button" onclick="publicarAvisoGestor()">📢 Publicar aviso</button>
@@ -1991,9 +2002,14 @@
           </div>
           <div id="pnl-aviso-status" style="margin-top:8px;font-size:.8rem;color:var(--muted)"></div>
         </div>
+          </div>
+        </details>
+        <details class="pnl-sanf" style="margin-bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0 16px">
+          <summary style="cursor:pointer;padding:13px 0;font-size:.95rem;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px"><span class="sanf-seta">&#9654;</span>Suporte no WhatsApp</summary>
+          <div class="sanf-corpo">
         <!-- Card: Suporte (WhatsApp) — v1.8.159 — só master -->
         <div class="card" id="pnl-suporte-card" style="margin-bottom:18px">
-          <div class="view-head" style="margin-bottom:10px"><div><h2 style="font-size:1.05rem">💬 Suporte (WhatsApp)</h2><p style="margin:0;font-size:.8rem">Número que recebe o botão "Fale com a gente" da aba Ajuda. Deixe em branco para esconder o botão.</p></div></div>
+          <div class="view-head" style="margin-bottom:10px"><div><p style="margin:0;font-size:.8rem">Número que recebe o botão "Fale com a gente" da aba Ajuda. Deixe em branco para esconder o botão.</p></div></div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;max-width:640px">
             <div style="flex:1 1 240px">
               <label style="display:block;font-size:.8rem;color:var(--muted);margin-bottom:6px">Número (com DDI 55)</label>
@@ -2010,9 +2026,14 @@
           </div>
           <div id="sup-status" style="margin-top:8px;font-size:.8rem;color:var(--muted)"></div>
         </div>
+          </div>
+        </details>
+        <details class="pnl-sanf" style="margin-bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0 16px">
+          <summary style="cursor:pointer;padding:13px 0;font-size:.95rem;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px"><span class="sanf-seta">&#9654;</span>Teste de cobrança Pix</summary>
+          <div class="sanf-corpo">
         <!-- Card: Teste de cobrança Pix (Mercado Pago) — só master -->
         <div class="card" id="pnl-pix-card" style="margin-bottom:18px">
-          <div class="view-head" style="margin-bottom:10px"><div><h2 style="font-size:1.05rem">💳 Teste de cobrança Pix</h2><p style="margin:0;font-size:.8rem">Gera uma cobrança Pix real. Use valores baixos — cai de verdade.</p></div></div>
+          <div class="view-head" style="margin-bottom:10px"><div><p style="margin:0;font-size:.8rem">Gera uma cobrança Pix real. Use valores baixos — cai de verdade.</p></div></div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;max-width:640px">
             <div style="flex:1 1 240px">
               <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Escritório</label>
@@ -2030,7 +2051,59 @@
           <div style="margin-top:12px"><button class="btn btn-primary btn-sm" id="pix-btn-gerar" type="button" onclick="pixGerarCobranca()">Gerar cobrança Pix</button></div>
           <div id="pix-resultado" style="margin-top:14px"></div>
         </div>
+          </div>
+        </details>
+
+        <!-- [v1.8.233] Cupons de desconto -->
+        <details class="pnl-sanf" id="pnl-sanf-cupom" style="margin-bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0 16px" ontoggle="if(this.open) cupomListar()">
+          <summary style="cursor:pointer;padding:13px 0;font-size:.95rem;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px"><span class="sanf-seta">&#9654;</span>Cupons de desconto
+            <span id="cup-resumo" style="margin-left:auto;font-size:.78rem;font-weight:400;color:var(--muted)"></span></summary>
+          <div class="sanf-corpo">
+            <p style="margin:0 0 12px;font-size:.8rem;color:var(--muted);line-height:1.45">O código vale por poucos dias para ser resgatado. Depois de resgatado, o desconto dura os meses que você definir.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;max-width:760px">
+              <div style="flex:1 1 150px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Código</label><input id="cup-codigo" placeholder="OABRJ50" maxlength="24" oninput="cupomCodigoDigitou()" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+              <div style="flex:0 0 110px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Desconto (%)</label><input id="cup-pct" value="50" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+              <div style="flex:0 0 130px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Quantos podem usar</label><input id="cup-usos" value="50" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;max-width:760px;margin-top:10px">
+              <div style="flex:0 0 150px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Dias para resgatar</label><input id="cup-dias" value="7" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+              <div style="flex:0 0 150px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Desconto dura (meses)</label><input id="cup-meses" placeholder="para sempre" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+              <div style="flex:1 1 200px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Observação (só você vê)</label><input id="cup-obs" placeholder="Evento OAB-RJ" style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+            </div>
+            <div style="margin-top:12px"><button class="btn btn-primary btn-sm" id="cup-btn" type="button" onclick="cupomCriar()">Gerar cupom</button></div>
+            <div id="cup-msg" style="margin-top:8px;font-size:.82rem"></div>
+            <div id="cup-lista" style="margin-top:16px"></div>
+          </div>
+        </details>
+
+        <!-- [v1.8.233] Gerir planos: casca visual, ainda nao ligada -->
+        <details class="pnl-sanf" style="margin-bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0 16px">
+          <summary style="cursor:pointer;padding:13px 0;font-size:.95rem;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px"><span class="sanf-seta">&#9654;</span>Gerir planos
+            <span style="margin-left:auto;font-size:.78rem;font-weight:400;color:var(--amber,#f59e0b)">em construção</span></summary>
+          <div class="sanf-corpo">
+            <p style="margin:0 0 12px;font-size:.8rem;color:var(--muted);line-height:1.45">Aqui vai dar para mudar o que cada degrau entrega, e replicar proporcionalmente para os degraus seguintes. Ainda não está ligado no banco — os números abaixo são só o desenho.</p>
+            <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Degrau</label>
+            <input type="range" min="10" max="300" step="10" value="50" id="gp-degrau" oninput="document.getElementById('gp-degrau-lbl').textContent=this.value+' processos'" style="width:100%;max-width:760px">
+            <div id="gp-degrau-lbl" style="font-size:.9rem;margin:2px 0 14px">50 processos</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;max-width:760px">
+              <div style="flex:0 0 130px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Preço (R$)</label><input value="70,00" disabled style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+              <div style="flex:0 0 110px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Usuários</label><input value="2" disabled style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+              <div style="flex:0 0 160px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Armazenamento (MB)</label><input value="3000" disabled style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+              <div style="flex:0 0 160px"><label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px">Créditos de boas-vindas</label><input value="325" disabled style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.04));border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:.88rem;padding:8px 11px"></div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" type="button" disabled>Salvar degrau</button>
+              <button class="btn btn-ghost btn-sm" type="button" disabled>Replicar para os maiores</button>
+            </div>
+          </div>
+        </details>
+
+        <details class="pnl-sanf" style="margin-bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0 16px">
+          <summary style="cursor:pointer;padding:13px 0;font-size:.95rem;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px"><span class="sanf-seta">&#9654;</span>Consumo da operação</summary>
+          <div class="sanf-corpo">
         <div id="pnl-cap"><div class="loading">Carregando…</div></div>
+          </div>
+        </details>
         <div class="view-head" style="margin:26px 0 10px"><div><h2 style="font-size:1.05rem">Escritórios</h2><p style="margin:0">Limite e consumo de cada conta.</p></div></div>
         <div class="pnl-tabs">
           <button class="pnl-tab active" id="pnl-tab-ativos" type="button" onclick="setPainelTab('ativos')">Ativos</button>
@@ -2752,7 +2825,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.232';
+const APP_VERSAO = 'v1.8.233';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -4475,6 +4548,156 @@ function pnlLeverCredito(e){
     '<div class="pnl-cred-num">'+pnlNum(saldo)+'</div>'+
     '<div class="pnl-cred-brk" title="concedido '+conc+' · comprado '+compr+' · usado '+usado+'">conc. '+pnlNum(conc)+' · usado '+pnlNum(usado)+'</div>'+
   '</div>';
+}
+
+/* =================================================================
+   [v1.8.233] Cupons de desconto - painel do gestor
+
+   Banco: sp_admin_cupom_criar, sp_admin_cupons_listar,
+          sp_admin_cupom_encerrar (v1.8.172).
+
+   O percentual so vai de 10 a 90. Nao e capricho: 100% geraria
+   fatura de R$ 0,00, que entra na esteira de cobranca e faz o
+   ciclo desativar a conta no dia 31. Plano de graca se da por
+   sp_plano_aplicar com forma = cortesia, fora do faturamento.
+   ================================================================= */
+var CUPONS_CACHE = [];
+
+function cupomCodigoDigitou(){
+  var el=document.getElementById('cup-codigo'); if(!el) return;
+  el.value = String(el.value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+
+function cupomMsg(txt, cor){
+  var m=document.getElementById('cup-msg'); if(!m) return;
+  m.style.color = cor || 'var(--muted)';
+  m.textContent = txt || '';
+}
+
+function cupomTraduzErro(e){
+  var m=String((e&&(e.message||e.details||e.hint||e.code))||'');
+  if(m.indexOf('CODIGO_JA_EXISTE')>=0)          return 'Já existe um cupom com esse código.';
+  if(m.indexOf('CODIGO_CARACTERE_INVALIDO')>=0) return 'O código aceita só letras e números.';
+  if(m.indexOf('CODIGO_INVALIDO')>=0)           return 'O código precisa ter de 3 a 24 caracteres.';
+  if(m.indexOf('PERCENTUAL_INVALIDO')>=0)       return 'O desconto vai de 10% a 90%.';
+  if(m.indexOf('USOS_INVALIDO')>=0)             return 'Diga quantas pessoas podem usar (pelo menos 1).';
+  if(m.indexOf('PRAZO_INVALIDO')>=0)            return 'Diga em quantos dias o código expira (pelo menos 1).';
+  if(m.indexOf('DURACAO_INVALIDA')>=0)          return 'A duração do desconto precisa ser de pelo menos 1 mês.';
+  if(m.indexOf('CUPOM_NAO_ENCONTRADO')>=0)      return 'Esse cupom não existe mais.';
+  if(m.indexOf('SESSAO_INVALIDA')>=0)           return 'Sua sessão expirou. Entre de novo.';
+  return 'Não consegui agora. Tente de novo.';
+}
+
+function cupomFmtData(d){
+  if(!d) return '';
+  var p=String(d).slice(0,10).split('-');
+  return (p.length===3) ? (p[2]+'/'+p[1]+'/'+p[0]) : String(d);
+}
+
+async function cupomListar(){
+  var area=document.getElementById('cup-lista'); if(!area) return;
+  area.innerHTML='<div class="loading">Carregando…</div>';
+  try{
+    const {data,error}=await db.rpc('sp_admin_cupons_listar',{p_token:TOKEN});
+    if(error) throw error;
+    var r=(Array.isArray(data)?data[0]:data)||{};
+    if(r.sp_admin_cupons_listar) r=r.sp_admin_cupons_listar;
+    CUPONS_CACHE = r.cupons || [];
+    cupomRender();
+  }catch(e){
+    area.innerHTML='<div style="font-size:.82rem;color:var(--danger)">'+esc(cupomTraduzErro(e))+'</div>';
+  }
+}
+
+function cupomRender(){
+  var area=document.getElementById('cup-lista');
+  var res=document.getElementById('cup-resumo');
+  if(!area) return;
+
+  var vivos=0, i, c, html=[];
+  for(i=0;i<CUPONS_CACHE.length;i++){
+    c=CUPONS_CACHE[i];
+    var morto = (c.ativo===false) || c.expirado || c.esgotado;
+    if(!morto) vivos++;
+
+    var selo='', selocor='var(--ok)';
+    if(c.ativo===false){ selo='encerrado'; selocor='var(--muted)'; }
+    else if(c.esgotado){ selo='esgotado'; selocor='var(--amber,#f59e0b)'; }
+    else if(c.expirado){ selo='expirou'; selocor='var(--amber,#f59e0b)'; }
+
+    var dur = c.duracao_meses ? (c.duracao_meses+(c.duracao_meses>1?' meses':' mês')) : 'para sempre';
+
+    html.push('<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--line)'+(morto?';opacity:.55':'')+'">'+
+      '<span style="font-family:ui-monospace,monospace;background:var(--input-bg,rgba(255,255,255,.06));border-radius:6px;padding:3px 9px;font-size:.86rem">'+esc(c.codigo)+'</span>'+
+      '<span style="font-size:.8rem;color:var(--muted)">'+c.percentual+'% · dura '+dur+' · resgatar até '+cupomFmtData(c.resgatavel_ate)+' · usado '+c.usos_feitos+' de '+c.usos_max+'</span>'+
+      (selo?'<span style="font-size:.75rem;color:'+selocor+'">'+selo+'</span>':'')+
+      '<span style="margin-left:auto;display:flex;gap:6px">'+
+        '<button class="btn btn-ghost btn-sm" type="button" onclick="cupomCopiarConvite(\''+esc(c.codigo)+'\','+c.percentual+')">Copiar convite</button>'+
+        ((c.ativo===false)?'':'<button class="btn btn-ghost btn-sm" type="button" style="border-color:var(--danger);color:var(--danger)" onclick="cupomEncerrar(\''+c.id+'\',\''+esc(c.codigo)+'\')">Encerrar</button>')+
+      '</span></div>');
+  }
+
+  area.innerHTML = html.length ? html.join('') :
+    '<div style="font-size:.82rem;color:var(--muted);padding-top:10px;border-top:1px solid var(--line)">Nenhum cupom ainda.</div>';
+  if(res) res.textContent = vivos ? (vivos+(vivos>1?' ativos':' ativo')) : '';
+}
+
+async function cupomCriar(){
+  var bt=document.getElementById('cup-btn');
+  var cod=String(document.getElementById('cup-codigo').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  var pct=parseInt(document.getElementById('cup-pct').value,10);
+  var usos=parseInt(document.getElementById('cup-usos').value,10);
+  var dias=parseInt(document.getElementById('cup-dias').value,10);
+  var mesesRaw=String(document.getElementById('cup-meses').value||'').trim();
+  var meses = mesesRaw==='' ? null : parseInt(mesesRaw,10);
+  var obs=String(document.getElementById('cup-obs').value||'').trim();
+
+  if(cod.length<3){ cupomMsg('O código precisa ter pelo menos 3 letras ou números.','var(--danger)'); return; }
+  if(!(pct>=10 && pct<=90)){ cupomMsg('O desconto vai de 10% a 90%.','var(--danger)'); return; }
+  if(!(usos>=1)){ cupomMsg('Diga quantas pessoas podem usar.','var(--danger)'); return; }
+  if(!(dias>=1)){ cupomMsg('Diga em quantos dias o código expira.','var(--danger)'); return; }
+
+  setLoading(bt,true,'Gerar cupom');
+  cupomMsg('');
+  try{
+    const {data,error}=await db.rpc('sp_admin_cupom_criar',{
+      p_token:TOKEN, p_codigo:cod, p_percentual:pct, p_usos_max:usos,
+      p_dias_resgate:dias, p_duracao_meses:meses, p_observacao:obs||null});
+    if(error) throw error;
+    cupomMsg('Cupom '+cod+' criado. Resgatável por '+dias+(dias>1?' dias.':' dia.'),'var(--ok)');
+    document.getElementById('cup-codigo').value='';
+    document.getElementById('cup-obs').value='';
+    await cupomListar();
+  }catch(e){
+    cupomMsg(cupomTraduzErro(e),'var(--danger)');
+  }
+  setLoading(bt,false,'Gerar cupom');
+}
+
+async function cupomEncerrar(id, codigo){
+  if(!confirm('Encerrar o cupom '+codigo+'?\n\nQuem já resgatou continua com o desconto. Só para de aceitar resgate novo.')) return;
+  try{
+    const {data,error}=await db.rpc('sp_admin_cupom_encerrar',{p_token:TOKEN,p_id:id});
+    if(error) throw error;
+    cupomMsg('Cupom '+codigo+' encerrado.','var(--muted)');
+    await cupomListar();
+  }catch(e){
+    cupomMsg(cupomTraduzErro(e),'var(--danger)');
+  }
+}
+
+/* O convite vai inteiro: sem o link, o codigo sozinho nao leva a lugar nenhum. */
+function cupomCopiarConvite(codigo, pct){
+  var txt = 'Criei um acesso com desconto no Meus Processos pra você.\n\n'+
+            'Cupom: '+codigo+' ('+pct+'% de desconto)\n'+
+            'Cadastre-se em https://app.appsone.com.br e use o código na tela de plano.\n\n'+
+            'O código tem prazo pra ser resgatado.';
+  try{
+    navigator.clipboard.writeText(txt);
+    cupomMsg('Convite do '+codigo+' copiado. É só colar no WhatsApp.','var(--ok)');
+  }catch(_){
+    cupomMsg('Não consegui copiar. Selecione o código na lista e copie na mão.','var(--danger)');
+  }
 }
 
 function pnlCardEscritorio(e, idx){
