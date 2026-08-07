@@ -209,6 +209,15 @@
   #fin-area .list, #fin-desp-area .list, #usr-area .list,
   #det-documentos .doc-list{max-height:calc(100vh - 260px);overflow:auto}
   #docg-area .doc-list{max-height:calc(100vh - 400px);overflow:auto}
+  /* [v1.8.234] estrela de favoritar. Fica em TODAS as linhas: apagada
+     quando nao favoritado, ambar quando sim. Clicar nela e o unico
+     jeito de favoritar — sem menu, sem botao extra. */
+  .li-fav{flex:0 0 auto;font-size:1.15rem;line-height:1;background:none;
+          border:0;padding:0 1px;cursor:pointer;color:var(--muted-2);
+          opacity:.45;transition:opacity .15s,color .15s,transform .1s}
+  .li-fav:hover{opacity:1;transform:scale(1.12)}
+  .li-fav.on{color:#EF9F27;opacity:1}
+  .li-fav.on:hover{color:#BA7517}
   .list-item{display:flex;align-items:center;gap:12px;padding:9px 14px;background:var(--panel);border:1px solid var(--line);border-radius:11px;cursor:pointer;transition:border-color .15s,background .15s}
   .list-item:hover{border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.04)}
   .li-main{flex:1;min-width:0;display:flex;align-items:baseline;gap:10px}
@@ -2825,7 +2834,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.233';
+const APP_VERSAO = 'v1.8.234';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -7937,6 +7946,21 @@ async function carregarProcessos(){
   }catch(e){ if((e.message||'').includes('SESSAO_INVALIDA')) return sessaoExpirou();
     document.getElementById('proc-area').innerHTML='<div class="empty"><div class="em-ic">⚠️</div><h3>Não foi possível carregar</h3><p>'+esc(traduzErro(e))+'</p></div>'; }
 }
+/* [v1.8.234] Favoritar/desfavoritar. Favorito e do ESCRITORIO, nao do
+   usuario: prazo de embargo interessa a todo mundo que abrir a tela.
+   Quem ordena e o banco (sp_listar_processos, favorito DESC na frente).
+   Aqui so recarrego a lista e deixo ela vir na ordem certa. */
+async function favoritarProcesso(id){
+  try{
+    const {data,error}=await db.rpc('sp_processo_favoritar',{p_token:TOKEN,p_processo_id:id}); if(error) throw error;
+    const r=(Array.isArray(data)?data[0]:data)||{};
+    if(!r.ok){ toast(r.motivo==='PROCESSO_NAO_ENCONTRADO'
+        ? 'Processo não encontrado.' : 'Não foi possível favoritar.','erro'); return; }
+    const p=PROCESSOS.find(x=>x.id===id); if(p) p.favorito=r.favorito;
+    await carregarProcessos();
+    toast(r.favorito?'Fixado no topo.':'Saiu dos favoritos.','ok');
+  }catch(e){ toast(traduzErro(e),'erro'); }
+}
 function renderProcessos(){
   const q=(document.getElementById('busca-proc').value||'').toLowerCase();
   const lista=PROCESSOS.filter(p=>!q||(p.nome_parte||'').toLowerCase().includes(q)||(p.numero||'').toLowerCase().includes(q)||(p.cliente_nome||'').toLowerCase().includes(q)||(p.assunto||'').toLowerCase().includes(q));
@@ -7956,6 +7980,7 @@ function renderProcessos(){
       ? `<button class="lnk" onclick='event.stopPropagation();abrirFinalizar(${JSON.stringify(p.id)})'>Finalizar</button>`
       : `<button class="lnk" onclick='event.stopPropagation();restaurarProcesso(${JSON.stringify(p.id)})'>Restaurar</button>`;
     return `<div class="list-item" onclick='abrirDetalhe(${JSON.stringify(p.id)})'>
+      <button class="li-fav${p.favorito?' on':''}" title="${p.favorito?'Tirar dos favoritos':'Favoritar — fixa no topo'}" aria-label="${p.favorito?'Tirar dos favoritos':'Favoritar'}" onclick='event.stopPropagation();favoritarProcesso(${JSON.stringify(p.id)})'>${p.favorito?'\u2605':'\u2606'}</button>
       <div class="li-main"><div class="li-title">${esc(p.nome_parte||'(sem título)')}</div><div class="li-sub">${sub||'—'}</div></div>
       <div class="li-tags">
         ${monIcone(p, 20)}
