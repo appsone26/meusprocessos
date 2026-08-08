@@ -2834,7 +2834,7 @@
 /* ============================================================
    MEUS PROCESSOS — Apps One Tecnologia
    ============================================================ */
-const APP_VERSAO = 'v1.8.235';
+const APP_VERSAO = 'v1.8.236';
 // ── Sistemas do tribunal (código interno curto → nome de tela + endereço) ──
 const SISTEMAS=[
   {c:'EPRJ1',n:'EPROC 1º',    u:'https://eproc1g.tjrj.jus.br/eproc/'},
@@ -5775,7 +5775,7 @@ function fatProximaHtml(){
       "<span>"+esc(prazo)+"</span></div>"+
     desc+
     '<div class="f8-detl">Plano de '+esc(String(p.plano_processos||""))+
-      " processos. A fatura \u00e9 gerada automaticamente na data do vencimento.</div>"+
+      " processos. A fatura \u00e9 gerada automaticamente 7 dias antes do vencimento.</div>"+
   "</div>";
 }
 
